@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Game, { type EndResult } from "@/components/Game";
 import { TOTAL_LEVELS } from "@/lib/levels";
+import { sound } from "@/lib/audio";
 
 type Screen =
   | "menu"
@@ -18,6 +19,34 @@ export default function Page() {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [runId, setRunId] = useState(0);
+  const [needTap, setNeedTap] = useState(false);
+
+  // Menü/ekranlarda (oyun dışı) açılış müziği.
+  // Menüye girer girmez otomatik dener; tarayıcı izin verirse ANINDA başlar,
+  // vermezse ilk dokunuş/tuşta başlar (autoplay engeli için "sese dokun" ipucu).
+  useEffect(() => {
+    if (screen === "playing") {
+      setNeedTap(false);
+      return;
+    }
+    let cancelled = false;
+    const tryStart = () => {
+      sound.resume();
+      sound.playMenuMusic().then((ok) => {
+        if (!cancelled) setNeedTap(!ok);
+      });
+    };
+    tryStart(); // hemen dene
+    const onGesture = () => tryStart();
+    window.addEventListener("pointerdown", onGesture);
+    window.addEventListener("keydown", onGesture);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("pointerdown", onGesture);
+      window.removeEventListener("keydown", onGesture);
+      sound.stopMenuMusic();
+    };
+  }, [screen]);
 
   function play(lv: number, sc: number, lv3: number) {
     setLevel(lv);
@@ -57,9 +86,9 @@ export default function Page() {
           <div className="title">BLACKOUT</div>
           <div className="subtitle">
             Karanlık bir labirentte, elinde sadece zayıf bir el feneri.
-            Yolunu keşfet, mermileri topla, seni avlayan zombilerden kaç.
-            Çıkış kilitli — yolunu açmak için <b>en az 1 zombi öldür</b>, sonra
-            karanlıkta gizli çıkışı bul.
+            Yolunu keşfet, mermileri topla, seni avlayan <b>kanlı
+            gelinlerden</b> kaç. Çıkış kilitli — yolunu açmak için{" "}
+            <b>en az 1 gelini yok et</b>, sonra karanlıkta gizli çıkışı bul.
           </div>
           <div className="how">
             <b>Nasıl Oynanır</b>
@@ -67,9 +96,9 @@ export default function Page() {
             veya ok tuşları
             <br />• Ateş: <kbd>Boşluk</kbd> — gittiğin yöne ateş eder
             <br />• Yerdeki parlayan <b>mermileri</b> topla (sınırlı!)
-            <br />• En az 1 zombi öldürünce <b>çıkış açılır</b>
+            <br />• En az 1 <b>gelini</b> yok edince <b>çıkış açılır</b>
             <br />• Yeşil parlayan <b>kapıyı</b> bul ve ulaş → sonraki bölüm
-            <br />• <b>3 can</b> hakkın var. Zombi teması can barını düşürür.
+            <br />• <b>3 can</b> hakkın var. Gelin teması can barını düşürür.
             <br />• Toplam <b>{TOTAL_LEVELS} bölüm</b> — gittikçe zorlaşır.
           </div>
           <button className="btn btn-primary" onClick={startNewGame}>
@@ -140,6 +169,8 @@ export default function Page() {
           </button>
         </>
       )}
+
+      {needTap && <div className="taphint">🔊 Ses için bir yere dokun</div>}
     </div>
   );
 }

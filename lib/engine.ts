@@ -37,6 +37,18 @@ export type Input = {
   fire: boolean;
 };
 
+// Ses için ayrık olaylar. Motor bunları biriktirir, Game katmanı her kare boşaltıp çalar.
+export type SoundEvent =
+  | "shot"
+  | "kill"
+  | "pickup"
+  | "hurt"
+  | "dooropen"
+  | "warn"
+  | "levelclear"
+  | "gameover"
+  | "win";
+
 export type Player = {
   pos: Vec;
   dir: Vec; // birim yön (ateş için)
@@ -105,6 +117,10 @@ export class GameEngine {
 
   warnTimer = 0; // "önce bir zombi öldür" uyarısı
   hurtFlash = 0; // hasar alınca kırmızı flaş
+  playerMoving = false; // yürüme animasyonu için
+  events: SoundEvent[] = []; // bu kare oluşan ses olayları
+  tension = 0; // 0..1 en yakın farkında zombiye göre gerilim (kalp atışı/ambiyans)
+  bloodStains: { x: number; y: number; r: number; seed: number }[] = []; // kalıcı kan izleri
 
   private fireCd = 0;
   private nextId = 1;
@@ -117,7 +133,8 @@ export class GameEngine {
     this.maze = generateMaze(
       this.config.cols,
       this.config.rows,
-      this.config.braid
+      this.config.braid,
+      this.config.openness
     );
 
     this.player = {
@@ -226,6 +243,7 @@ export class GameEngine {
     this.updatePlayer(dt, input);
     this.updateBullets(dt);
     this.updateZombies(dt);
+    this.computeTension();
     this.pickupAmmo();
     this.computeVision();
     this.checkExit();
@@ -240,6 +258,7 @@ export class GameEngine {
     if (input.left) mx -= 1;
     if (input.right) mx += 1;
 
+    this.playerMoving = mx !== 0 || my !== 0;
     if (mx !== 0 || my !== 0) {
       const len = Math.hypot(mx, my);
       mx /= len;
@@ -257,6 +276,7 @@ export class GameEngine {
     if (input.fire && this.fireCd <= 0 && this.ammoCount > 0) {
       this.ammoCount--;
       this.fireCd = FIRE_COOLDOWN;
+      this.events.push("shot");
       this.bullets.push({
         id: this.nextId++,
         pos: { x: this.player.pos.x, y: this.player.pos.y },
@@ -299,23 +319,48 @@ export class GameEngine {
     this.bullets = this.bullets.filter((b) => b.life > 0);
   }
 
+  private computeTension() {
+    let tn = 0;
+    for (const z of this.zombies) {
+      if (!z.aware) continue;
+      const d = Math.hypot(
+        z.pos.x - this.player.pos.x,
+        z.pos.y - this.player.pos.y
+      );
+      const tv = Math.max(0, 1 - d / 9);
+      if (tv > tn) tn = tv;
+    }
+    this.tension = tn;
+  }
+
   private killZombie(z: Zombie) {
     this.zombies = this.zombies.filter((o) => o.id !== z.id);
     this.zombiesKilled++;
     this.score += 100;
+    this.events.push("kill");
+    // kan izi bırak (kalıcı, hafızada kalır)
+    this.bloodStains.push({
+      x: z.pos.x,
+      y: z.pos.y,
+      r: 0.5 + Math.random() * 0.35,
+      seed: Math.floor(Math.random() * 1000),
+    });
+    const wasOpen = this.exitOpen;
     if (this.zombiesKilled >= 1) this.exitOpen = true;
+    if (!wasOpen && this.exitOpen) this.events.push("dooropen");
   }
 
   private updateZombies(dt: number) {
     const pcell = cellOf(this.player.pos);
+    const smart = this.config.intelligence; // 0..1
     for (const z of this.zombies) {
       const zcell = cellOf(z.pos);
       const d = dist(z.pos, this.player.pos);
 
-      // Oyuncuyu görüyor mu? (görüş yarıçapı + görüş hattı açık)
+      // Oyuncuyu görüyor mu? (görüş yarıçapı + zekâ ile artan algı + görüş hattı)
+      const detect = this.config.visionRadius + 0.5 + smart * 2.5;
       const canSee =
-        d <= this.config.visionRadius + 0.5 &&
-        hasLineOfSight(this.maze, zcell, pcell);
+        d <= detect && hasLineOfSight(this.maze, zcell, pcell);
 
       if (canSee) {
         z.aware = true;
@@ -323,17 +368,22 @@ export class GameEngine {
         z.seenTimer = 0;
       } else {
         z.seenTimer += dt;
-        if (z.seenTimer > LOSE_AGGRO_TIME) z.aware = false;
+        // ASLA vazgeçmez: bir kez fark ettiyse aware kalır (peşini bırakmaz)
       }
 
-      if (z.aware && z.lastSeen) {
-        this.moveZombieChase(z, zcell, dt);
+      if (z.aware) {
+        // Zeki zombiler (üst seviye) oyuncunun GÜNCEL yerini bilir;
+        // aptal zombiler (alt seviye) son görülen noktaya gider.
+        const target =
+          canSee || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
+        this.moveZombieChase(z, zcell, dt, target, canSee, smart, pcell);
       } else {
         this.moveZombieWander(z, dt);
       }
 
       // Oyuncuya temas: hasar + geri itme
       if (dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
+        if (this.hurtFlash <= 0) this.events.push("hurt");
         this.player.hp -= CONTACT_DPS * dt;
         this.hurtFlash = 0.25;
         const nx = this.player.pos.x - z.pos.x;
@@ -352,23 +402,32 @@ export class GameEngine {
     this.separateZombies();
   }
 
-  private moveZombieChase(z: Zombie, zcell: Vec, dt: number) {
-    const target = z.lastSeen!;
+  private moveZombieChase(
+    z: Zombie,
+    zcell: Vec,
+    dt: number,
+    target: Vec,
+    canSee: boolean,
+    smart: number,
+    pcell: Vec
+  ) {
     z.repathTimer -= dt;
     if (!z.path || z.path.length === 0 || z.repathTimer <= 0) {
       z.path = findPath(this.maze, zcell, target);
-      z.repathTimer = 0.4;
+      // zeki zombiler daha sık yol hesaplar (daha iyi takip): 0.6s -> 0.15s
+      z.repathTimer = 0.6 - smart * 0.45;
     }
     if (z.path && z.path.length > 0) {
       const next = z.path[0];
       const tp = { x: next.x + 0.5, y: next.y + 0.5 };
       this.stepToward(z, tp, this.config.zombieSpeed * dt);
       if (dist(z.pos, tp) < 0.12) z.path.shift();
-    } else {
-      // hedefe vardı ama oyuncu görünmüyor -> sakinleş
-      if (dist(z.pos, { x: target.x + 0.5, y: target.y + 0.5 }) < 0.3) {
-        z.aware = false;
-      }
+    } else if (!canSee) {
+      // Son bilinen noktaya vardı ama oyuncuyu göremiyor.
+      // ASLA vazgeçme: yeni hedef olarak oyuncunun güncel yerini al (av devam eder).
+      z.lastSeen = { x: pcell.x, y: pcell.y };
+      z.path = null;
+      z.repathTimer = 0;
     }
   }
 
@@ -426,6 +485,7 @@ export class GameEngine {
         a.taken = true;
         this.ammoCount++;
         this.score += 5;
+        this.events.push("pickup");
       }
     }
   }
@@ -443,7 +503,9 @@ export class GameEngine {
     if (pcell.x === this.exit.x && pcell.y === this.exit.y) {
       if (this.exitOpen) {
         this.status = this.level >= 10 ? "win" : "levelclear";
+        this.events.push(this.status === "win" ? "win" : "levelclear");
       } else {
+        if (this.warnTimer <= 0) this.events.push("warn");
         this.warnTimer = 2; // "önce bir zombi öldür"
       }
     }
@@ -454,6 +516,7 @@ export class GameEngine {
       this.player.hp = 0;
       this.lives -= 1;
       this.status = this.lives > 0 ? "dead" : "gameover";
+      this.events.push("gameover"); // ölüm sesi (dead ve gameover için)
     }
   }
 }

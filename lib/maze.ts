@@ -12,7 +12,13 @@ function inBounds(x: number, y: number, cols: number, rows: number) {
 }
 
 // Perfect maze üretir (recursive backtracker). cols/rows tek sayı olmalı.
-export function generateMaze(cols: number, rows: number, braid = 0): Maze {
+// openness > 0 ise labirente açık odalar/boşluklar serpiştirir (nefes alanı).
+export function generateMaze(
+  cols: number,
+  rows: number,
+  braid = 0,
+  openness = 0
+): Maze {
   // tek sayıya yuvarla
   if (cols % 2 === 0) cols += 1;
   if (rows % 2 === 0) rows += 1;
@@ -76,6 +82,31 @@ export function generateMaze(cols: number, rows: number, braid = 0): Maze {
           walls[c.wy][c.wx] = false;
         }
       }
+    }
+  }
+
+  // Açık odalar: rastgele küçük dikdörtgen bölgeleri zemine çevir (boşluk aç)
+  if (openness > 0) {
+    const roomCount = Math.round(((cols * rows) / 45) * (0.6 + openness));
+    for (let i = 0; i < roomCount; i++) {
+      const rw = 2 + Math.floor(Math.random() * 3); // 2-4 geniş
+      const rh = 2 + Math.floor(Math.random() * 3);
+      const rx = 1 + Math.floor(Math.random() * Math.max(1, cols - rw - 2));
+      const ry = 1 + Math.floor(Math.random() * Math.max(1, rows - rh - 2));
+      for (let y = ry; y < ry + rh; y++) {
+        for (let x = rx; x < rx + rw; x++) {
+          walls[y][x] = false;
+        }
+      }
+    }
+    // Dış çerçeveyi duvar tut (oyuncu/haritanın dışına taşmasın)
+    for (let x = 0; x < cols; x++) {
+      walls[0][x] = true;
+      walls[rows - 1][x] = true;
+    }
+    for (let y = 0; y < rows; y++) {
+      walls[y][0] = true;
+      walls[y][cols - 1] = true;
     }
   }
 

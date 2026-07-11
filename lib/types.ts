@@ -40,6 +40,8 @@ export type LevelConfig = {
   ammoBuffer: number; // zombi sayısına eklenen tampon mermi
   visionRadius: number; // hücre cinsinden görüş yarıçapı
   braid: number; // 0..1 ne kadar döngü açılsın (çıkmaz azalt)
+  openness: number; // 0..1 labirente açılan oda/boşluk miktarı
+  intelligence: number; // 0..1 zombi zekâsı (seviyeyle artar)
 };
 
 export type GameStatus =
