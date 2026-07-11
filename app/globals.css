@@ -100,32 +100,6 @@ button {
   border-color: rgba(110, 231, 255, 0.4);
 }
 
-.taphint {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%);
-  color: #d7c9b6;
-  font-size: 14px;
-  letter-spacing: 0.03em;
-  background: rgba(20, 16, 14, 0.7);
-  border: 1px solid rgba(180, 30, 30, 0.35);
-  border-radius: 999px;
-  padding: 8px 18px;
-  animation: tappulse 1.6s ease-in-out infinite;
-  z-index: 30;
-}
-
-@keyframes tappulse {
-  0%,
-  100% {
-    opacity: 0.55;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
 .how {
   text-align: left;
   max-width: 520px;

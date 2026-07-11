@@ -19,31 +19,24 @@ export default function Page() {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [runId, setRunId] = useState(0);
-  const [needTap, setNeedTap] = useState(false);
 
-  // Menü/ekranlarda (oyun dışı) açılış müziği.
-  // Menüye girer girmez otomatik dener; tarayıcı izin verirse ANINDA başlar,
-  // vermezse ilk dokunuş/tuşta başlar (autoplay engeli için "sese dokun" ipucu).
+  // Menü/ekranlarda (oyun dışı) açılış müziği — göze batmayan otomatik başlatma.
+  // Menüye girince SESSİZ autoplay başlar (tarayıcı izin verir), ilk etkileşimde
+  // (herhangi bir tıklama/tuş/dokunuş) sesi açılır. Görünür uyarı yok.
   useEffect(() => {
-    if (screen === "playing") {
-      setNeedTap(false);
-      return;
-    }
-    let cancelled = false;
-    const tryStart = () => {
+    if (screen === "playing") return;
+    sound.primeMenuMusic(); // gizlice çalmaya başla (muted)
+    const reveal = () => {
       sound.resume();
-      sound.playMenuMusic().then((ok) => {
-        if (!cancelled) setNeedTap(!ok);
-      });
+      sound.revealMenuMusic();
     };
-    tryStart(); // hemen dene
-    const onGesture = () => tryStart();
-    window.addEventListener("pointerdown", onGesture);
-    window.addEventListener("keydown", onGesture);
+    window.addEventListener("pointerdown", reveal, { once: true });
+    window.addEventListener("keydown", reveal, { once: true });
+    window.addEventListener("touchstart", reveal, { once: true });
     return () => {
-      cancelled = true;
-      window.removeEventListener("pointerdown", onGesture);
-      window.removeEventListener("keydown", onGesture);
+      window.removeEventListener("pointerdown", reveal);
+      window.removeEventListener("keydown", reveal);
+      window.removeEventListener("touchstart", reveal);
       sound.stopMenuMusic();
     };
   }, [screen]);
@@ -170,7 +163,6 @@ export default function Page() {
         </>
       )}
 
-      {needTap && <div className="taphint">🔊 Ses için bir yere dokun</div>}
     </div>
   );
 }

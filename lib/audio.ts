@@ -125,6 +125,30 @@ class SoundEngine {
     if (this.menuAudio) this.menuAudio.pause();
   }
 
+  // Göze batmayan otomatik başlatma:
+  // Menüye girer girmez SESSİZ (muted) autoplay başlatılır — tarayıcılar buna izin verir.
+  // Müzik gizlice çalmaya başlar; hiçbir uyarı gerekmez.
+  primeMenuMusic() {
+    try {
+      const a = this.ensureEl("menu");
+      a.muted = true; // sessiz autoplay (izin verilir)
+      if (a.paused) a.play().catch(() => {});
+    } catch {
+      /* dosya yoksa geç */
+    }
+  }
+
+  // İlk kullanıcı etkileşiminde sesi aç — müzik zaten çaldığından anında duyulur.
+  revealMenuMusic() {
+    try {
+      const a = this.ensureEl("menu");
+      a.muted = this.muted; // global sessizde değilse duyulur
+      if (a.paused) a.play().catch(() => {});
+    } catch {
+      /* geç */
+    }
+  }
+
   // Oyun-içi müziği çalar; dosya yoksa/başlamazsa false döner (synth ambiyansa düşülür)
   playGameMusic(): Promise<boolean> {
     return new Promise((resolve) => {
@@ -270,16 +294,16 @@ class SoundEngine {
     const f1 = ctx.createBiquadFilter();
     f1.type = "bandpass";
     f1.frequency.value = 850;
-    f1.Q.value = 4;
+    f1.Q.value = 3;
     const f2 = ctx.createBiquadFilter();
     f2.type = "bandpass";
     f2.frequency.value = 1650;
-    f2.Q.value = 7;
+    f2.Q.value = 4.5;
 
-    // hıçkırık zarfı + tremolo (kesik kesik ağlama)
+    // hıçkırık zarfı + tremolo (kesik kesik ağlama) — daha yüksek
     const amp = ctx.createGain();
     amp.gain.setValueAtTime(0.0001, t0);
-    amp.gain.linearRampToValueAtTime(0.5, t0 + 0.03);
+    amp.gain.linearRampToValueAtTime(0.98, t0 + 0.03);
     amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
     const trem = ctx.createOscillator();
     trem.type = "sine";
@@ -295,7 +319,7 @@ class SoundEngine {
     this.connectOut(amp, 0.6); // bol reverb — ürkütücü/hayaletimsi
 
     // baştaki kısa nefes/hıçkırık (inhale catch)
-    this.noise(t0, 0.06, 0.16, 1900, "highpass", 0.3, 0, 1);
+    this.noise(t0, 0.06, 0.3, 1900, "highpass", 0.3, 0, 1);
 
     const stopAt = t0 + dur + 0.05;
     osc.start(t0);
@@ -311,10 +335,10 @@ class SoundEngine {
     const t = this.ctx.currentTime;
     switch (ev) {
       case "shot": {
-        // Gerçek patlama: derin gümbürtü + geniş gürültü gövdesi + keskin transient
-        this.tone(t, 110, 38, 0.22, 0.6, "sine", 0.3);
-        this.noise(t, 0.18, 0.7, 2200, "lowpass", 0.35);
-        this.noise(t, 0.04, 0.5, 3500, "highpass", 0.15);
+        // Baya kısık silah: derin gümbürtü + hafif gürültü (çok azaltıldı)
+        this.tone(t, 110, 38, 0.22, 0.18, "sine", 0.3);
+        this.noise(t, 0.18, 0.2, 2200, "lowpass", 0.3);
+        this.noise(t, 0.04, 0.12, 3500, "highpass", 0.12);
         break;
       }
       case "kill": {
@@ -329,12 +353,12 @@ class SoundEngine {
         break;
       }
       case "hurt": {
-        if (t - this.lastHurt < 0.12) return;
+        if (t - this.lastHurt < 0.18) return;
         this.lastHurt = t;
-        // Sert boğuk darbe + acı unsuru
-        this.tone(t, 90, 45, 0.22, 0.6, "square", 0.25);
-        this.noise(t, 0.18, 0.5, 500, "lowpass", 0.3);
-        this.tone(t + 0.01, 420, 180, 0.14, 0.25, "sawtooth", 0.2);
+        // Hayaletimsi soğuk temas — yumuşak alçalan inilti + hafif üşüme hışırtısı
+        // ("pıt" darbe değil, kısık ve oyuna uygun)
+        this.tone(t, 300, 130, 0.26, 0.18, "sine", 0.45);
+        this.noise(t, 0.16, 0.13, 900, "bandpass", 0.4, 0, 1.5);
         break;
       }
       case "dooropen": {
