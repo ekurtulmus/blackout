@@ -1,0 +1,55 @@
+// BLACKOUT — ortak tipler
+
+export type Vec = { x: number; y: number };
+
+// Hücre görüş durumu: hiç görülmedi / hafızada (soluk) / şu an aydınlık
+export type CellVisibility = 0 | 1 | 2; // 0 = unseen, 1 = memory, 2 = visible
+
+export type Zombie = {
+  id: number;
+  pos: Vec; // hücre biriminde (float)
+  hp: number;
+  aware: boolean; // oyuncuyu gördü mü / kovalıyor mu
+  lastSeen: Vec | null; // oyuncunun son görüldüğü hücre
+  seenTimer: number; // kaç saniyedir oyuncuyu görmüyor
+  wanderDir: Vec; // aylak dolaşma yönü
+  wanderTimer: number;
+  path: Vec[] | null; // hedefe giden yol (hücre listesi)
+  repathTimer: number;
+};
+
+export type Ammo = {
+  id: number;
+  cell: Vec; // hücre koordinatı
+  taken: boolean;
+};
+
+export type Bullet = {
+  id: number;
+  pos: Vec;
+  vel: Vec; // hücre/saniye
+  life: number; // saniye
+};
+
+export type LevelConfig = {
+  level: number;
+  cols: number; // labirent hücre genişliği (tek sayı)
+  rows: number; // labirent hücre yüksekliği (tek sayı)
+  zombies: number;
+  zombieSpeed: number; // hücre/saniye
+  ammoBuffer: number; // zombi sayısına eklenen tampon mermi
+  visionRadius: number; // hücre cinsinden görüş yarıçapı
+  braid: number; // 0..1 ne kadar döngü açılsın (çıkmaz azalt)
+};
+
+export type GameStatus =
+  | "menu"
+  | "playing"
+  | "dead" // bir can gitti, bölüm başa dönecek
+  | "levelclear"
+  | "gameover"
+  | "win";
+
+export type Phase = {
+  status: GameStatus;
+};
