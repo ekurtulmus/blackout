@@ -1,6 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type PointerEvent as RPointerEvent,
+} from "react";
 import {
   GameEngine,
   PLAYER_MAX_HP,
@@ -79,6 +84,8 @@ export default function Game({
       left: false,
       right: false,
       fire: false,
+      ax: 0,
+      ay: 0,
     };
     inputExternal.current = input;
 
@@ -786,8 +793,8 @@ export default function Game({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // dokunmatik kontroller input referansına yazar
-  const setFlag = (k: keyof Input, v: boolean) => {
+  // dokunmatik ateş butonu input referansına yazar (yalnız boolean tuşlar)
+  const setFlag = (k: "up" | "down" | "left" | "right" | "fire", v: boolean) => {
     const i = inputExternal.current;
     if (i) i[k] = v;
   };
@@ -882,21 +889,15 @@ export default function Game({
 
       {/* Dokunmatik kontroller (sadece dokunmatik cihazlarda görünür) */}
       <div className="touch">
-        <div className="dpad">
-          <TB
-            keys={["up", "left"]}
-            set={setFlag}
-            label="↖"
-          />
-          <TB keys={["up"]} set={setFlag} label="↑" />
-          <TB keys={["up", "right"]} set={setFlag} label="↗" />
-          <TB keys={["left"]} set={setFlag} label="←" />
-          <div />
-          <TB keys={["right"]} set={setFlag} label="→" />
-          <TB keys={["down", "left"]} set={setFlag} label="↙" />
-          <TB keys={["down"]} set={setFlag} label="↓" />
-          <TB keys={["down", "right"]} set={setFlag} label="↘" />
-        </div>
+        <Joystick
+          onMove={(x, y) => {
+            const i = inputExternal.current;
+            if (i) {
+              i.ax = x;
+              i.ay = y;
+            }
+          }}
+        />
         <button
           className="fire"
           onPointerDown={(e) => {
@@ -914,29 +915,68 @@ export default function Game({
   );
 }
 
-// Dokunmatik yön butonu
-function TB({
-  keys,
-  set,
-  label,
-}: {
-  keys: (keyof Input)[];
-  set: (k: keyof Input, v: boolean) => void;
-  label: string;
-}) {
-  const on = (v: boolean) => keys.forEach((k) => set(k, v));
+// Analog joystick (mobil hareket) — sürükleme yönü + itme miktarı = hız
+function Joystick({ onMove }: { onMove: (x: number, y: number) => void }) {
+  const baseRef = useRef<HTMLDivElement | null>(null);
+  const [thumb, setThumb] = useState({ x: 0, y: 0 });
+  const drag = useRef<{ id: number; cx: number; cy: number; r: number } | null>(
+    null
+  );
+  const MAX = 44; // başlığın maksimum kayması (px)
+
+  const move = (e: RPointerEvent<HTMLDivElement>) => {
+    const d = drag.current;
+    if (!d || e.pointerId !== d.id) return;
+    const dx = e.clientX - d.cx;
+    const dy = e.clientY - d.cy;
+    const mag = Math.hypot(dx, dy);
+    const cl = Math.min(mag, d.r);
+    const ux = mag > 0 ? dx / mag : 0;
+    const uy = mag > 0 ? dy / mag : 0;
+    const tx = ux * cl;
+    const ty = uy * cl;
+    setThumb({ x: tx, y: ty });
+    onMove(tx / d.r, ty / d.r);
+    e.preventDefault();
+  };
+  const start = (e: RPointerEvent<HTMLDivElement>) => {
+    const el = baseRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    drag.current = {
+      id: e.pointerId,
+      cx: rect.left + rect.width / 2,
+      cy: rect.top + rect.height / 2,
+      r: MAX,
+    };
+    try {
+      el.setPointerCapture(e.pointerId);
+    } catch {
+      /* yok say */
+    }
+    move(e);
+  };
+  const end = (e: RPointerEvent<HTMLDivElement>) => {
+    if (!drag.current) return;
+    drag.current = null;
+    setThumb({ x: 0, y: 0 });
+    onMove(0, 0);
+    e.preventDefault();
+  };
+
   return (
-    <button
-      className="tbtn"
-      onPointerDown={(e) => {
-        e.preventDefault();
-        on(true);
-      }}
-      onPointerUp={() => on(false)}
-      onPointerLeave={() => on(false)}
-      onPointerCancel={() => on(false)}
+    <div
+      className="joybase"
+      ref={baseRef}
+      onPointerDown={start}
+      onPointerMove={move}
+      onPointerUp={end}
+      onPointerCancel={end}
     >
-      {label}
-    </button>
+      <div
+        className="joythumb"
+        style={{ transform: `translate(${thumb.x}px, ${thumb.y}px)` }}
+      />
+    </div>
   );
 }

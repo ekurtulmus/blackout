@@ -35,6 +35,8 @@ export type Input = {
   left: boolean;
   right: boolean;
   fire: boolean;
+  ax?: number; // analog joystick yatay (-1..1), mobil
+  ay?: number; // analog joystick dikey (-1..1), mobil
 };
 
 // Ses için ayrık olaylar. Motor bunları biriktirir, Game katmanı her kare boşaltıp çalar.
@@ -258,6 +260,17 @@ export class GameEngine {
     if (input.left) mx -= 1;
     if (input.right) mx += 1;
 
+    // Analog joystick (mobil): itme miktarı kadar hız (ölü bölge 0.18)
+    let speedScale = 1;
+    const ax = input.ax ?? 0;
+    const ay = input.ay ?? 0;
+    const amag = Math.hypot(ax, ay);
+    if (amag > 0.18) {
+      mx = ax;
+      my = ay;
+      speedScale = Math.min(1, amag);
+    }
+
     this.playerMoving = mx !== 0 || my !== 0;
     if (mx !== 0 || my !== 0) {
       const len = Math.hypot(mx, my);
@@ -268,8 +281,8 @@ export class GameEngine {
         this.maze,
         this.player.pos,
         PLAYER_RADIUS,
-        mx * PLAYER_SPEED * dt,
-        my * PLAYER_SPEED * dt
+        mx * PLAYER_SPEED * speedScale * dt,
+        my * PLAYER_SPEED * speedScale * dt
       );
     }
 

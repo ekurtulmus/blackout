@@ -241,6 +241,71 @@ class SoundEngine {
     o.stop(t0 + dur + 0.05);
   }
 
+  // Gerçek bir kadın ağlaması/feryadı — çok kısa, hayaletimsi (ölen gelin için).
+  // Ses teli (sawtooth) + ünlü formant filtreleri + vibrato (titrek perde) +
+  // tremolo (kesik hıçkırık) + baştaki nefes + bol reverb.
+  private cry(t0: number) {
+    if (!this.ctx || !this.master) return;
+    const ctx = this.ctx;
+    const dur = 0.4;
+
+    const osc = ctx.createOscillator();
+    osc.type = "sawtooth";
+    // acı feryat konturu: hızlı yüksel → dalgalan → düş
+    osc.frequency.setValueAtTime(360, t0);
+    osc.frequency.linearRampToValueAtTime(690, t0 + 0.07);
+    osc.frequency.linearRampToValueAtTime(520, t0 + 0.17);
+    osc.frequency.exponentialRampToValueAtTime(230, t0 + dur);
+
+    // vibrato — ağlamanın titrek perdesi
+    const vib = ctx.createOscillator();
+    vib.type = "sine";
+    vib.frequency.value = 6.5;
+    const vibGain = ctx.createGain();
+    vibGain.gain.value = 24;
+    vib.connect(vibGain);
+    vibGain.connect(osc.frequency);
+
+    // ünlü (vowel) formantları — insan sesi "aaa/uaa" tınısı
+    const f1 = ctx.createBiquadFilter();
+    f1.type = "bandpass";
+    f1.frequency.value = 850;
+    f1.Q.value = 4;
+    const f2 = ctx.createBiquadFilter();
+    f2.type = "bandpass";
+    f2.frequency.value = 1650;
+    f2.Q.value = 7;
+
+    // hıçkırık zarfı + tremolo (kesik kesik ağlama)
+    const amp = ctx.createGain();
+    amp.gain.setValueAtTime(0.0001, t0);
+    amp.gain.linearRampToValueAtTime(0.5, t0 + 0.03);
+    amp.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    const trem = ctx.createOscillator();
+    trem.type = "sine";
+    trem.frequency.value = 9;
+    const tremGain = ctx.createGain();
+    tremGain.gain.value = 0.22;
+    trem.connect(tremGain);
+    tremGain.connect(amp.gain);
+
+    osc.connect(f1);
+    f1.connect(f2);
+    f2.connect(amp);
+    this.connectOut(amp, 0.6); // bol reverb — ürkütücü/hayaletimsi
+
+    // baştaki kısa nefes/hıçkırık (inhale catch)
+    this.noise(t0, 0.06, 0.16, 1900, "highpass", 0.3, 0, 1);
+
+    const stopAt = t0 + dur + 0.05;
+    osc.start(t0);
+    vib.start(t0);
+    trem.start(t0);
+    osc.stop(stopAt);
+    vib.stop(stopAt);
+    trem.stop(stopAt);
+  }
+
   play(ev: SoundEvent) {
     if (!this.ctx || this.muted) return;
     const t = this.ctx.currentTime;
@@ -253,10 +318,8 @@ class SoundEngine {
         break;
       }
       case "kill": {
-        // Ölen gelinin çok kısa ağlaması / hıçkırığı (hayaletimsi, reverb'li)
-        this.tone(t, 560, 430, 0.12, 0.28, "triangle", 0.55);
-        this.tone(t + 0.11, 480, 330, 0.15, 0.24, "triangle", 0.55);
-        this.noise(t, 0.05, 0.1, 1300, "bandpass", 0.3, 0, 2);
+        // Ölen gelinin çok kısa, gerçekçi ağlaması/feryadı
+        this.cry(t);
         break;
       }
       case "pickup": {
