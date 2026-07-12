@@ -36,6 +36,8 @@
   temadan başlar, her 2 bölümde değişir. Online'da host seed'i herkese yayınlar (aynı tema). HUD'da "Tema".
 - ✅ **Hikaye & ara sahne**: `lib/story.ts` — Tek Kişilik'te giriş anlatısı ("Neden buradasın?"), bölüm
   arası tekinsiz notlar (levelclear ekranında).
+- ✅ **Ayarlar menüsü** (`components/Settings.tsx`): ses seviyesi kaydırıcısı + müzik aç/kapa + tüm sesler
+  aç/kapa; tercihler localStorage'da (`blackout_vol/music/muted`). `audio.ts`'e setVolume/setMusic + applyLevels.
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

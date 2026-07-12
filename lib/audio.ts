@@ -19,9 +19,74 @@ class SoundEngine {
   muted = false;
   tension = 0; // 0..1 (Game her kare günceller)
   private lastHurt = -1;
+  private vol = 1; // 0..1 genel ses seviyesi (ayarlardan)
+  private musicOn = true; // müzik açık mı
+  private prefsLoaded = false;
+  private readonly base = 0.42; // ana ses taban kazancı
+
+  // Ayar tercihlerini cihazdan yükle (bir kez)
+  private loadPrefs() {
+    if (this.prefsLoaded) return;
+    this.prefsLoaded = true;
+    try {
+      const v = localStorage.getItem("blackout_vol");
+      if (v !== null) this.vol = Math.max(0, Math.min(1, parseFloat(v)));
+      const m = localStorage.getItem("blackout_music");
+      if (m !== null) this.musicOn = m === "1";
+      const mu = localStorage.getItem("blackout_muted");
+      if (mu !== null) this.muted = mu === "1";
+    } catch {
+      /* geç */
+    }
+  }
+
+  // Ana ses + müzik seviyelerini geçerli tercihlere göre uygula
+  private applyLevels() {
+    if (this.master && this.ctx) {
+      this.master.gain.setTargetAtTime(this.muted ? 0 : this.vol * this.base, this.ctx.currentTime, 0.02);
+    }
+    if (this.menuAudio) {
+      this.menuAudio.muted = this.muted;
+      this.menuAudio.volume = this.musicOn ? this.vol * 0.55 : 0;
+    }
+    if (this.gameAudio) {
+      this.gameAudio.muted = this.muted;
+      this.gameAudio.volume = this.musicOn ? this.vol * 0.45 : 0;
+    }
+  }
+
+  getVolume() {
+    this.loadPrefs();
+    return this.vol;
+  }
+  isMusicOn() {
+    this.loadPrefs();
+    return this.musicOn;
+  }
+
+  setVolume(v: number) {
+    this.vol = Math.max(0, Math.min(1, v));
+    try {
+      localStorage.setItem("blackout_vol", String(this.vol));
+    } catch {
+      /* geç */
+    }
+    this.applyLevels();
+  }
+
+  setMusic(on: boolean) {
+    this.musicOn = on;
+    try {
+      localStorage.setItem("blackout_music", on ? "1" : "0");
+    } catch {
+      /* geç */
+    }
+    this.applyLevels();
+  }
 
   init() {
     if (this.ctx) return;
+    this.loadPrefs();
     const AC: typeof AudioContext =
       window.AudioContext ||
       (window as unknown as { webkitAudioContext: typeof AudioContext })
@@ -30,7 +95,7 @@ class SoundEngine {
     this.ctx = new AC();
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = this.muted ? 0 : 0.42;
+    this.master.gain.value = this.muted ? 0 : this.vol * this.base;
     this.master.connect(this.ctx.destination);
 
     // Karanlık oda reverb'ü (sentetik impulse response)
@@ -69,11 +134,12 @@ class SoundEngine {
 
   setMuted(m: boolean) {
     this.muted = m;
-    if (this.master && this.ctx) {
-      this.master.gain.setTargetAtTime(m ? 0 : 0.42, this.ctx.currentTime, 0.02);
+    try {
+      localStorage.setItem("blackout_muted", m ? "1" : "0");
+    } catch {
+      /* geç */
     }
-    if (this.menuAudio) this.menuAudio.muted = m;
-    if (this.gameAudio) this.gameAudio.muted = m;
+    this.applyLevels();
   }
 
   // --- Kullanıcının verdiği ses dosyaları (public/audio/menu.mp3, game.mp3) ---
@@ -144,6 +210,7 @@ class SoundEngine {
       const a = this.ensureEl("menu");
       a.muted = this.muted; // global sessizde değilse duyulur
       if (a.paused) a.play().catch(() => {});
+      this.applyLevels(); // ses seviyesi / müzik tercihini uygula
     } catch {
       /* geç */
     }
@@ -163,6 +230,7 @@ class SoundEngine {
         };
         a.addEventListener("error", fail, { once: true });
         a.currentTime = 0;
+        this.applyLevels(); // ses seviyesi / müzik tercihini uygula
         const p = a.play();
         if (p && typeof p.then === "function") {
           p.then(() => {

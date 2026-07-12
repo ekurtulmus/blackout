@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Game, { type EndResult } from "@/components/Game";
 import OnlineLobby from "@/components/OnlineLobby";
 import OnlineGame from "@/components/OnlineGame";
+import Settings from "@/components/Settings";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
@@ -14,6 +15,7 @@ import type { StartInfo } from "@/lib/online";
 type Screen =
   | "menu"
   | "intro"
+  | "ayarlar"
   | "playing"
   | "dead"
   | "levelclear"
@@ -106,6 +108,10 @@ export default function Page() {
     );
   }
 
+  if (screen === "ayarlar") {
+    return <Settings onBack={() => setScreen("menu")} />;
+  }
+
   if (screen === "onlinegame" && roomRef.current && startInfo) {
     return (
       <OnlineGame
@@ -144,6 +150,9 @@ export default function Page() {
             </button>
             <button className="btn" onClick={() => setScreen("lobby")}>
               👥 Online Yarış (2-6)
+            </button>
+            <button className="btn" onClick={() => setScreen("ayarlar")}>
+              ⚙ Ayarlar
             </button>
           </div>
         </>
