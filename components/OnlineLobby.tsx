@@ -176,7 +176,7 @@ export default function OnlineLobby({
   return (
     <div className="screen">
       <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-        ÖLÜM YARIŞI
+        ÖLÜM KOŞUSU
       </div>
 
       {mode === "choose" && (

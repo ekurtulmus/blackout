@@ -601,7 +601,7 @@ export default function Page() {
               🕯️ Yalnız Kaçış
             </button>
             <button className="btn" onClick={() => setScreen("lobby")}>
-              💀 Ölüm Yarışı (2-6)
+              💀 Ölüm Koşusu (2-6)
             </button>
             <button className="btn" onClick={() => setScreen("missions")}>
               🩸 Karanlık Görevler
