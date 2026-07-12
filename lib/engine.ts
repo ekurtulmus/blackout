@@ -18,6 +18,7 @@ import {
 import { computeVisible, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
 import { BRIDE_RADIUS, moveBrides } from "./brides";
+import type { Mission } from "./missions";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = 3.4; // hücre/saniye
@@ -68,7 +69,14 @@ export class GameEngine {
   zombies: Zombie[] = [];
   ammoItems: Ammo[] = [];
   healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
+  collectItems: Ammo[] = []; // görev: toplanacak parçalar (Ammo şeklini paylaşır)
   bullets: Bullet[] = [];
+
+  // --- Görev modu ---
+  mission: Mission | null = null;
+  collected = 0; // toplanan parça sayısı
+  noFire = false; // ateş yasak mı (sessiz görev)
+  missionFailReason: "" | "time" | "death" = ""; // başarısızlık nedeni (HUD/ekran)
   exit: Vec;
   exitOpen = false;
   ammoCount = 0;
@@ -93,11 +101,26 @@ export class GameEngine {
   private fireCd = 0;
   private nextId = 1;
 
-  constructor(level: number, score: number, lives: number) {
+  constructor(level: number, score: number, lives: number, mission: Mission | null = null) {
     this.level = level;
     this.score = score;
     this.lives = lives;
-    this.config = levelConfig(level);
+    this.mission = mission;
+
+    // Görev varsa temel seviyeyi ve kuralları ona göre ayarla
+    const baseLevel = mission ? mission.levelBase : level;
+    let cfg = levelConfig(baseLevel);
+    if (mission) {
+      cfg = { ...cfg };
+      if (mission.visionMul) {
+        cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * mission.visionMul));
+      }
+      if (mission.zombies != null) cfg.zombies = mission.zombies;
+      this.lives = mission.lives;
+      this.noFire = !!mission.noFire;
+      this.exitOpen = !!mission.exitOpenAtStart;
+    }
+    this.config = cfg;
     this.maze = generateMaze(
       this.config.cols,
       this.config.rows,
@@ -194,6 +217,26 @@ export class GameEngine {
         taken: false,
       });
     }
+
+    // Görev: toplanacak parçalar (başlangıç/çıkış ve diğer eşyalardan uzak)
+    if (mission?.collectTarget) {
+      const usedSet = new Set([
+        ...this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+        ...this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+      ]);
+      const collectCells = this.shuffle(
+        floors.filter(
+          (c) =>
+            !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+            !(c.x === exit.x && c.y === exit.y) &&
+            !usedSet.has(c.y * this.maze.cols + c.x)
+        )
+      );
+      for (let i = 0; i < mission.collectTarget && i < collectCells.length; i++) {
+        const c = collectCells[i];
+        this.collectItems.push({ id: this.nextId++, cell: { x: c.x, y: c.y }, taken: false });
+      }
+    }
   }
 
   get zombiesRemaining() {
@@ -234,9 +277,44 @@ export class GameEngine {
     this.computeTension();
     this.pickupAmmo();
     this.pickupHealth();
+    this.pickupCollect();
     this.computeVision();
     this.checkExit();
+    this.checkMission();
     this.checkDeath();
+  }
+
+  private pickupCollect() {
+    if (!this.mission?.collectTarget) return;
+    const pcell = cellOf(this.player.pos);
+    for (const c of this.collectItems) {
+      if (c.taken) continue;
+      if (c.cell.x === pcell.x && c.cell.y === pcell.y) {
+        c.taken = true;
+        this.collected++;
+        this.events.push("pickup");
+        if (this.collected >= this.mission.collectTarget && !this.exitOpen) {
+          this.exitOpen = true;
+          this.events.push("dooropen");
+        }
+      }
+    }
+  }
+
+  // Görev zamanlayıcıları: hayatta kalma (başarı) + süre limiti (başarısızlık)
+  private checkMission() {
+    const m = this.mission;
+    if (!m || this.status !== "playing") return;
+    if (m.surviveTime && this.time >= m.surviveTime) {
+      this.status = "levelclear"; // görev başarısı
+      this.events.push("levelclear");
+      return;
+    }
+    if (m.timeLimit && this.time > m.timeLimit) {
+      this.missionFailReason = "time";
+      this.status = "gameover"; // süre doldu → başarısız
+      this.events.push("gameover");
+    }
   }
 
   private updatePlayer(dt: number, input: Input) {
@@ -273,7 +351,7 @@ export class GameEngine {
       );
     }
 
-    if (input.fire && this.fireCd <= 0 && this.ammoCount > 0) {
+    if (input.fire && !this.noFire && this.fireCd <= 0 && this.ammoCount > 0) {
       this.ammoCount--;
       this.fireCd = FIRE_COOLDOWN;
       this.events.push("shot");
@@ -346,7 +424,12 @@ export class GameEngine {
       seed: Math.floor(Math.random() * 1000),
     });
     const wasOpen = this.exitOpen;
-    if (this.zombiesKilled >= 1) this.exitOpen = true;
+    // Çıkış açılma kuralı: görevde killTarget kadar, normalde 1
+    const killNeed = this.mission?.killTarget ?? 1;
+    // Toplama göreviyse öldürme çıkışı açmaz (parça toplamak gerekir)
+    if (!this.mission?.collectTarget && this.zombiesKilled >= killNeed) {
+      this.exitOpen = true;
+    }
     if (!wasOpen && this.exitOpen) this.events.push("dooropen");
   }
 
@@ -414,14 +497,21 @@ export class GameEngine {
   }
 
   private checkExit() {
+    // Hayatta kalma görevinde çıkış yok — sadece süre dayanılır
+    if (this.mission?.surviveTime) return;
     const pcell = cellOf(this.player.pos);
     if (pcell.x === this.exit.x && pcell.y === this.exit.y) {
       if (this.exitOpen) {
-        this.status = this.level >= 10 ? "win" : "levelclear";
-        this.events.push(this.status === "win" ? "win" : "levelclear");
+        if (this.mission) {
+          this.status = "levelclear"; // görev başarısı
+          this.events.push("levelclear");
+        } else {
+          this.status = this.level >= 10 ? "win" : "levelclear";
+          this.events.push(this.status === "win" ? "win" : "levelclear");
+        }
       } else {
         if (this.warnTimer <= 0) this.events.push("warn");
-        this.warnTimer = 2; // "önce bir zombi öldür"
+        this.warnTimer = 2; // "önce bir hedefi tamamla"
       }
     }
   }
@@ -429,9 +519,35 @@ export class GameEngine {
   private checkDeath() {
     if (this.player.hp <= 0) {
       this.player.hp = 0;
+      if (this.mission) {
+        // Görev: ölüm = başarısızlık (tek deneme, baştan)
+        this.missionFailReason = "death";
+        this.status = "gameover";
+        this.events.push("gameover");
+        return;
+      }
       this.lives -= 1;
       this.status = this.lives > 0 ? "dead" : "gameover";
       this.events.push("gameover"); // ölüm sesi (dead ve gameover için)
     }
+  }
+
+  // HUD için görev hedefi metni
+  objectiveText(): string {
+    const m = this.mission;
+    if (!m) return "";
+    if (m.surviveTime) {
+      return `Dayan ${Math.max(0, Math.ceil(m.surviveTime - this.time))}s`;
+    }
+    const parts: string[] = [];
+    if (m.killTarget) {
+      parts.push(this.exitOpen ? "Çıkışa git" : `Gelin ${this.zombiesKilled}/${m.killTarget}`);
+    } else if (m.collectTarget) {
+      parts.push(this.exitOpen ? "Çıkışa git" : `Parça ${this.collected}/${m.collectTarget}`);
+    } else {
+      parts.push("Çıkışa ulaş");
+    }
+    if (m.timeLimit) parts.push(`${Math.max(0, Math.ceil(m.timeLimit - this.time))}s`);
+    return parts.join(" · ");
   }
 }

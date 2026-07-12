@@ -38,6 +38,11 @@
   arası tekinsiz notlar (levelclear ekranında).
 - ✅ **Ayarlar menüsü** (`components/Settings.tsx`): ses seviyesi kaydırıcısı + müzik aç/kapa + tüm sesler
   aç/kapa; tercihler localStorage'da (`blackout_vol/music/muted`). `audio.ts`'e setVolume/setMusic + applyLevels.
+- ✅ **GÖREV MODU (tek kişilik)** — `lib/missions.ts` 8 görev: Avcı / Zamana Karşı / Yüzük Parçaları /
+  Hayatta Kal / Kör Karanlık / Sessizlik (ateş yasak) / Tek Nefes (tek can) / Kıyamet Düğünü.
+  `engine.ts` görev desteği (killTarget/collectTarget/timeLimit/surviveTime/visionMul/noFire/exitOpenAtStart,
+  ölüm=başarısız). `Game.tsx` görev çipi + brifing (oyunu dondurur) + toplama parçası çizimi + ateş UI gizleme.
+  Menüde "🎯 Görev Modu" → görev listesi (tamamlananlar ✓, localStorage `blackout_missions_cleared`).
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

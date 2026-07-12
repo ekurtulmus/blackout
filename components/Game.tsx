@@ -14,6 +14,7 @@ import {
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
+import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 
 export type EndResult = {
@@ -41,6 +42,7 @@ export default function Game({
   score,
   lives,
   themeSeed = 0,
+  mission = null,
   onEnd,
   onQuit,
 }: {
@@ -48,6 +50,7 @@ export default function Game({
   score: number;
   lives: number;
   themeSeed?: number;
+  mission?: Mission | null;
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
 }) {
@@ -55,8 +58,15 @@ export default function Game({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
   const [muted, setMuted] = useState(sound.muted);
+  const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
+  const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
+  const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
+  const startMission = () => {
+    briefRef.current = false;
+    setBrief(false);
+  };
   const togglePause = () => {
     const v = !pausedRef.current;
     pausedRef.current = v;
@@ -81,7 +91,7 @@ export default function Game({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const engine = new GameEngine(level, score, lives);
+    const engine = new GameEngine(level, score, lives, mission);
     const input: Input = {
       up: false,
       down: false,
@@ -321,6 +331,25 @@ export default function Game({
         ctx!.restore();
       }
 
+      // --- Görev: toplanacak parçalar (parlayan camgöbeği elmas) ---
+      for (const c of engine.collectItems) {
+        if (c.taken) continue;
+        if (vis.get(c.cell.y * cols + c.cell.x) === undefined) continue;
+        const sx = c.cell.x * TS + TS / 2 - camX;
+        const sy = c.cell.y * TS + TS / 2 - camY;
+        const s = TS * 0.16;
+        ctx!.save();
+        ctx!.translate(sx, sy);
+        ctx!.rotate(Math.PI / 4 + Math.sin(engine.time * 2) * 0.15);
+        ctx!.shadowColor = "rgba(110,231,255,0.9)";
+        ctx!.shadowBlur = 12;
+        ctx!.fillStyle = "#8be9ff";
+        ctx!.fillRect(-s / 2, -s / 2, s, s);
+        ctx!.fillStyle = "rgba(255,255,255,0.8)";
+        ctx!.fillRect(-s / 2, -s / 2, s * 0.35, s * 0.35);
+        ctx!.restore();
+      }
+
       // --- Kanlı Gelinler (4 çeşit karışık, hep oyuncuya dönük) ---
       for (const z of engine.zombies) {
         const zc = { x: Math.floor(z.pos.x), y: Math.floor(z.pos.y) };
@@ -427,8 +456,8 @@ export default function Game({
 
     // --- Ana döngü ---
     function loop(now: number) {
-      // Duraklatıldıysa dünyayı dondur (son kare ekranda kalır)
-      if (pausedRef.current) {
+      // Duraklatıldıysa ya da görev brifingi açıksa dünyayı dondur
+      if (pausedRef.current || briefRef.current) {
         last = now;
         raf = requestAnimationFrame(loop);
         return;
@@ -473,6 +502,7 @@ export default function Game({
         exitOpen: engine.exitOpen,
         warn: engine.warnTimer > 0,
       });
+      if (mission) setObjective(engine.objectiveText());
     }, 100);
 
     return () => {
@@ -509,18 +539,28 @@ export default function Game({
       <canvas ref={canvasRef} />
 
       <div className="hud">
-        <div className="chip">
-          <span className="lbl">Bölüm</span>
-          <span className="val">{hud.level}</span>
-        </div>
+        {mission && (
+          <div className="chip" style={{ borderColor: "rgba(110,231,255,0.6)" }}>
+            <span className="lbl">Görev</span>
+            <span className="val" style={{ color: "#8be9ff" }}>{objective}</span>
+          </div>
+        )}
+        {!mission && (
+          <div className="chip">
+            <span className="lbl">Bölüm</span>
+            <span className="val">{hud.level}</span>
+          </div>
+        )}
         <div className="chip">
           <span className="lbl">Tema</span>
           <span className="val">{theme.name}</span>
         </div>
-        <div className="chip">
-          <span className="lbl">Mermi</span>
-          <span className="val">{hud.ammo}</span>
-        </div>
+        {!mission?.noFire && (
+          <div className="chip">
+            <span className="lbl">Mermi</span>
+            <span className="val">{hud.ammo}</span>
+          </div>
+        )}
         <div className="chip">
           <span className="lbl">Gelin</span>
           <span className="val">{hud.zombies}</span>
@@ -589,6 +629,33 @@ export default function Game({
         <div className="warn">Çıkış kilitli — önce en az 1 gelini yok et!</div>
       )}
 
+      {brief && mission && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.86)" }}>
+          <div className="subtitle" style={{ color: "#8be9ff", letterSpacing: "0.15em" }}>
+            GÖREV {mission.id}
+          </div>
+          <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
+            {mission.title}
+          </div>
+          <div className="how" style={{ maxWidth: 480, lineHeight: 1.6 }}>
+            {mission.brief}
+            <div style={{ marginTop: 10, color: "#8be9ff" }}>
+              <b>Hedef:</b> {mission.objectiveHint}
+            </div>
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={startMission}>
+              Başla →
+            </button>
+            {onQuit && (
+              <button className="btn" onClick={onQuit} style={{ opacity: 0.7 }}>
+                ← Görevler
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {paused && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.82)" }}>
           <div className="big" style={{ color: "#6ee7ff" }}>DURAKLATILDI</div>
@@ -621,18 +688,20 @@ export default function Game({
             }
           }}
         />
-        <button
-          className="fire"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            setFlag("fire", true);
-          }}
-          onPointerUp={() => setFlag("fire", false)}
-          onPointerLeave={() => setFlag("fire", false)}
-          onPointerCancel={() => setFlag("fire", false)}
-        >
-          ATEŞ
-        </button>
+        {!mission?.noFire && (
+          <button
+            className="fire"
+            onPointerDown={(e) => {
+              e.preventDefault();
+              setFlag("fire", true);
+            }}
+            onPointerUp={() => setFlag("fire", false)}
+            onPointerLeave={() => setFlag("fire", false)}
+            onPointerCancel={() => setFlag("fire", false)}
+          >
+            ATEŞ
+          </button>
+        )}
       </div>
     </div>
   );
