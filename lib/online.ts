@@ -5,6 +5,7 @@ import { levelConfig } from "./levels";
 import { bfsDistances, floorCells, generateMaze, type Maze } from "./maze";
 import type { BrideConfig } from "./brides";
 import type { NetRole } from "./net";
+import { themeIndexFor } from "./themes";
 
 export const MAX_PLAYERS = 6;
 
@@ -17,6 +18,7 @@ export type StartInfo = {
   order: string[]; // id sırası (seat = index)
   names: string[]; // seat sırasına göre oyuncu isimleri
   diff: RaceDiff;
+  themeSeed: number; // rastgele tema başlangıcı (herkes aynı)
   initialLevel: RaceLevel;
 };
 
@@ -56,10 +58,12 @@ export type RaceLevel = {
   spawns: Vec[]; // seat sırasına göre N doğuş (0..MAX_PLAYERS-1)
   visionRadius: number;
   ammo: Vec[]; // her oyuncu için (yerel/kişisel), aynı düzen
+  health: Vec[]; // yerdeki can paketleri (yerel/kişisel)
+  theme: number; // görsel tema indeksi (host seed'inden, herkes aynı)
   brideSpawns: Vec[]; // gelin başlangıçları — SADECE host kullanır (üretir/simüle eder)
 };
 
-export function generateRaceLevel(level: number, diff: RaceDiff = "orta"): RaceLevel {
+export function generateRaceLevel(level: number, diff: RaceDiff = "orta", themeSeed = 0): RaceLevel {
   const cfg = levelConfig(level);
   const maze = generateMaze(cfg.cols, cfg.rows, cfg.braid, cfg.openness);
   const p = diffParams(diff);
@@ -110,6 +114,11 @@ export function generateRaceLevel(level: number, diff: RaceDiff = "orta"): RaceL
   const ammoCells = shuffle(reach.filter((c) => !onSpawn(c)));
   const ammo = ammoCells.slice(0, brideCount + cfg.ammoBuffer + MAX_PLAYERS);
 
+  // Can paketleri: doğuş/çıkış ve mermi dışı hücreler (nadir)
+  const ammoSet = new Set(ammo.map((a) => a.y * maze.cols + a.x));
+  const healthCells = shuffle(reach.filter((c) => !onSpawn(c) && !ammoSet.has(c.y * maze.cols + c.x)));
+  const health = healthCells.slice(0, 3);
+
   return {
     level,
     cols: maze.cols,
@@ -119,6 +128,8 @@ export function generateRaceLevel(level: number, diff: RaceDiff = "orta"): RaceL
     spawns,
     visionRadius: cfg.visionRadius,
     ammo,
+    health,
+    theme: themeIndexFor(level, themeSeed),
     brideSpawns,
   };
 }
@@ -189,6 +200,8 @@ export type SerializedLevel = {
   spawns: [number, number][]; // N doğuş
   vr: number;
   ammo: [number, number][];
+  health: [number, number][];
+  theme: number;
 };
 
 export function serializeLevel(l: RaceLevel): SerializedLevel {
@@ -201,6 +214,8 @@ export function serializeLevel(l: RaceLevel): SerializedLevel {
     spawns: l.spawns.map((s) => [s.x, s.y]),
     vr: l.visionRadius,
     ammo: l.ammo.map((a) => [a.x, a.y]),
+    health: l.health.map((h) => [h.x, h.y]),
+    theme: l.theme,
   };
 }
 
@@ -214,6 +229,8 @@ export function deserializeLevel(m: SerializedLevel): RaceLevel {
     spawns: m.spawns.map(([x, y]) => ({ x, y })),
     visionRadius: m.vr,
     ammo: m.ammo.map(([x, y]) => ({ x, y })),
+    health: (m.health ?? []).map(([x, y]) => ({ x, y })),
+    theme: m.theme ?? 0,
     brideSpawns: [], // misafir gelin üretmez (host'tan akışla gelir)
   };
 }

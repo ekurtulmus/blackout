@@ -13,6 +13,7 @@ import {
 } from "@/lib/engine";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
+import { themeFor } from "@/lib/themes";
 import type { GameStatus, Vec } from "@/lib/types";
 
 export type EndResult = {
@@ -35,23 +36,22 @@ type Hud = {
   warn: boolean;
 };
 
-// Kirli ama canlı zindan paleti (korku tonu, soluk değil)
-const FLOOR = [58, 48, 42];
-const WALL = [104, 84, 70];
-
 export default function Game({
   level,
   score,
   lives,
+  themeSeed = 0,
   onEnd,
   onQuit,
 }: {
   level: number;
   score: number;
   lives: number;
+  themeSeed?: number;
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
 }) {
+  const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
   const [muted, setMuted] = useState(sound.muted);
@@ -242,7 +242,7 @@ export default function Game({
             // aydınlık (titreşen el feneri) + kir — daha parlak/canlı
             let f = wall ? 0.42 + 0.66 * intensity : 0.36 + 0.74 * intensity;
             f *= flicker * (0.9 + 0.22 * gr);
-            ctx!.fillStyle = shade(wall ? WALL : FLOOR, f);
+            ctx!.fillStyle = shade(wall ? theme.wall : theme.floor, f);
           } else {
             // hafıza — koyu ama tümüyle ölü değil, sıcak gri
             const base = wall ? 36 : 22;
@@ -299,6 +299,25 @@ export default function Game({
         // kovan ucu
         ctx!.fillStyle = "#d9b874";
         ctx!.fillRect(-w / 2, -h / 2, w, h * 0.3);
+        ctx!.restore();
+      }
+
+      // --- Can paketleri (kırmızı haç) ---
+      for (const h of engine.healthItems) {
+        if (h.taken) continue;
+        if (vis.get(h.cell.y * cols + h.cell.x) === undefined) continue;
+        const sx = h.cell.x * TS + TS / 2 - camX;
+        const sy = h.cell.y * TS + TS / 2 - camY;
+        ctx!.save();
+        ctx!.shadowColor = "rgba(255,60,60,0.7)";
+        ctx!.shadowBlur = 8;
+        const s = TS * 0.12; // haç kolu yarı uzunluğu
+        const w = TS * 0.09; // haç kolu kalınlığı
+        ctx!.fillStyle = "#e8e2da"; // soluk beyaz kutu
+        ctx!.fillRect(sx - s - w * 0.4, sy - s - w * 0.4, (s + w * 0.4) * 2, (s + w * 0.4) * 2);
+        ctx!.fillStyle = "#d23a34"; // kırmızı haç
+        ctx!.fillRect(sx - w / 2, sy - s, w, s * 2);
+        ctx!.fillRect(sx - s, sy - w / 2, s * 2, w);
         ctx!.restore();
       }
 
@@ -493,6 +512,10 @@ export default function Game({
         <div className="chip">
           <span className="lbl">Bölüm</span>
           <span className="val">{hud.level}</span>
+        </div>
+        <div className="chip">
+          <span className="lbl">Tema</span>
+          <span className="val">{theme.name}</span>
         </div>
         <div className="chip">
           <span className="lbl">Mermi</span>

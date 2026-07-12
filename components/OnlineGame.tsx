@@ -10,12 +10,14 @@ import {
   BULLET_SPEED,
   BULLET_LIFE,
   FIRE_COOLDOWN,
+  HEAL_AMOUNT,
 } from "@/lib/engine";
 import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
+import { THEMES } from "@/lib/themes";
 import type { Maze } from "@/lib/maze";
 import {
   deserializeLevel,
@@ -30,8 +32,6 @@ import {
 import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
 
-const FLOOR = [58, 48, 42];
-const WALL = [104, 84, 70];
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
 const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır
@@ -56,7 +56,7 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false });
   const [phase, setPhase] = useState<Phase>("playing");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[] });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "" });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
   const [alone, setAlone] = useState(false); // diğerleri gitti → tek kaldın
 
@@ -86,6 +86,7 @@ export default function OnlineGame({
   const deadBrides = useRef<Set<number>>(new Set()); // ölmüş id'ler (ıraksamayı önler)
   // Mermi / ateş
   const ammo = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]);
+  const health = useRef<{ x: number; y: number; taken: boolean }[]>([]); // can paketleri (respawn yok)
   const ammoCount = useRef(0);
   const bullets = useRef<Bullet[]>([]);
   const fireCd = useRef(0);
@@ -128,6 +129,7 @@ export default function OnlineGame({
     }
     seen.current = Array.from({ length: lvl.rows }, () => Array.from({ length: lvl.cols }, () => false));
     ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
+    health.current = lvl.health.map((c) => ({ x: c.x, y: c.y, taken: false }));
     ammoCount.current = 0;
     bullets.current = [];
     kills.current = 0;
@@ -226,7 +228,7 @@ export default function OnlineGame({
       resultPending.current = true;
       scores.current = scores.current.slice();
       scores.current[seat] = (scores.current[seat] ?? 0) + 1;
-      const next = generateRaceLevel(levelRef.current.level + 1, diff);
+      const next = generateRaceLevel(levelRef.current.level + 1, diff, info.themeSeed);
       room.send({
         t: "result",
         winnerSeat: seat,
@@ -503,6 +505,17 @@ export default function OnlineGame({
         }
       }
 
+      // can paketi topla (canın tamsa dokunma)
+      if (hp.current < PLAYER_MAX_HP) {
+        for (const h of health.current) {
+          if (!h.taken && h.x === pc.x && h.y === pc.y) {
+            h.taken = true;
+            hp.current = Math.min(PLAYER_MAX_HP, hp.current + HEAL_AMOUNT);
+            sound.play("heal");
+          }
+        }
+      }
+
       // hasar (dokunulmazlık bittiyse): gelin teması can barını düşürür
       if (now > invulnUntil.current) {
         let touched = false;
@@ -579,6 +592,7 @@ export default function OnlineGame({
 
     function render() {
       const lvl = levelRef.current!, maze = mazeRef.current!;
+      const theme = THEMES[lvl.theme] ?? THEMES[0];
       const p = selfPos.current;
       const camX = p.x * TS - cssW / 2, camY = p.y * TS - cssH / 2;
       const cols = maze.cols;
@@ -609,7 +623,7 @@ export default function OnlineGame({
           if (inten !== undefined) {
             let f = wall ? 0.42 + 0.66 * inten : 0.36 + 0.74 * inten;
             f *= flicker * (0.9 + 0.22 * gr);
-            ctx!.fillStyle = shade(wall ? WALL : FLOOR, f);
+            ctx!.fillStyle = shade(wall ? theme.wall : theme.floor, f);
           } else {
             const base = wall ? 36 : 22;
             const v = base * (0.72 + 0.5 * gr);
@@ -659,6 +673,21 @@ export default function OnlineGame({
         ctx!.save(); ctx!.shadowColor = "rgba(190,150,70,0.5)"; ctx!.shadowBlur = 5;
         ctx!.fillStyle = "#b8944a";
         ctx!.fillRect(sx - TS * 0.05, sy - TS * 0.12, TS * 0.1, TS * 0.24);
+        ctx!.restore();
+      }
+
+      // can paketleri (kırmızı haç)
+      for (const h of health.current) {
+        if (h.taken || vis.get(h.y * cols + h.x) === undefined) continue;
+        const sx = h.x * TS + TS / 2 - camX, sy = h.y * TS + TS / 2 - camY;
+        ctx!.save();
+        ctx!.shadowColor = "rgba(255,60,60,0.7)"; ctx!.shadowBlur = 8;
+        const s = TS * 0.12, w = TS * 0.09;
+        ctx!.fillStyle = "#e8e2da";
+        ctx!.fillRect(sx - s - w * 0.4, sy - s - w * 0.4, (s + w * 0.4) * 2, (s + w * 0.4) * 2);
+        ctx!.fillStyle = "#d23a34";
+        ctx!.fillRect(sx - w / 2, sy - s, w, s * 2);
+        ctx!.fillRect(sx - s, sy - w / 2, s * 2, w);
         ctx!.restore();
       }
 
@@ -780,7 +809,7 @@ export default function OnlineGame({
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice() });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "" });
         }
         render();
       }
@@ -818,6 +847,7 @@ export default function OnlineGame({
       <div className="hud">
         <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış {info.diff}</span></div>
         <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
+        <div className="chip"><span className="lbl">Tema</span><span className="val">{hud.themeName}</span></div>
         <div className="chip">
           <span className="lbl">Can</span>
           <div className="hpbar">

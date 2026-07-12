@@ -29,6 +29,7 @@ export const FIRE_COOLDOWN = 0.22;
 export const PLAYER_MAX_HP = 100;
 export const CONTACT_DPS = 35; // temas başına saniyelik hasar
 export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
+export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
 
 export type Input = {
   up: boolean;
@@ -45,6 +46,7 @@ export type SoundEvent =
   | "shot"
   | "kill"
   | "pickup"
+  | "heal"
   | "hurt"
   | "dooropen"
   | "warn"
@@ -64,6 +66,7 @@ export class GameEngine {
   player: Player;
   zombies: Zombie[] = [];
   ammoItems: Ammo[] = [];
+  healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
   bullets: Bullet[] = [];
   exit: Vec;
   exitOpen = false;
@@ -170,6 +173,26 @@ export class GameEngine {
         taken: false,
       });
     }
+
+    // Can paketleri (nadir): başlangıç/çıkış dışı, mermilerle çakışmasın
+    const ammoSet = new Set(this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x));
+    const healthCells = this.shuffle(
+      floors.filter(
+        (c) =>
+          !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+          !(c.x === exit.x && c.y === exit.y) &&
+          !ammoSet.has(c.y * this.maze.cols + c.x)
+      )
+    );
+    const healthTotal = 2;
+    for (let i = 0; i < healthTotal && i < healthCells.length; i++) {
+      const c = healthCells[i];
+      this.healthItems.push({
+        id: this.nextId++,
+        cell: { x: c.x, y: c.y },
+        taken: false,
+      });
+    }
   }
 
   get zombiesRemaining() {
@@ -209,6 +232,7 @@ export class GameEngine {
     this.updateZombies(dt);
     this.computeTension();
     this.pickupAmmo();
+    this.pickupHealth();
     this.computeVision();
     this.checkExit();
     this.checkDeath();
@@ -358,6 +382,19 @@ export class GameEngine {
         this.ammoCount++;
         this.score += 5;
         this.events.push("pickup");
+      }
+    }
+  }
+
+  private pickupHealth() {
+    if (this.player.hp >= PLAYER_MAX_HP) return; // canın tamsa dokunma (israf etme)
+    const pcell = cellOf(this.player.pos);
+    for (const h of this.healthItems) {
+      if (h.taken) continue;
+      if (h.cell.x === pcell.x && h.cell.y === pcell.y) {
+        h.taken = true;
+        this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + HEAL_AMOUNT);
+        this.events.push("heal");
       }
     }
   }

@@ -30,6 +30,11 @@
 - ✅ **Host göçü**: host çıkarsa en küçük koltuklu oyuncu otomatik devralır → gelinler donmaz.
 - ✅ **Tek kalınca menü**: ≤1 oyuncu kalırsa "Menü" ekranı (2 kişilikte biri çıkınca).
 - ✅ **Tek kişilik duraklat**: ⏸/Esc/P ile dondur + "Menüye Dön" (Game.tsx).
+- ✅ **Can toplama**: yerde kırmızı haç can paketi (+45), canın tamsa alınmaz; tek kişilik + online. Ses: `heal`.
+- ✅ **Temalar (otomatik + rastgele)**: `lib/themes.ts` (Zindan/Hastane/Kilise/Orman). Her oyun rastgele
+  temadan başlar, her 2 bölümde değişir. Online'da host seed'i herkese yayınlar (aynı tema). HUD'da "Tema".
+- ✅ **Hikaye & ara sahne**: `lib/story.ts` — Tek Kişilik'te giriş anlatısı ("Neden buradasın?"), bölüm
+  arası tekinsiz notlar (levelclear ekranında).
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash
@@ -58,7 +63,9 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 | `lib/physics.ts` | Çarpışma/hareket (opsiyonel bariyer duvarı) — ortak |
 | `lib/online.ts` | Yarış seviyesi üretimi + eşit doğuş + serialize |
 | `lib/net.ts` | Supabase Realtime oda (broadcast + el sıkışma) |
-| `lib/audio.ts` | Web Audio ses sentezi + müzik dosyaları |
+| `lib/audio.ts` | Web Audio ses sentezi + müzik dosyaları (can için `heal` sesi) |
+| `lib/themes.ts` | Görsel temalar (Zindan/Hastane/Kilise/Orman) + otomatik/rastgele seçim |
+| `lib/story.ts` | Hikaye girişi + bölüm arası tekinsiz notlar |
 | `lib/maze.ts`, `lib/vision.ts`, `lib/pathfind.ts`, `lib/levels.ts`, `lib/types.ts` | Labirent, görüş/sis, yol bulma, bölüm ayarları, tipler |
 | `public/audio/menu.mp3`, `game.mp3` | Açılış + oyun-içi müzik |
 
@@ -78,6 +85,7 @@ ses (ateş/toplama/hasar/kapı/ağlama).
 - [x] Çoklu oyuncu 2-6 kişi + host zorluk seçimi — eklendi.
 - [x] Ölüm senkronu (kan+ağlama herkeste) + mermi respawn + bariyer 0.5 sn — eklendi.
 - [x] İsim + ayrılma bildirimi + host göçü + tek kalınca menü + tek kişilik duraklat — eklendi.
+- [x] Can toplama + görsel temalar (rastgele) + hikaye/ara sahne — eklendi (tsc + 498 birim test + DOM).
 - [ ] **CANLI DOĞRULAMA (2+ gerçek cihaz — panelde rAF durur)**: katılma→Başlat→birbirini görme+isim,
       gelin/kan senkronu, skor tablosu, **biri çıkınca "X ayrıldı"**, **host çıkınca göç** (gelinler
       donmamalı), **2 kişide biri çıkınca "Menü"**. (Kod doğrulandı: tsc temiz + 304 birim test + lobi/duraklat DOM testi.)

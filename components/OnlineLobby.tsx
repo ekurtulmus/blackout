@@ -17,6 +17,7 @@ import {
   type SerializedLevel,
   type StartInfo,
 } from "@/lib/online";
+import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
 
 type Mode = "choose" | "host" | "join";
@@ -92,6 +93,7 @@ export default function OnlineLobby({
         order,
         names: payload.names,
         diff: payload.diff as RaceDiff,
+        themeSeed: payload.themeSeed ?? 0,
         initialLevel: deserializeLevel(payload.level as SerializedLevel),
       });
     };
@@ -118,9 +120,10 @@ export default function OnlineLobby({
     const room = roomRef.current;
     if (!room || room.role !== "host") return;
     if (players.length < 2) return;
-    const lvl = generateRaceLevel(1, diff);
+    const themeSeed = randomThemeSeed();
+    const lvl = generateRaceLevel(1, diff, themeSeed);
     const pls = room.players();
-    room.startGame({ diff, level: serializeLevel(lvl) });
+    room.startGame({ diff, level: serializeLevel(lvl), themeSeed });
     handedOff.current = true;
     onStarted(room, {
       role: "host",
@@ -128,6 +131,7 @@ export default function OnlineLobby({
       order: pls.map((p) => p.id),
       names: pls.map((p) => p.name),
       diff,
+      themeSeed,
       initialLevel: lvl,
     });
   }

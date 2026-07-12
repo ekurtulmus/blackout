@@ -352,6 +352,13 @@ class SoundEngine {
         this.tone(t, 900, 700, 0.06, 0.12, "triangle", 0.1);
         break;
       }
+      case "heal": {
+        // Can paketi: yumuşak, sıcak yükselen iki ton (rahatlama) + hafif parıltı
+        this.tone(t, 320, 560, 0.5, 0.22, "sine", 0.5);
+        this.tone(t + 0.09, 480, 760, 0.5, 0.16, "triangle", 0.5);
+        this.noise(t, 0.06, 0.1, 3200, "highpass", 0.2, 0, 2);
+        break;
+      }
       case "hurt": {
         if (t - this.lastHurt < 0.18) return;
         this.lastHurt = t;

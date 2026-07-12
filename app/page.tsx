@@ -6,11 +6,14 @@ import OnlineLobby from "@/components/OnlineLobby";
 import OnlineGame from "@/components/OnlineGame";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
+import { randomThemeSeed } from "@/lib/themes";
+import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 
 type Screen =
   | "menu"
+  | "intro"
   | "playing"
   | "dead"
   | "levelclear"
@@ -25,6 +28,7 @@ export default function Page() {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [runId, setRunId] = useState(0);
+  const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
   const [startInfo, setStartInfo] = useState<StartInfo | null>(null);
 
@@ -58,7 +62,8 @@ export default function Page() {
   }
 
   function startNewGame() {
-    play(1, 0, 3);
+    setThemeSeed(randomThemeSeed()); // baştan başlayınca farklı temadan başla
+    setScreen("intro"); // önce kısa hikaye girişi
   }
 
   function handleEnd(r: EndResult) {
@@ -88,6 +93,7 @@ export default function Page() {
         level={level}
         score={score}
         lives={lives}
+        themeSeed={themeSeed}
         onEnd={handleEnd}
         onQuit={() => setScreen("menu")}
       />
@@ -143,6 +149,29 @@ export default function Page() {
         </>
       )}
 
+      {screen === "intro" && (
+        <>
+          <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
+            {INTRO_TITLE}
+          </div>
+          <div className="how" style={{ textAlign: "left", lineHeight: 1.6 }}>
+            {INTRO_LINES.map((line, i) => (
+              <p key={i} style={{ margin: i === 0 ? 0 : "10px 0 0" }}>
+                {line}
+              </p>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={() => play(1, 0, 3)}>
+              Karanlığa Gir →
+            </button>
+            <button className="btn" onClick={() => setScreen("menu")} style={{ opacity: 0.7 }}>
+              ← Menü
+            </button>
+          </div>
+        </>
+      )}
+
       {screen === "dead" && (
         <>
           <div className="big" style={{ color: "#ff6b6b" }}>
@@ -163,6 +192,9 @@ export default function Page() {
         <>
           <div className="big" style={{ color: "#6ee7ff" }}>
             Bölüm {level} Tamamlandı
+          </div>
+          <div className="subtitle" style={{ fontStyle: "italic", color: "#c9b8d0" }}>
+            “{flavorForLevel(level)}”
           </div>
           <div className="subtitle">
             Karanlıktan kaçtın. Skor: <b>{score}</b>
