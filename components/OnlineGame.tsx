@@ -41,9 +41,9 @@ export default function OnlineGame({
   onExit: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false });
+  const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false });
   const [phase, setPhase] = useState<Phase>(role === "host" ? "playing" : "loading");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, myScore: 0, oppScore: 0 });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, myScore: 0, oppScore: 0, barriers: 3 });
 
   // Dünya
   const levelRef = useRef<RaceLevel | null>(null);
@@ -70,6 +70,12 @@ export default function OnlineGame({
   const exitOpen = useRef(false);
   const invulnUntil = useRef(0);
   const hurt = useRef(0);
+  // Bariyerler (paylaşılan): id -> {x,y,armAt,owner}
+  const barriers = useRef<Map<string, { x: number; y: number; armAt: number; owner: NetRole }>>(new Map());
+  const barrierStock = useRef(3);
+  const barrierCounter = useRef(0);
+  const breakTimer = useRef(0); // mermisizken temasla kırma sayacı
+  const placeHeld = useRef(false);
   // Yarış sonucu / puan
   const scores = useRef({ host: 0, guest: 0 });
   const resultPending = useRef(false);
@@ -91,6 +97,9 @@ export default function OnlineGame({
     bullets.current = [];
     kills.current = 0;
     exitOpen.current = false;
+    barriers.current.clear();
+    barrierStock.current = 3;
+    breakTimer.current = 0;
     invulnUntil.current = performance.now() + 1500;
     // host gelinleri üretir
     if (role === "host") {
@@ -152,6 +161,30 @@ export default function OnlineGame({
       }, 2600);
     }
 
+    // Bariyer: oyuncunun bulunduğu hücreye koy (1 sn sonra aktif olur)
+    function placeBarrier() {
+      if (barrierStock.current <= 0 || !ready.current || resultPending.current || !levelRef.current) return;
+      const c = cellOf(selfPos.current);
+      if (c.x === levelRef.current.exit.x && c.y === levelRef.current.exit.y) return;
+      // aynı hücrede zaten bariyer varsa koyma
+      for (const b of barriers.current.values()) if (b.x === c.x && b.y === c.y) return;
+      const id = (role === "host" ? "h" : "g") + barrierCounter.current++;
+      barriers.current.set(id, { x: c.x, y: c.y, armAt: performance.now() + 1000, owner: role });
+      barrierStock.current--;
+      room.send({ t: "barrier", id, x: c.x, y: c.y });
+    }
+    function delBarrier(id: string) {
+      if (!barriers.current.delete(id)) return;
+      room.send({ t: "barrierdel", id });
+    }
+    // Verilen hücrede AKTİF bariyer var mı (oyuncu hareketini engeller)
+    function activeBarrier(x: number, y: number, now: number): boolean {
+      for (const b of barriers.current.values()) {
+        if (b.x === x && b.y === y && now >= b.armAt) return true;
+      }
+      return false;
+    }
+
     room.onMessage = (m: NetMessage) => {
       if (m.t === "map") {
         if (!ready.current) buildWorld(deserializeLevel(m.lvl as never));
@@ -186,6 +219,16 @@ export default function OnlineGame({
         scores.current = { host: m.hs as number, guest: m.gs as number };
         showResult(m.winner as NetRole);
         if (role === "guest") scheduleLoad(deserializeLevel(m.lvl as never));
+      } else if (m.t === "barrier") {
+        const id = m.id as string;
+        barriers.current.set(id, {
+          x: m.x as number,
+          y: m.y as number,
+          armAt: performance.now() + 1000,
+          owner: id[0] === "h" ? "host" : "guest",
+        });
+      } else if (m.t === "barrierdel") {
+        barriers.current.delete(m.id as string);
       }
     };
     room.onStatus = (s) => {
@@ -212,6 +255,7 @@ export default function OnlineGame({
         case "ArrowLeft": case "a": case "A": input.current.left = d; break;
         case "ArrowRight": case "d": case "D": input.current.right = d; break;
         case " ": case "Spacebar": input.current.fire = d; break;
+        case "e": case "E": input.current.place = d; break;
         default: return;
       }
       e.preventDefault();
@@ -252,17 +296,37 @@ export default function OnlineGame({
       if (fireCd.current > 0) fireCd.current -= dt;
       if (hurt.current > 0) hurt.current -= dt;
 
-      // hareket
+      // hareket (aktif bariyerler duvar gibi engeller)
       let mx = 0, my = 0;
       if (i.up) my -= 1; if (i.down) my += 1; if (i.left) mx -= 1; if (i.right) mx += 1;
       let sc = 1;
       const amag = Math.hypot(i.ax, i.ay);
       if (amag > 0.18) { mx = i.ax; my = i.ay; sc = Math.min(1, amag); }
-      if (mx !== 0 || my !== 0) {
+      const moving = mx !== 0 || my !== 0;
+      const barrierWall = (bx: number, by: number) => activeBarrier(bx, by, now);
+      if (moving) {
         const len = Math.hypot(mx, my); mx /= len; my /= len;
         selfDir.current = { x: mx, y: my };
-        tryMove(maze, selfPos.current, PLAYER_RADIUS, mx * PLAYER_SPEED * sc * dt, my * PLAYER_SPEED * sc * dt);
+        tryMove(maze, selfPos.current, PLAYER_RADIUS, mx * PLAYER_SPEED * sc * dt, my * PLAYER_SPEED * sc * dt, barrierWall);
       }
+
+      // bariyer koy (basılı tutmada bir kez)
+      if (i.place && !placeHeld.current) { placeHeld.current = true; placeBarrier(); }
+      if (!i.place) placeHeld.current = false;
+
+      // mermisizken (0) önündeki bariyere 2 sn temasla kır
+      if (ammoCount.current === 0 && moving) {
+        const ax = Math.floor(selfPos.current.x + mx * 0.55);
+        const ay = Math.floor(selfPos.current.y + my * 0.55);
+        let tgt: string | null = null;
+        for (const [id, b] of barriers.current) {
+          if (b.x === ax && b.y === ay && now >= b.armAt) { tgt = id; break; }
+        }
+        if (tgt) {
+          breakTimer.current += dt;
+          if (breakTimer.current >= 2) { delBarrier(tgt); breakTimer.current = 0; }
+        } else breakTimer.current = 0;
+      } else breakTimer.current = 0;
 
       // ateş
       if (i.fire && fireCd.current <= 0 && ammoCount.current > 0) {
@@ -296,6 +360,12 @@ export default function OnlineGame({
           b.pos.x += sx; b.pos.y += sy;
           const cx = Math.floor(b.pos.x), cy = Math.floor(b.pos.y);
           if (cx < 0 || cy < 0 || cx >= maze.cols || cy >= maze.rows || maze.walls[cy][cx]) { b.life = 0; break; }
+          // bariyer vuruldu mu → tek atışta yık (mermi biter)
+          let hitBar = false;
+          for (const [bid, bar] of barriers.current) {
+            if (bar.x === cx && bar.y === cy) { delBarrier(bid); b.life = 0; hitBar = true; break; }
+          }
+          if (hitBar) break;
           let hit = false;
           for (const z of brides) {
             if (Math.hypot(b.pos.x - z.pos.x, b.pos.y - z.pos.y) < BRIDE_RADIUS + 0.08) {
@@ -461,6 +531,38 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
+      // bariyerler (görüşte) — hazırlanıyor: yanıp sönen; aktif: katı taş
+      const nowB = performance.now();
+      for (const b of barriers.current.values()) {
+        if (seen.current[b.y] && !seen.current[b.y][b.x]) continue;
+        if (vis.get(b.y * cols + b.x) === undefined) continue;
+        const sx = b.x * TS - camX, sy = b.y * TS - camY;
+        const active = nowB >= b.armAt;
+        ctx!.save();
+        if (active) {
+          ctx!.fillStyle = "#6a5a4a";
+          ctx!.fillRect(sx + 2, sy + 2, TS - 3, TS - 3);
+          ctx!.strokeStyle = "rgba(30,22,16,0.9)"; ctx!.lineWidth = 2;
+          ctx!.strokeRect(sx + 2, sy + 2, TS - 3, TS - 3);
+          // çatlak/çapraz
+          ctx!.strokeStyle = "rgba(20,14,10,0.7)"; ctx!.lineWidth = 1.5;
+          ctx!.beginPath();
+          ctx!.moveTo(sx + 4, sy + 4); ctx!.lineTo(sx + TS - 4, sy + TS - 4);
+          ctx!.moveTo(sx + TS - 4, sy + 4); ctx!.lineTo(sx + 4, sy + TS - 4);
+          ctx!.stroke();
+        } else {
+          // hazırlanıyor: yanıp sönen yarı saydam
+          const pulse = 0.25 + 0.2 * Math.sin(nowB / 120);
+          ctx!.fillStyle = `rgba(120,150,220,${pulse})`;
+          ctx!.fillRect(sx + 3, sy + 3, TS - 5, TS - 5);
+          ctx!.strokeStyle = "rgba(150,180,255,0.6)"; ctx!.lineWidth = 1.5;
+          ctx!.setLineDash([4, 3]);
+          ctx!.strokeRect(sx + 3, sy + 3, TS - 5, TS - 5);
+          ctx!.setLineDash([]);
+        }
+        ctx!.restore();
+      }
+
       // gelinler (görüşte)
       for (const z of renderBrides()) {
         const zc = cellOf(z.pos);
@@ -537,7 +639,7 @@ export default function OnlineGame({
           hudAcc = 0;
           const mine = role === "host" ? scores.current.host : scores.current.guest;
           const opp = role === "host" ? scores.current.guest : scores.current.host;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, myScore: mine, oppScore: opp });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, myScore: mine, oppScore: opp, barriers: barrierStock.current });
         }
         render();
       }
@@ -564,6 +666,7 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış</span></div>
         <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
         <div className="chip"><span className="lbl">Mermi</span><span className="val">{hud.ammo}</span></div>
+        <div className="chip"><span className="lbl">Bariyer</span><span className="val">{hud.barriers}</span></div>
         <div className="chip">
           <span className="lbl">Çıkışın</span>
           <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
@@ -617,11 +720,20 @@ export default function OnlineGame({
       )}
 
       <div className="hint">
-        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · çıkışın için 1 gelin öldür · turuncu nokta rakibin
+        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · çıkışın için 1 gelin öldür
       </div>
 
       <div className="touch">
         <Joystick onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />
+        <button
+          className="barrierbtn"
+          onPointerDown={(e) => { e.preventDefault(); input.current.place = true; }}
+          onPointerUp={() => (input.current.place = false)}
+          onPointerLeave={() => (input.current.place = false)}
+          onPointerCancel={() => (input.current.place = false)}
+        >
+          BARİYER
+        </button>
         <button
           className="fire"
           onPointerDown={(e) => { e.preventDefault(); input.current.fire = true; }}

@@ -326,6 +326,27 @@ button {
   transform: scale(0.96);
 }
 
+.barrierbtn {
+  position: absolute;
+  right: 130px;
+  bottom: 50px;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+  pointer-events: auto;
+  background: radial-gradient(circle at 40% 35%, #5a6a86, #2a3244);
+  border: 1px solid rgba(150, 180, 255, 0.45);
+  color: #fff;
+  font-weight: 800;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  box-shadow: 0 0 18px rgba(110, 150, 255, 0.25);
+}
+
+.barrierbtn:active {
+  transform: scale(0.96);
+}
+
 /* Dokunmatik olmayan (fare) cihazlarda dokunmatik kontrolleri gizle */
 @media (pointer: fine) {
   .touch {

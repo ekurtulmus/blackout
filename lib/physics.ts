@@ -3,14 +3,20 @@ import type { Vec } from "./types";
 import { isWall, type Maze } from "./maze";
 
 // Çarpışma: daire (merkez p, yarıçap rad) herhangi bir duvar hücresiyle çakışıyor mu?
-export function collides(maze: Maze, p: Vec, rad: number): boolean {
+// extraWall(x,y) => o hücre de duvar sayılır (online bariyerler için; tek kişilikte kullanılmaz).
+export function collides(
+  maze: Maze,
+  p: Vec,
+  rad: number,
+  extraWall?: (x: number, y: number) => boolean
+): boolean {
   const minX = Math.floor(p.x - rad);
   const maxX = Math.floor(p.x + rad);
   const minY = Math.floor(p.y - rad);
   const maxY = Math.floor(p.y + rad);
   for (let cy = minY; cy <= maxY; cy++) {
     for (let cx = minX; cx <= maxX; cx++) {
-      if (!isWall(maze, cx, cy)) continue;
+      if (!isWall(maze, cx, cy) && !(extraWall && extraWall(cx, cy))) continue;
       const closestX = Math.max(cx, Math.min(p.x, cx + 1));
       const closestY = Math.max(cy, Math.min(p.y, cy + 1));
       const ddx = p.x - closestX;
@@ -27,15 +33,16 @@ export function tryMove(
   pos: Vec,
   rad: number,
   dx: number,
-  dy: number
+  dy: number,
+  extraWall?: (x: number, y: number) => boolean
 ) {
   if (dx !== 0) {
     const nx = pos.x + dx;
-    if (!collides(maze, { x: nx, y: pos.y }, rad)) pos.x = nx;
+    if (!collides(maze, { x: nx, y: pos.y }, rad, extraWall)) pos.x = nx;
   }
   if (dy !== 0) {
     const ny = pos.y + dy;
-    if (!collides(maze, { x: pos.x, y: ny }, rad)) pos.y = ny;
+    if (!collides(maze, { x: pos.x, y: ny }, rad, extraWall)) pos.y = ny;
   }
 }
 
