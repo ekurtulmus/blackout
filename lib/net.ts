@@ -1,6 +1,7 @@
-// BLACKOUT online — Supabase Realtime "broadcast" ile oda yönetimi.
-// Veritabanı yok. İki oyuncu aynı kanala girer; TEKRAR DENEMELİ el sıkışma
-// (her 0.5 sn "hello") ile birbirini garantili bulur — kaçan mesaj sorunu olmaz.
+// BLACKOUT online — Supabase Realtime "broadcast" ile oda yönetimi (2-6 oyuncu).
+// Veritabanı yok. Herkes aynı kanala girer. HOST otoriterdir: katılanları bir
+// ROSTER'da toplar (isimleriyle) ve periyodik yayınlar; oyunu "start" ile başlatır.
+// TEKRAR DENEMELİ el sıkışma (periyodik "hello") ile kaçan mesaj sorunu olmaz.
 "use client";
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
@@ -10,15 +11,18 @@ export type NetRole = "host" | "guest";
 export type NetStatus =
   | "idle"
   | "connecting"
-  | "waiting" // host: rakip bekleniyor
-  | "connected"
-  | "left" // rakip ayrıldı
+  | "connected" // odaya girildi (host: kanal hazır; guest: roster'da görünüyor)
+  | "left" // host ayrıldı / oda kapandı
   | "error";
+
+export type NetPlayer = { id: string; name: string };
 
 // Tüm oyun mesajları { t: tür, ... } biçiminde
 export type NetMessage = { t: string; [k: string]: unknown };
 
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789"; // karışması zor karakterler
+const STALE_MS = 6000; // bu kadar süre "hello" gelmeyen oyuncu roster'dan düşer
+const ROOM_CAP = 6; // en fazla oyuncu (online.ts MAX_PLAYERS ile aynı)
 
 export function generateRoomCode(len = 4): string {
   let s = "";
@@ -31,23 +35,33 @@ export function generateRoomCode(len = 4): string {
 export class NetRoom {
   code: string;
   role: NetRole;
+  name: string;
   status: NetStatus = "idle";
+  id: string; // bu istemcinin benzersiz kimliği (herkese açık)
+
   onStatus: (s: NetStatus) => void = () => {};
-  onMessage: (m: NetMessage, fromRole: NetRole) => void = () => {};
+  onMessage: (m: NetMessage, fromId: string) => void = () => {};
+  onRoster: (players: NetPlayer[]) => void = () => {};
+  onStart: (payload: { diff: string; order: string[]; names: string[]; level: unknown }) => void =
+    () => {};
 
   private ch: RealtimeChannel | null = null;
-  private id: string;
-  private peerId: string | null = null;
-  private connectedOnce = false;
+  private started = false;
+  // Host: kimlik -> {son görülme, isim} (giriş sırası korunur)
+  private roster = new Map<string, { seen: number; name: string }>();
+  private rosterPlayers: NetPlayer[] = []; // guest'in bildiği sıra+isimler (host'tan gelir)
   private hsTimer: number | null = null;
+  private rosterTimer: number | null = null;
 
-  constructor(code: string, role: NetRole) {
+  constructor(code: string, role: NetRole, name: string) {
     this.code = code.toUpperCase();
     this.role = role;
+    this.name = (name || "").trim() || (role === "host" ? "Ev sahibi" : "Oyuncu");
     this.id = role + "-" + Math.floor(Math.random() * 1e9).toString(36);
   }
 
   private set(s: NetStatus) {
+    if (this.status === s) return;
     this.status = s;
     this.onStatus(s);
   }
@@ -65,32 +79,62 @@ export class NetRoom {
     });
     this.ch = ch;
 
-    // El sıkışma mesajları
+    // El sıkışma / varlık (presence)
     ch.on("broadcast", { event: "hs" }, (p) => {
-      const d = p.payload as { from: string; kind: string };
+      const d = p.payload as { from: string; role?: NetRole; kind: string; name?: string };
       if (!d || d.from === this.id) return;
-      this.peerId = d.from;
       if (d.kind === "hello") {
-        this.markConnected();
-        this.sendHs("welcome"); // her hello'ya welcome ile karşılık ver
-      } else if (d.kind === "welcome") {
-        this.markConnected();
+        if (this.role === "host") {
+          const isNew = !this.roster.has(d.from);
+          if (isNew && this.roster.size >= ROOM_CAP) return; // oda dolu
+          this.roster.set(d.from, { seen: Date.now(), name: d.name || "Oyuncu" });
+          if (isNew) this.broadcastRoster(); // yeni katılana hemen roster yolla
+        }
       } else if (d.kind === "bye") {
-        if (this.connectedOnce) this.set("left");
+        if (this.role === "host") {
+          if (this.roster.delete(d.from)) this.broadcastRoster();
+        } else {
+          // host ayrıldıysa oda kapanır (lobide)
+          if (this.rosterPlayers.length > 0 && d.from === this.rosterPlayers[0].id) {
+            this.set("left");
+          }
+        }
       }
     });
 
-    // Oyun mesajları (Faz 2+)
+    // Roster (host -> herkes)
+    ch.on("broadcast", { event: "roster" }, (p) => {
+      const d = p.payload as { players: NetPlayer[] };
+      if (!d || this.role === "host") return;
+      this.rosterPlayers = d.players;
+      if (d.players.some((pl) => pl.id === this.id)) this.set("connected");
+      this.onRoster(d.players);
+    });
+
+    // Başlat (host -> herkes)
+    ch.on("broadcast", { event: "start" }, (p) => {
+      const d = p.payload as { diff: string; order: string[]; names: string[]; level: unknown };
+      if (!d || this.role === "host") return;
+      this.started = true;
+      this.stopTimers();
+      this.onStart(d);
+    });
+
+    // Oyun mesajları
     ch.on("broadcast", { event: "m" }, (p) => {
       const d = p.payload as { from: string; msg: NetMessage };
       if (!d || d.from === this.id) return;
-      const fromRole: NetRole = d.from.startsWith("host") ? "host" : "guest";
-      this.onMessage(d.msg, fromRole);
+      this.onMessage(d.msg, d.from);
     });
 
     ch.subscribe((status) => {
       if (status === "SUBSCRIBED") {
-        if (this.role === "host") this.set("waiting");
+        if (this.role === "host") {
+          this.roster.set(this.id, { seen: Date.now(), name: this.name }); // host kendini ekler (sıra 0)
+          this.set("connected");
+          this.broadcastRoster();
+          this.startRosterLoop();
+        }
         this.startHandshake();
       } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
         this.set("error");
@@ -98,37 +142,75 @@ export class NetRoom {
     });
   }
 
-  // İki taraf da bağlanana kadar periyodik "hello" atar (kaçan mesajı telafi eder)
+  // Periyodik "hello" — host katılanları toplar, guest varlığını+ismini bildirir.
   private startHandshake() {
-    let tries = 0;
     const tick = () => {
-      if (this.connectedOnce || !this.ch) return;
+      if (this.started || !this.ch) return;
       this.sendHs("hello");
-      tries++;
-      if (tries < 40) {
-        this.hsTimer = window.setTimeout(tick, 500); // ~20 sn dene
-      }
+      this.hsTimer = window.setTimeout(tick, 1000);
     };
     tick();
+  }
+
+  // Host: eskiyen oyuncuları at + roster'ı düzenli yayınla (lobide).
+  private startRosterLoop() {
+    const tick = () => {
+      if (this.started || !this.ch || this.role !== "host") return;
+      const now = Date.now();
+      let changed = false;
+      for (const [id, v] of this.roster) {
+        if (id !== this.id && now - v.seen > STALE_MS) {
+          this.roster.delete(id);
+          changed = true;
+        }
+      }
+      this.broadcastRoster();
+      if (changed) this.onRoster(this.getPlayers());
+      this.rosterTimer = window.setTimeout(tick, 1500);
+    };
+    this.rosterTimer = window.setTimeout(tick, 1500);
+  }
+
+  private getPlayers(): NetPlayer[] {
+    // Map giriş sırasını korur: host (sıra 0) önce, sonra katılanlar.
+    return Array.from(this.roster.entries()).map(([id, v]) => ({ id, name: v.name }));
+  }
+
+  private broadcastRoster() {
+    if (this.role !== "host") return;
+    const players = this.getPlayers();
+    this.ch?.send({ type: "broadcast", event: "roster", payload: { players } });
+    this.onRoster(players);
   }
 
   private sendHs(kind: string) {
     this.ch?.send({
       type: "broadcast",
       event: "hs",
-      payload: { from: this.id, kind },
+      payload: { from: this.id, role: this.role, kind, name: this.name },
     });
   }
 
-  private markConnected() {
-    if (this.connectedOnce) return;
-    this.connectedOnce = true;
-    if (this.hsTimer) {
-      window.clearTimeout(this.hsTimer);
-      this.hsTimer = null;
-    }
-    this.set("connected");
-    this.sendHs("welcome"); // karşının da bağlanmasını sağlamlaştır
+  // Host oyunu başlatır: sıra + isimler + zorluk + ilk seviye herkese yollanır.
+  startGame(payload: { diff: string; level: unknown }) {
+    if (this.role !== "host") return;
+    this.started = true;
+    this.stopTimers();
+    const players = this.getPlayers();
+    this.ch?.send({
+      type: "broadcast",
+      event: "start",
+      payload: {
+        ...payload,
+        order: players.map((p) => p.id),
+        names: players.map((p) => p.name),
+      },
+    });
+  }
+
+  // O anki oyuncular (seat = index): host roster'ından, guest son roster'dan.
+  players(): NetPlayer[] {
+    return this.role === "host" ? this.getPlayers() : this.rosterPlayers;
   }
 
   send(msg: NetMessage) {
@@ -139,11 +221,19 @@ export class NetRoom {
     });
   }
 
-  leave() {
+  private stopTimers() {
     if (this.hsTimer) {
       window.clearTimeout(this.hsTimer);
       this.hsTimer = null;
     }
+    if (this.rosterTimer) {
+      window.clearTimeout(this.rosterTimer);
+      this.rosterTimer = null;
+    }
+  }
+
+  leave() {
+    this.stopTimers();
     const ch = this.ch;
     this.ch = null;
     if (ch) {
@@ -151,7 +241,7 @@ export class NetRoom {
         ch.send({
           type: "broadcast",
           event: "hs",
-          payload: { from: this.id, kind: "bye" },
+          payload: { from: this.id, role: this.role, kind: "bye", name: this.name },
         });
       } catch {
         /* yok say */

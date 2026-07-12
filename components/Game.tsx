@@ -44,15 +44,24 @@ export default function Game({
   score,
   lives,
   onEnd,
+  onQuit,
 }: {
   level: number;
   score: number;
   lives: number;
   onEnd: (r: EndResult) => void;
+  onQuit?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
   const [muted, setMuted] = useState(sound.muted);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  const togglePause = () => {
+    const v = !pausedRef.current;
+    pausedRef.current = v;
+    setPaused(v);
+  };
   const [hud, setHud] = useState<Hud>({
     level,
     ammo: 0,
@@ -152,6 +161,11 @@ export default function Game({
         case " ":
         case "Spacebar":
           input.fire = down;
+          break;
+        case "Escape":
+        case "p":
+        case "P":
+          if (down) togglePause();
           break;
         default:
           return;
@@ -394,6 +408,12 @@ export default function Game({
 
     // --- Ana döngü ---
     function loop(now: number) {
+      // Duraklatıldıysa dünyayı dondur (son kare ekranda kalır)
+      if (pausedRef.current) {
+        last = now;
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       const dt = (now - last) / 1000;
       last = now;
       engine.update(dt, input);
@@ -533,10 +553,33 @@ export default function Game({
         >
           <span className="val">{muted ? "🔇" : "🔊"}</span>
         </button>
+        <button
+          className="chip mutebtn"
+          onClick={togglePause}
+          title={paused ? "Devam et" : "Duraklat"}
+        >
+          <span className="val">{paused ? "▶" : "⏸"}</span>
+        </button>
       </div>
 
       {hud.warn && (
         <div className="warn">Çıkış kilitli — önce en az 1 gelini yok et!</div>
+      )}
+
+      {paused && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.82)" }}>
+          <div className="big" style={{ color: "#6ee7ff" }}>DURAKLATILDI</div>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={togglePause}>
+              ▶ Devam Et
+            </button>
+            {onQuit && (
+              <button className="btn" onClick={onQuit}>
+                ← Menüye Dön
+              </button>
+            )}
+          </div>
+        </div>
       )}
 
       <div className="hint">

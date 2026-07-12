@@ -6,7 +6,8 @@ import OnlineLobby from "@/components/OnlineLobby";
 import OnlineGame from "@/components/OnlineGame";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
-import type { NetRoom, NetRole } from "@/lib/net";
+import type { NetRoom } from "@/lib/net";
+import type { StartInfo } from "@/lib/online";
 
 type Screen =
   | "menu"
@@ -25,13 +26,13 @@ export default function Page() {
   const [lives, setLives] = useState(3);
   const [runId, setRunId] = useState(0);
   const roomRef = useRef<NetRoom | null>(null);
-  const [onlineRole, setOnlineRole] = useState<NetRole | null>(null);
+  const [startInfo, setStartInfo] = useState<StartInfo | null>(null);
 
   // Menü/ekranlarda (oyun dışı) açılış müziği — göze batmayan otomatik başlatma.
   // Menüye girince SESSİZ autoplay başlar (tarayıcı izin verir), ilk etkileşimde
   // (herhangi bir tıklama/tuş/dokunuş) sesi açılır. Görünür uyarı yok.
   useEffect(() => {
-    if (screen === "playing") return;
+    if (screen === "playing" || screen === "onlinegame") return;
     sound.primeMenuMusic(); // gizlice çalmaya başla (muted)
     const reveal = () => {
       sound.resume();
@@ -67,16 +68,16 @@ export default function Page() {
     setScreen(r.status);
   }
 
-  function handleConnected(room: NetRoom, role: NetRole) {
+  function handleStarted(room: NetRoom, info: StartInfo) {
     roomRef.current = room;
-    setOnlineRole(role);
+    setStartInfo(info);
     setScreen("onlinegame");
   }
 
   function leaveOnline() {
     roomRef.current?.leave();
     roomRef.current = null;
-    setOnlineRole(null);
+    setStartInfo(null);
     setScreen("menu");
   }
 
@@ -88,21 +89,22 @@ export default function Page() {
         score={score}
         lives={lives}
         onEnd={handleEnd}
+        onQuit={() => setScreen("menu")}
       />
     );
   }
 
   if (screen === "lobby") {
     return (
-      <OnlineLobby onBack={() => setScreen("menu")} onConnected={handleConnected} />
+      <OnlineLobby onBack={() => setScreen("menu")} onStarted={handleStarted} />
     );
   }
 
-  if (screen === "onlinegame" && roomRef.current && onlineRole) {
+  if (screen === "onlinegame" && roomRef.current && startInfo) {
     return (
       <OnlineGame
         room={roomRef.current}
-        role={onlineRole}
+        info={startInfo}
         onExit={leaveOnline}
       />
     );
@@ -135,7 +137,7 @@ export default function Page() {
               ▶ Tek Kişilik
             </button>
             <button className="btn" onClick={() => setScreen("lobby")}>
-              👥 Online Yarış
+              👥 Online Yarış (2-6)
             </button>
           </div>
         </>

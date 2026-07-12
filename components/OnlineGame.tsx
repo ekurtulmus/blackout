@@ -12,41 +12,60 @@ import {
   FIRE_COOLDOWN,
 } from "@/lib/engine";
 import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
-import { levelConfig } from "@/lib/levels";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
+import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import type { Maze } from "@/lib/maze";
 import {
   deserializeLevel,
   generateRaceLevel,
   levelMaze,
+  raceBrideConfig,
   serializeLevel,
   type RaceLevel,
+  type SerializedLevel,
+  type StartInfo,
 } from "@/lib/online";
-import type { NetRole, NetRoom, NetMessage } from "@/lib/net";
+import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
 
 const FLOOR = [58, 48, 42];
 const WALL = [104, 84, 70];
+const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
+const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
+const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır
 
-type Phase = "loading" | "playing" | "left";
+// Koltuk (seat) renkleri — 0 host
+const SEAT_COLORS = ["#6ee7ff", "#ff9a3c", "#7dffb0", "#c98cff", "#ffd166", "#ff6b9d"];
+
+type Phase = "playing" | "left";
 type RBride = { id: number; pos: Vec; target: Vec; aware: boolean };
 type Bullet = { pos: Vec; vel: Vec; life: number };
+type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean };
 
 export default function OnlineGame({
   room,
-  role,
+  info,
   onExit,
 }: {
   room: NetRoom;
-  role: NetRole;
+  info: StartInfo;
   onExit: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false });
-  const [phase, setPhase] = useState<Phase>(role === "host" ? "playing" : "loading");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, myScore: 0, oppScore: 0, barriers: 3, hp: PLAYER_MAX_HP });
+  const [phase, setPhase] = useState<Phase>("playing");
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[] });
+  const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
+  const [alone, setAlone] = useState(false); // diğerleri gitti → tek kaldın
+
+  const mySeat = info.seat;
+  const diff = info.diff;
+  const order = info.order; // oyuncu id sırası (seat = index)
+  const myColor = SEAT_COLORS[mySeat % SEAT_COLORS.length];
+  const nameOf = (seat: number) =>
+    info.names[seat] || (seat === 0 ? "Ev sahibi" : `Oyuncu ${seat + 1}`);
 
   // Dünya
   const levelRef = useRef<RaceLevel | null>(null);
@@ -54,18 +73,19 @@ export default function OnlineGame({
   const selfPos = useRef<Vec>({ x: 1.5, y: 1.5 });
   const selfDir = useRef<Vec>({ x: 0, y: -1 });
   const mySpawn = useRef<Vec>({ x: 1.5, y: 1.5 });
-  const oppPos = useRef<Vec>({ x: 1.5, y: 1.5 });
-  const oppTarget = useRef<Vec>({ x: 1.5, y: 1.5 });
-  const oppDir = useRef<Vec>({ x: 0, y: -1 });
-  const oppSeenAt = useRef(0);
+  const others = useRef<Map<string, Other>>(new Map()); // diğer oyuncular (id -> durum)
+  const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
+  // Host otoritesi: en küçük koltuk numaralı hayatta-kalan host olur (host göçü)
+  const amHost = useRef(info.seat === 0);
 
   // Gelinler
   const hostBrides = useRef<Zombie[]>([]); // host: tam simülasyon
   const guestBrides = useRef<Map<number, RBride>>(new Map()); // misafir: akıştan
+  const deadBrides = useRef<Set<number>>(new Set()); // ölmüş id'ler (ıraksamayı önler)
   // Mermi / ateş
-  const ammo = useRef<{ x: number; y: number; taken: boolean }[]>([]);
+  const ammo = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]);
   const ammoCount = useRef(0);
   const bullets = useRef<Bullet[]>([]);
   const fireCd = useRef(0);
@@ -76,29 +96,38 @@ export default function OnlineGame({
   const hp = useRef(PLAYER_MAX_HP);
   const selfMoving = useRef(false);
   const bloodStains = useRef<{ x: number; y: number; r: number; seed: number }[]>([]);
-  // Bariyerler (paylaşılan): id -> {x,y,armAt,owner}
-  const barriers = useRef<Map<string, { x: number; y: number; armAt: number; owner: NetRole }>>(new Map());
+  // Bariyerler (paylaşılan): id -> {x,y,armAt}
+  const barriers = useRef<Map<string, { x: number; y: number; armAt: number }>>(new Map());
   const barrierStock = useRef(3);
   const barrierCounter = useRef(0);
-  const breakTimer = useRef(0); // mermisizken temasla kırma sayacı
+  const breakTimer = useRef(0);
   const placeHeld = useRef(false);
-  // Yarış sonucu / puan
-  const scores = useRef({ host: 0, guest: 0 });
+  // Yarış sonucu / puan (seat sırasına göre)
+  const scores = useRef<number[]>(order.map(() => 0));
   const resultPending = useRef(false);
   const sentReach = useRef(false);
-  const [overlay, setOverlay] = useState<{ winner: NetRole; hs: number; gs: number } | null>(null);
+  const [overlay, setOverlay] = useState<{ winnerSeat: number; scores: number[] } | null>(null);
 
   function buildWorld(lvl: RaceLevel) {
     levelRef.current = lvl;
     mazeRef.current = levelMaze(lvl);
-    const meIdx = role === "host" ? 0 : 1;
-    const opIdx = role === "host" ? 1 : 0;
-    mySpawn.current = { x: lvl.spawns[meIdx].x + 0.5, y: lvl.spawns[meIdx].y + 0.5 };
+    const sp = (seat: number): Vec => {
+      const c = lvl.spawns[seat] ?? lvl.spawns[0];
+      return { x: c.x + 0.5, y: c.y + 0.5 };
+    };
+    mySpawn.current = sp(mySeat);
     selfPos.current = { ...mySpawn.current };
-    oppPos.current = { x: lvl.spawns[opIdx].x + 0.5, y: lvl.spawns[opIdx].y + 0.5 };
-    oppTarget.current = { ...oppPos.current };
+    selfDir.current = { x: 0, y: -1 };
+    // diğer oyuncular (ayrılmış olanları dahil etme)
+    others.current.clear();
+    for (let s = 0; s < order.length; s++) {
+      const id = order[s];
+      if (id === room.id || goneIds.current.has(id)) continue;
+      const p = sp(s);
+      others.current.set(id, { pos: { ...p }, target: { ...p }, dir: { x: 0, y: -1 }, seenAt: 0, seat: s, name: nameOf(s), everSeen: false });
+    }
     seen.current = Array.from({ length: lvl.rows }, () => Array.from({ length: lvl.cols }, () => false));
-    ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false }));
+    ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
     ammoCount.current = 0;
     bullets.current = [];
     kills.current = 0;
@@ -107,10 +136,11 @@ export default function OnlineGame({
     barrierStock.current = 3;
     breakTimer.current = 0;
     bloodStains.current = [];
+    deadBrides.current.clear();
+    guestBrides.current.clear();
     hp.current = PLAYER_MAX_HP;
     invulnUntil.current = performance.now() + 1500;
-    // host gelinleri üretir
-    if (role === "host") {
+    if (amHost.current) {
       hostBrides.current = lvl.brideSpawns.map((c, i) => ({
         id: i + 1,
         pos: { x: c.x + 0.5, y: c.y + 0.5 },
@@ -123,6 +153,8 @@ export default function OnlineGame({
         path: null,
         repathTimer: 0,
       }));
+    } else {
+      hostBrides.current = [];
     }
     resultPending.current = false;
     sentReach.current = false;
@@ -136,31 +168,77 @@ export default function OnlineGame({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    const mountTime = performance.now();
 
-    let needMapTimer = 0;
-    function sendMap() {
-      if (levelRef.current) room.send({ t: "map", lvl: serializeLevel(levelRef.current) as never });
+    // Ses — online moda bağla (menü müziği page tarafında susturuldu)
+    sound.init();
+    sound.resume();
+    sound.playGameMusic().then((ok) => {
+      if (!ok) sound.startAmbient();
+    });
+
+    let toastTimer = 0;
+    function flash(msg: string) {
+      setToast(msg);
+      window.clearTimeout(toastTimer);
+      toastTimer = window.setTimeout(() => setToast(null), 4000);
+    }
+
+    // En küçük koltuklu hayatta-kalan host olur. Guest→host geçişinde gelinleri devral.
+    function updateHost() {
+      let minSeat = mySeat;
+      for (const o of others.current.values()) if (o.seat < minSeat) minSeat = o.seat;
+      const nowHost = mySeat === minSeat;
+      if (nowHost && !amHost.current) {
+        // devral: mevcut gelin görüntüsünü tam simülasyona çevir
+        hostBrides.current = Array.from(guestBrides.current.values()).map((z) => ({
+          id: z.id,
+          pos: { ...z.pos },
+          hp: 1,
+          aware: z.aware,
+          lastSeen: null,
+          seenTimer: 4,
+          wanderDir: randomDir(),
+          wanderTimer: 0,
+          path: null,
+          repathTimer: 0,
+        }));
+        flash("Ev sahibi ayrıldı — kontrolü sen devraldın");
+      }
+      amHost.current = nowHost;
+    }
+
+    // Bir oyuncu ayrıldı (pos akışı kesildi ya da {t:left} geldi)
+    function onPlayerLeft(id: string) {
+      if (goneIds.current.has(id)) return;
+      const o = others.current.get(id);
+      goneIds.current.add(id);
+      others.current.delete(id);
+      flash(`${o ? o.name : "Bir oyuncu"} oyundan ayrıldı`);
+      updateHost();
+      if (others.current.size === 0) setAlone(true); // tek kaldın → menü
     }
 
     // Bir oyuncu açık çıkışa ulaştı → host bu bölümün kazananını belirler
-    function handleReach(who: NetRole) {
+    function handleReach(who: string) {
       if (resultPending.current || !levelRef.current) return;
+      const seat = Math.max(0, order.indexOf(who));
       resultPending.current = true;
-      scores.current = { ...scores.current, [who]: scores.current[who] + 1 };
-      const next = generateRaceLevel(levelRef.current.level + 1);
+      scores.current = scores.current.slice();
+      scores.current[seat] = (scores.current[seat] ?? 0) + 1;
+      const next = generateRaceLevel(levelRef.current.level + 1, diff);
       room.send({
         t: "result",
-        winner: who,
-        hs: scores.current.host,
-        gs: scores.current.guest,
+        winnerSeat: seat,
+        scores: scores.current,
         lvl: serializeLevel(next) as never,
       });
-      showResult(who);
+      showResult(seat);
       scheduleLoad(next);
     }
-    function showResult(who: NetRole) {
+    function showResult(winnerSeat: number) {
       resultPending.current = true;
-      setOverlay({ winner: who, hs: scores.current.host, gs: scores.current.guest });
+      setOverlay({ winnerSeat, scores: scores.current.slice() });
     }
     function scheduleLoad(next: RaceLevel) {
       window.setTimeout(() => {
@@ -169,15 +247,14 @@ export default function OnlineGame({
       }, 2600);
     }
 
-    // Bariyer: oyuncunun bulunduğu hücreye koy (1 sn sonra aktif olur)
+    // Bariyer koy (0.5 sn sonra aktif olur)
     function placeBarrier() {
       if (barrierStock.current <= 0 || !ready.current || resultPending.current || !levelRef.current) return;
       const c = cellOf(selfPos.current);
       if (c.x === levelRef.current.exit.x && c.y === levelRef.current.exit.y) return;
-      // aynı hücrede zaten bariyer varsa koyma
       for (const b of barriers.current.values()) if (b.x === c.x && b.y === c.y) return;
-      const id = (role === "host" ? "h" : "g") + barrierCounter.current++;
-      barriers.current.set(id, { x: c.x, y: c.y, armAt: performance.now() + 1000, owner: role });
+      const id = mySeat + "-" + barrierCounter.current++;
+      barriers.current.set(id, { x: c.x, y: c.y, armAt: performance.now() + BARRIER_ARM_MS });
       barrierStock.current--;
       room.send({ t: "barrier", id, x: c.x, y: c.y });
     }
@@ -185,7 +262,6 @@ export default function OnlineGame({
       if (!barriers.current.delete(id)) return;
       room.send({ t: "barrierdel", id });
     }
-    // Verilen hücrede AKTİF bariyer var mı (oyuncu hareketini engeller)
     function activeBarrier(x: number, y: number, now: number): boolean {
       for (const b of barriers.current.values()) {
         if (b.x === x && b.y === y && now >= b.armAt) return true;
@@ -193,23 +269,50 @@ export default function OnlineGame({
       return false;
     }
 
-    room.onMessage = (m: NetMessage) => {
+    // Bir gelin öldü — herkeste görsel + ses. local=true ise benim vuruşum.
+    function applyKill(id: number, x: number, y: number, local: boolean) {
+      if (!deadBrides.current.has(id)) {
+        deadBrides.current.add(id);
+        bloodStains.current.push({ x, y, r: 0.5 + Math.random() * 0.35, seed: Math.floor(Math.random() * 1000) });
+        sound.play("kill"); // ölen gelinin ağlaması
+      }
+      if (amHost.current) hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
+      else guestBrides.current.delete(id);
+      if (local) {
+        kills.current++;
+        if (kills.current >= 1 && !exitOpen.current) {
+          exitOpen.current = true;
+          sound.play("dooropen");
+        }
+        room.send({ t: "kill", id, x, y });
+      }
+    }
+
+    room.onMessage = (m: NetMessage, fromId: string) => {
+      if (goneIds.current.has(fromId) && m.t !== "left") return;
       if (m.t === "map") {
-        if (!ready.current) buildWorld(deserializeLevel(m.lvl as never));
-      } else if (m.t === "needmap") {
-        if (role === "host") sendMap();
+        if (!ready.current) buildWorld(deserializeLevel(m.lvl as SerializedLevel));
       } else if (m.t === "pos") {
-        oppTarget.current = { x: m.x as number, y: m.y as number };
-        oppDir.current = { x: m.dx as number, y: m.dy as number };
-        oppSeenAt.current = performance.now();
-      } else if (m.t === "brides" && role === "guest") {
+        let o = others.current.get(fromId);
+        if (!o) {
+          const s = order.indexOf(fromId);
+          if (s < 0) return;
+          o = { pos: { x: m.x as number, y: m.y as number }, target: { x: m.x as number, y: m.y as number }, dir: { x: 0, y: -1 }, seenAt: 0, seat: s, name: nameOf(s), everSeen: false };
+          others.current.set(fromId, o);
+        }
+        o.target = { x: m.x as number, y: m.y as number };
+        o.dir = { x: m.dx as number, y: m.dy as number };
+        o.seenAt = performance.now();
+        o.everSeen = true;
+      } else if (m.t === "brides" && !amHost.current) {
         const arr = m.b as [number, number, number, number][];
         const map = guestBrides.current;
         const live = new Set<number>();
         for (const [id, xi, yi, aw] of arr) {
+          if (deadBrides.current.has(id)) continue; // ölmüşü diriltme
           live.add(id);
-          const ex = map.get(id);
           const target = { x: xi / 100, y: yi / 100 };
+          const ex = map.get(id);
           if (ex) {
             ex.target = target;
             ex.aware = aw === 1;
@@ -218,42 +321,30 @@ export default function OnlineGame({
           }
         }
         for (const id of map.keys()) if (!live.has(id)) map.delete(id);
-      } else if (m.t === "kill" && role === "host") {
-        const id = m.id as number;
-        hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
-      } else if (m.t === "reachexit" && role === "host") {
-        handleReach("guest");
+      } else if (m.t === "kill") {
+        applyKill(m.id as number, m.x as number, m.y as number, false);
+      } else if (m.t === "reachexit") {
+        if (amHost.current) handleReach(fromId);
       } else if (m.t === "result") {
-        scores.current = { host: m.hs as number, guest: m.gs as number };
-        showResult(m.winner as NetRole);
-        if (role === "guest") scheduleLoad(deserializeLevel(m.lvl as never));
+        scores.current = m.scores as number[];
+        showResult(m.winnerSeat as number);
+        scheduleLoad(deserializeLevel(m.lvl as SerializedLevel));
       } else if (m.t === "barrier") {
-        const id = m.id as string;
-        barriers.current.set(id, {
+        barriers.current.set(m.id as string, {
           x: m.x as number,
           y: m.y as number,
-          armAt: performance.now() + 1000,
-          owner: id[0] === "h" ? "host" : "guest",
+          armAt: performance.now() + BARRIER_ARM_MS,
         });
       } else if (m.t === "barrierdel") {
         barriers.current.delete(m.id as string);
+      } else if (m.t === "left") {
+        onPlayerLeft(fromId);
       }
     };
-    room.onStatus = (s) => {
-      if (s === "left") setPhase("left");
-    };
+    room.onStatus = () => {}; // ayrılma tespiti pos akışıyla (aşağıda) yapılıyor
 
-    if (role === "host") {
-      buildWorld(generateRaceLevel(1));
-      sendMap();
-    } else {
-      const ask = () => {
-        if (ready.current) return;
-        room.send({ t: "needmap" });
-        needMapTimer = window.setTimeout(ask, 500);
-      };
-      ask();
-    }
+    // Herkes başlangıç seviyesini kurar (host tam obje, guest deserialize)
+    buildWorld(info.initialLevel);
 
     // Girdi
     const onKey = (e: KeyboardEvent, d: boolean) => {
@@ -300,12 +391,12 @@ export default function OnlineGame({
     }
     const grainPattern = ctx.createPattern(noiseTile, "repeat");
 
-    let raf = 0, last = performance.now(), posAcc = 0, brideAcc = 0, hudAcc = 0;
+    let raf = 0, last = performance.now(), posAcc = 0, brideAcc = 0, hudAcc = 0, tensAcc = 0, leaveAcc = 0;
     const shade = (b: number[], f: number) =>
       `rgb(${(b[0] * f) | 0},${(b[1] * f) | 0},${(b[2] * f) | 0})`;
 
     function renderBrides(): RBride[] {
-      if (role === "host") {
+      if (amHost.current) {
         return hostBrides.current.map((z) => ({ id: z.id, pos: z.pos, target: z.pos, aware: z.aware }));
       }
       return Array.from(guestBrides.current.values());
@@ -321,16 +412,16 @@ export default function OnlineGame({
       // hareket (aktif bariyerler duvar gibi engeller)
       let mx = 0, my = 0;
       if (i.up) my -= 1; if (i.down) my += 1; if (i.left) mx -= 1; if (i.right) mx += 1;
-      let sc = 1;
+      let scl = 1;
       const amag = Math.hypot(i.ax, i.ay);
-      if (amag > 0.18) { mx = i.ax; my = i.ay; sc = Math.min(1, amag); }
+      if (amag > 0.18) { mx = i.ax; my = i.ay; scl = Math.min(1, amag); }
       const moving = mx !== 0 || my !== 0;
       selfMoving.current = moving;
       const barrierWall = (bx: number, by: number) => activeBarrier(bx, by, now);
       if (moving) {
         const len = Math.hypot(mx, my); mx /= len; my /= len;
         selfDir.current = { x: mx, y: my };
-        tryMove(maze, selfPos.current, PLAYER_RADIUS, mx * PLAYER_SPEED * sc * dt, my * PLAYER_SPEED * sc * dt, barrierWall);
+        tryMove(maze, selfPos.current, PLAYER_RADIUS, mx * PLAYER_SPEED * scl * dt, my * PLAYER_SPEED * scl * dt, barrierWall);
       }
 
       // bariyer koy (basılı tutmada bir kez)
@@ -360,16 +451,14 @@ export default function OnlineGame({
           vel: { x: selfDir.current.x * BULLET_SPEED, y: selfDir.current.y * BULLET_SPEED },
           life: BULLET_LIFE,
         });
+        sound.play("shot");
       }
 
-      // host: gelin simülasyonu
-      if (role === "host") {
-        const cfg = levelConfig(lvl.level);
-        moveBrides(
-          hostBrides.current, maze,
-          { intelligence: cfg.intelligence, visionRadius: lvl.visionRadius, zombieSpeed: cfg.zombieSpeed },
-          [selfPos.current, oppPos.current], dt
-        );
+      // host: gelin simülasyonu (tüm oyuncuları hedefler)
+      if (amHost.current) {
+        const targets: Vec[] = [selfPos.current];
+        for (const o of others.current.values()) targets.push(o.pos);
+        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt);
       }
 
       const brides = renderBrides();
@@ -383,7 +472,6 @@ export default function OnlineGame({
           b.pos.x += sx; b.pos.y += sy;
           const cx = Math.floor(b.pos.x), cy = Math.floor(b.pos.y);
           if (cx < 0 || cy < 0 || cx >= maze.cols || cy >= maze.rows || maze.walls[cy][cx]) { b.life = 0; break; }
-          // bariyer vuruldu mu → tek atışta yık (mermi biter)
           let hitBar = false;
           for (const [bid, bar] of barriers.current) {
             if (bar.x === cx && bar.y === cy) { delBarrier(bid); b.life = 0; hitBar = true; break; }
@@ -393,7 +481,7 @@ export default function OnlineGame({
           for (const z of brides) {
             if (Math.hypot(b.pos.x - z.pos.x, b.pos.y - z.pos.y) < BRIDE_RADIUS + 0.08) {
               b.life = 0; hit = true;
-              killBride(z.id);
+              applyKill(z.id, z.pos.x, z.pos.y, true);
               break;
             }
           }
@@ -402,10 +490,17 @@ export default function OnlineGame({
       }
       bullets.current = bullets.current.filter((b) => b.life > 0);
 
-      // mermi topla
+      // mermi topla + 10 sn respawn
       const pc = cellOf(selfPos.current);
       for (const a of ammo.current) {
-        if (!a.taken && a.x === pc.x && a.y === pc.y) { a.taken = true; ammoCount.current++; }
+        if (a.taken) {
+          if (now - a.takenAt >= RESPAWN_MS) a.taken = false;
+        } else if (a.x === pc.x && a.y === pc.y) {
+          a.taken = true;
+          a.takenAt = now;
+          ammoCount.current++;
+          sound.play("pickup");
+        }
       }
 
       // hasar (dokunulmazlık bittiyse): gelin teması can barını düşürür
@@ -420,9 +515,8 @@ export default function OnlineGame({
         if (touched) {
           hp.current -= CONTACT_DPS * dt;
           hurt.current = 0.25;
+          sound.play("hurt");
           if (hp.current <= 0) {
-            // öl → GÜVENLİ yeniden doğ: tam can + 2 sn dokunulmazlık (gelinlerin
-            // içinden geçip köşeden çıkabilirsin) + güvenlik için 1 mermi
             hp.current = PLAYER_MAX_HP;
             selfPos.current = { ...mySpawn.current };
             ammoCount.current = Math.max(ammoCount.current, 1);
@@ -435,10 +529,10 @@ export default function OnlineGame({
 
       // çıkışa ulaşma (kendi çıkışın açıksa) → kazanma
       if (!resultPending.current && !sentReach.current && exitOpen.current) {
-        const sc = cellOf(selfPos.current);
-        if (sc.x === lvl.exit.x && sc.y === lvl.exit.y) {
-          if (role === "host") {
-            handleReach("host");
+        const scc = cellOf(selfPos.current);
+        if (scc.x === lvl.exit.x && scc.y === lvl.exit.y) {
+          if (amHost.current) {
+            handleReach(room.id);
           } else {
             sentReach.current = true;
             room.send({ t: "reachexit" });
@@ -446,44 +540,42 @@ export default function OnlineGame({
         }
       }
 
-      // rakip yumuşat
-      const op = oppPos.current, ot = oppTarget.current;
-      op.x += (ot.x - op.x) * Math.min(1, dt * 12);
-      op.y += (ot.y - op.y) * Math.min(1, dt * 12);
+      // diğer oyuncuları yumuşat
+      for (const o of others.current.values()) {
+        o.pos.x += (o.target.x - o.pos.x) * Math.min(1, dt * 12);
+        o.pos.y += (o.target.y - o.pos.y) * Math.min(1, dt * 12);
+      }
       // misafir gelinleri yumuşat
-      if (role === "guest") {
+      if (!amHost.current) {
         for (const z of guestBrides.current.values()) {
           z.pos.x += (z.target.x - z.pos.x) * Math.min(1, dt * 12);
           z.pos.y += (z.target.y - z.pos.y) * Math.min(1, dt * 12);
         }
       }
-    }
 
-    function killBride(id: number) {
-      // ölen gelinin yerine kan izi bırak
-      let bpos: Vec | null = null;
-      if (role === "host") {
-        const z = hostBrides.current.find((b) => b.id === id);
-        if (z) bpos = z.pos;
-        hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
-      } else {
-        const z = guestBrides.current.get(id);
-        if (z) bpos = z.pos;
-        guestBrides.current.delete(id);
-        room.send({ t: "kill", id });
+      // ayrılma tespiti (pos akışı = kalp atışı)
+      leaveAcc += dt;
+      if (leaveAcc >= 0.5) {
+        leaveAcc = 0;
+        for (const [id, o] of others.current) {
+          const gone = (o.everSeen && now - o.seenAt > LEAVE_MS) || (!o.everSeen && now - mountTime > 8000);
+          if (gone) onPlayerLeft(id);
+        }
       }
-      if (bpos) {
-        bloodStains.current.push({
-          x: bpos.x,
-          y: bpos.y,
-          r: 0.5 + Math.random() * 0.35,
-          seed: Math.floor(Math.random() * 1000),
-        });
-      }
-      kills.current++;
-      if (kills.current >= 1) exitOpen.current = true;
-    }
 
+      // gerilim (kalp atışı) — en yakın gelin mesafesine göre
+      tensAcc += dt;
+      if (tensAcc >= 0.2) {
+        tensAcc = 0;
+        let nd = Infinity;
+        for (const z of brides) {
+          const d = Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y);
+          if (d < nd) nd = d;
+        }
+        const vr = lvl.visionRadius;
+        sound.setTension(nd < vr ? Math.min(1, (vr - nd) / vr) : 0);
+      }
+    }
 
     function render() {
       const lvl = levelRef.current!, maze = mazeRef.current!;
@@ -570,7 +662,7 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // bariyerler (görüşte) — hazırlanıyor: yanıp sönen; aktif: katı taş
+      // bariyerler (görüşte)
       const nowB = performance.now();
       for (const b of barriers.current.values()) {
         if (seen.current[b.y] && !seen.current[b.y][b.x]) continue;
@@ -583,14 +675,12 @@ export default function OnlineGame({
           ctx!.fillRect(sx + 2, sy + 2, TS - 3, TS - 3);
           ctx!.strokeStyle = "rgba(30,22,16,0.9)"; ctx!.lineWidth = 2;
           ctx!.strokeRect(sx + 2, sy + 2, TS - 3, TS - 3);
-          // çatlak/çapraz
           ctx!.strokeStyle = "rgba(20,14,10,0.7)"; ctx!.lineWidth = 1.5;
           ctx!.beginPath();
           ctx!.moveTo(sx + 4, sy + 4); ctx!.lineTo(sx + TS - 4, sy + TS - 4);
           ctx!.moveTo(sx + TS - 4, sy + 4); ctx!.lineTo(sx + 4, sy + TS - 4);
           ctx!.stroke();
         } else {
-          // hazırlanıyor: yanıp sönen yarı saydam
           const pulse = 0.25 + 0.2 * Math.sin(nowB / 120);
           ctx!.fillStyle = `rgba(120,150,220,${pulse})`;
           ctx!.fillRect(sx + 3, sy + 3, TS - 5, TS - 5);
@@ -602,7 +692,7 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // gelinler (görüşte) — detaylı ortak sprite
+      // gelinler (görüşte)
       for (const z of renderBrides()) {
         const zc = cellOf(z.pos);
         if (vis.get(zc.y * cols + zc.x) === undefined) continue;
@@ -618,11 +708,22 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // rakip (görüşte) — turuncu halkalı hayatta-kalan
-      const oc = cellOf(oppPos.current);
-      if (vis.get(oc.y * cols + oc.x) !== undefined && performance.now() - oppSeenAt.current < 3000) {
-        const ox = oppPos.current.x * TS - camX, oy = oppPos.current.y * TS - camY;
-        drawPlayer(ctx!, TS, ox, oy, oppDir.current, T, true, flicker, lvl.visionRadius, { cone: false, ring: "#ff9a3c" });
+      // diğer oyuncular (görüşte) — koltuk rengiyle halkalı + isim
+      const nowP = performance.now();
+      for (const o of others.current.values()) {
+        if (nowP - o.seenAt > 3000) continue;
+        const oc = cellOf(o.pos);
+        if (vis.get(oc.y * cols + oc.x) === undefined) continue;
+        const ox = o.pos.x * TS - camX, oy = o.pos.y * TS - camY;
+        drawPlayer(ctx!, TS, ox, oy, o.dir, T, true, flicker, lvl.visionRadius, { cone: false, ring: SEAT_COLORS[o.seat % SEAT_COLORS.length] });
+        ctx!.save();
+        ctx!.font = `${Math.max(9, TS * 0.28)}px system-ui, sans-serif`;
+        ctx!.textAlign = "center";
+        ctx!.fillStyle = "rgba(0,0,0,0.6)";
+        ctx!.fillText(o.name, ox + 1, oy - TS * 0.5 + 1);
+        ctx!.fillStyle = SEAT_COLORS[o.seat % SEAT_COLORS.length];
+        ctx!.fillText(o.name, ox, oy - TS * 0.5);
+        ctx!.restore();
       }
 
       // kendi (dokunulmazlıkta camgöbeği halka)
@@ -665,7 +766,7 @@ export default function OnlineGame({
             posAcc = 0;
             room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y });
           }
-          if (role === "host") {
+          if (amHost.current) {
             brideAcc += dt;
             if (brideAcc >= 0.05) {
               brideAcc = 0;
@@ -679,9 +780,7 @@ export default function OnlineGame({
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          const mine = role === "host" ? scores.current.host : scores.current.guest;
-          const opp = role === "host" ? scores.current.guest : scores.current.host;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, myScore: mine, oppScore: opp, barriers: barrierStock.current, hp: Math.max(0, hp.current) });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice() });
         }
         render();
       }
@@ -691,21 +790,33 @@ export default function OnlineGame({
 
     return () => {
       cancelAnimationFrame(raf);
-      window.clearTimeout(needMapTimer);
+      window.clearTimeout(toastTimer);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       window.removeEventListener("resize", resize);
       room.onMessage = () => {};
+      sound.stopGameMusic();
+      sound.stopAmbient();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Menüye dön — ayrıldığını hemen bildir (diğerleri anında görsün)
+  function quit() {
+    try {
+      room.send({ t: "left" });
+    } catch {
+      /* geç */
+    }
+    onExit();
+  }
 
   return (
     <div className="stage">
       <canvas ref={canvasRef} />
 
       <div className="hud">
-        <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış</span></div>
+        <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış {info.diff}</span></div>
         <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
         <div className="chip">
           <span className="lbl">Can</span>
@@ -729,25 +840,51 @@ export default function OnlineGame({
         </div>
         <div className="chip"><span className="lbl">Skor</span>
           <span className="val">
-            <span style={{ color: "#6ee7ff" }}>{hud.myScore}</span>
-            <span style={{ color: "var(--muted)" }}> — </span>
-            <span style={{ color: "#ff9a3c" }}>{hud.oppScore}</span>
+            {hud.scores.map((s, seat) => (
+              <span key={seat}>
+                {seat > 0 && <span style={{ color: "var(--muted)" }}> · </span>}
+                <span
+                  style={{
+                    color: SEAT_COLORS[seat % SEAT_COLORS.length],
+                    fontWeight: seat === mySeat ? 900 : 400,
+                    textDecoration: seat === mySeat ? "underline" : "none",
+                  }}
+                >
+                  {s}
+                </span>
+              </span>
+            ))}
           </span>
         </div>
         <div className="chip"><span className="lbl">Sen</span>
-          <span className="val" style={{ color: "#6ee7ff" }}>{role === "host" ? "Ev sahibi" : "Misafir"}</span>
+          <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
+        <button className="chip mutebtn" onClick={quit} title="Menüye dön">
+          <span className="val">⎋</span>
+        </button>
       </div>
 
-      {phase === "loading" && (
-        <div className="screen" style={{ background: "rgba(0,0,0,0.85)" }}>
-          <div className="big">Harita alınıyor…</div>
+      {toast && (
+        <div
+          className="warn"
+          style={{ top: 70, background: "rgba(20,10,10,0.85)", color: "#ffd0d0", borderColor: "rgba(255,120,120,0.4)" }}
+        >
+          🚪 {toast}
         </div>
       )}
+
+      {alone && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
+          <div className="big" style={{ color: "#ff9a3c" }}>Diğer oyuncular ayrıldı</div>
+          <div className="subtitle">Yarışacak kimse kalmadı.</div>
+          <button className="btn btn-primary" onClick={quit}>← Menü</button>
+        </div>
+      )}
+
       {phase === "left" && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="big" style={{ color: "#ff6b6b" }}>Rakip ayrıldı</div>
-          <button className="btn btn-primary" onClick={onExit}>← Menü</button>
+          <div className="big" style={{ color: "#ff6b6b" }}>Bağlantı koptu</div>
+          <button className="btn btn-primary" onClick={quit}>← Menü</button>
         </div>
       )}
 
@@ -755,19 +892,21 @@ export default function OnlineGame({
         <div className="screen" style={{ background: "rgba(0,0,0,0.82)" }}>
           <div
             className="big"
-            style={{ color: overlay.winner === role ? "#7dffb0" : "#ff6b6b" }}
+            style={{ color: overlay.winnerSeat === mySeat ? "#7dffb0" : "#ff6b6b" }}
           >
-            {overlay.winner === role ? "Bu bölümü KAZANDIN! 🏆" : "Rakip bu bölümü kazandı"}
+            {overlay.winnerSeat === mySeat
+              ? "Bu bölümü KAZANDIN! 🏆"
+              : `${nameOf(overlay.winnerSeat)} kazandı`}
           </div>
-          <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,32px)" }}>
-            Skor — Sen:{" "}
-            <b style={{ color: "#6ee7ff" }}>
-              {role === "host" ? overlay.hs : overlay.gs}
-            </b>{" "}
-            · Rakip:{" "}
-            <b style={{ color: "#ff9a3c" }}>
-              {role === "host" ? overlay.gs : overlay.hs}
-            </b>
+          <div className="subtitle" style={{ fontSize: "clamp(18px,4.5vw,28px)" }}>
+            {overlay.scores.map((s, seat) => (
+              <span key={seat}>
+                {seat > 0 && " · "}
+                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>
+                  {nameOf(seat)}: {s}
+                </b>
+              </span>
+            ))}
           </div>
           <div className="subtitle">Sonraki bölüm başlıyor…</div>
         </div>

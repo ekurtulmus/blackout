@@ -19,6 +19,17 @@
 - ✅ **Online Yarış**: bitti, **canlıda çalışıyor** (Vercel + Supabase Realtime).
 - ✅ **Görsel birlik**: online da tek kişilik kadar detaylı (ortak sprite'lar).
 - ✅ **Online ölüm modeli**: can barı + güvenli yeniden doğma (köşe-döngüsü çözüldü).
+- ✅ **Çoklu oyuncu 2-6 kişi**: host otoriter roster, seat başına doğuş, herkes birbirini görür.
+- ✅ **Zorluk seçimi** (host lobide seçer): Kolay/Orta/Zor → gelin sayısı/hız/zekâ.
+- ✅ **Online ses**: ateş/toplama/hasar/kapı + **ölen gelinin ağlaması** (cry).
+- ✅ **Ölüm senkronu**: gelin ölünce kan + ağlama HERKESTE (birden kaybolmuyor).
+- ✅ **Mermi respawn**: toplanan mermi 10 sn sonra haritada geri doğar.
+- ✅ **Bariyer aktifleşme**: 1 sn → **0.5 sn**.
+- ✅ **Oyuncu isimleri**: lobide isim gir (localStorage'da saklanır), oyunda üstünde isim yazar.
+- ✅ **Ayrılma bildirimi**: bir oyuncu çıkınca "X oyundan ayrıldı" toast'ı (pos akışı = kalp atışı, 4 sn).
+- ✅ **Host göçü**: host çıkarsa en küçük koltuklu oyuncu otomatik devralır → gelinler donmaz.
+- ✅ **Tek kalınca menü**: ≤1 oyuncu kalırsa "Menü" ekranı (2 kişilikte biri çıkınca).
+- ✅ **Tek kişilik duraklat**: ⏸/Esc/P ile dondur + "Menüye Dön" (Game.tsx).
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash
@@ -55,15 +66,24 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 **Tek kişilik:** el feneri/sis · 4 çeşit kanlı gelin (seviyeyle zekileşir, asla vazgeçmez) ·
 mermi/atış · çıkış kilidi · 3 can · 10 bölüm · sesler+müzik · joystick · kir/grain/kan/vinyet.
 
-**Online yarış:** oda/kod · eşit BFS doğuş · ortak dünya (rakibi turuncu halkalı görürsün) ·
-host-otoriter gelinler · mermi/atış · **can barı + güvenli doğma** · kendi çıkışını aç ·
-**bariyerler** (3 hak, E ile koy, 1 sn sonra aktif, gelinler geçer, atış/temasla yıkılır) ·
-ilk çıkan kazanır + puan + sonraki bölüm (sonsuz).
+**Online yarış (2-6 kişi):** oda/kod · host zorluk seçer · N ayrık doğuş · ortak dünya
+(her oyuncu koltuk rengiyle halkalı) · host-otoriter gelinler (tüm oyuncuları hedefler) ·
+mermi/atış + **10 sn respawn** · **can barı + güvenli doğma** · kendi çıkışını aç ·
+**bariyerler** (3 hak, E ile koy, **0.5 sn** sonra aktif, gelinler geçer, atış/temasla yıkılır) ·
+ölümde kan+ağlama herkeste · ilk çıkan bölümü kazanır + puan tablosu + sonraki bölüm (sonsuz) ·
+ses (ateş/toplama/hasar/kapı/ağlama).
 
 ## 7) SIRADA / Fikirler (buraya ekle-çıkar)
-- [ ] Online'a **ses** (silah/gelin/kazanma/kalp atışı) — şu an sadece görsel.
-- [ ] Kazanma ekranı iyileştirme (toplam skor, "tekrar oyna", oda linki paylaşma).
-- [ ] Denge ince ayarı (can barı düşme hızı, dokunulmazlık süresi, bariyer sayısı).
+- [x] Online'a **ses** (ateş/toplama/hasar/kapı/ağlama + kalp atışı) — eklendi.
+- [x] Çoklu oyuncu 2-6 kişi + host zorluk seçimi — eklendi.
+- [x] Ölüm senkronu (kan+ağlama herkeste) + mermi respawn + bariyer 0.5 sn — eklendi.
+- [x] İsim + ayrılma bildirimi + host göçü + tek kalınca menü + tek kişilik duraklat — eklendi.
+- [ ] **CANLI DOĞRULAMA (2+ gerçek cihaz — panelde rAF durur)**: katılma→Başlat→birbirini görme+isim,
+      gelin/kan senkronu, skor tablosu, **biri çıkınca "X ayrıldı"**, **host çıkınca göç** (gelinler
+      donmamalı), **2 kişide biri çıkınca "Menü"**. (Kod doğrulandı: tsc temiz + 304 birim test + lobi/duraklat DOM testi.)
+- [ ] Kazanma ekranı iyileştirme (oda linki paylaşma, "tekrar oyna").
+- [ ] Denge ince ayarı (can barı hızı, dokunulmazlık süresi, bariyer sayısı, respawn süresi).
+- [ ] Geç katılan oyuncu (oyun başladıktan sonra) — şu an lobide katılmalı.
 - [ ] (İsteğe bağlı) Versus modu: biri gelin, biri kaçan — netcode temeli hazır.
 - [ ] (İsteğe bağlı) Co-op modu.
 
@@ -77,10 +97,19 @@ ilk çıkan kazanır + puan + sonraki bölüm (sonsuz).
 - Git satır sonu: CRLF uyarıları normal, zararsız.
 
 ## 9) Kilitli kararlar (online yarış)
-- İki cihaz, **ortak dünya**, oda/kod. Host-otoriter + Supabase Realtime broadcast (~20/sn).
-- Aynı labirent, çıkışa **eşit mesafeli** doğuş. İlk çıkan +1 puan, **sınırsız**.
-- **PvP yok** (birbirine değemez/ateş edemez). Tek etkileşim: **bariyer**.
+- **2-6 oyuncu**, **ortak dünya**, oda/kod. Host-otoriter (seat 0) + Supabase Realtime broadcast (~20/sn).
+  Host katılanları bir **roster**'da (isimlerle) toplar, zorluk seçer, "Başlat" ile sıra+isim+seviye yayınlar.
+- **İsim:** lobide girilir (localStorage `blackout_name`), start payload'ında seat sırasına göre taşınır.
+- **Ayrılma:** `pos` akışı kalp atışıdır; 4 sn gelmezse "X ayrıldı" toast. Menü butonu hızlı `{t:left}` yollar.
+- **Host göçü:** `amHost = mySeat === min(hayatta koltuklar)`, her kare hesaplanır. Guest→host geçişinde
+  gelinleri son akıştan (guestBrides) tam simülasyona çevirir. Tek host kalır (deterministik, split-brain min.).
+- **Devam kuralı:** biri çıkınca kalan ≥2 ise oyun sürer; ≤1 kalırsa "Menü" ekranı (`alone`).
+- Aynı labirent, çıkışa uzak **ayrık N doğuş** (seat = roster sırası). İlk çıkan +1 puan, **sınırsız**.
+- **Zorluk** (host seçer): Kolay/Orta/Zor → gelin sayısı × {0.6, 1.0, 1.4}, hız × {0.82,1,1.12} (cap 3.15), zekâ ±.
+- **PvP yok** (birbirine değemez/ateş edemez). Tek etkileşim: **bariyer** (0.5 sn'de aktif).
 - **Ölüm:** can barı; bar bitince başta doğ (tam can + 2 sn dokunulmazlık + 1 mermi).
+  Gelin ölünce **kan + ağlama HERKESTE** (`kill` yayını + `deadBrides` ile ıraksama yok).
+- **Mermi:** kişisel/yerel düzen; toplanan mermi **10 sn** sonra haritada geri doğar.
 - **Çıkış:** herkes kendi çıkışını açar (≥1 gelin öldür).
 
 ## 10) Son commitler (git log)
