@@ -44,16 +44,20 @@ export default function Game({
   lives,
   themeSeed = 0,
   mission = null,
+  withPhoto = false,
   onEnd,
   onQuit,
+  onFragment,
 }: {
   level: number;
   score: number;
   lives: number;
   themeSeed?: number;
   mission?: Mission | null;
+  withPhoto?: boolean;
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
+  onFragment?: () => void;
 }) {
   const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -92,7 +96,8 @@ export default function Game({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const engine = new GameEngine(level, score, lives, mission);
+    const engine = new GameEngine(level, score, lives, mission, withPhoto);
+    let fragmentReported = false;
     const input: Input = {
       up: false,
       down: false,
@@ -332,6 +337,26 @@ export default function Game({
         ctx!.restore();
       }
 
+      // --- Gizli: düğün fotoğrafı parçası (soluk sepya, hafif salınan parıltı) ---
+      if (engine.photoItem && !engine.photoItem.taken) {
+        const ph = engine.photoItem;
+        if (vis.get(ph.cell.y * cols + ph.cell.x) !== undefined) {
+          const sx = ph.cell.x * TS + TS / 2 - camX;
+          const sy = ph.cell.y * TS + TS / 2 - camY;
+          const w = TS * 0.26, h = TS * 0.32;
+          ctx!.save();
+          ctx!.translate(sx, sy);
+          ctx!.rotate(Math.sin(engine.time * 1.5) * 0.12);
+          ctx!.shadowColor = "rgba(255,220,150,0.8)";
+          ctx!.shadowBlur = 12;
+          ctx!.fillStyle = "#efe2c6"; // fotoğraf kağıdı
+          ctx!.fillRect(-w / 2, -h / 2, w, h);
+          ctx!.fillStyle = "#7a6a52"; // sepya portre
+          ctx!.fillRect(-w / 2 + w * 0.14, -h / 2 + h * 0.12, w * 0.72, h * 0.6);
+          ctx!.restore();
+        }
+      }
+
       // --- Görev: toplanacak parçalar (parlayan camgöbeği elmas) ---
       for (const c of engine.collectItems) {
         if (c.taken) continue;
@@ -505,6 +530,11 @@ export default function Game({
         warn: engine.warnTimer > 0,
       });
       if (mission) setObjective(engine.objectiveText());
+      // gizli fotoğraf parçası toplandıysa bir kez bildir
+      if (engine.photoTaken && !fragmentReported) {
+        fragmentReported = true;
+        onFragment?.();
+      }
     }, 100);
 
     return () => {

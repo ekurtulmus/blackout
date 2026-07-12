@@ -49,6 +49,11 @@
   tek kişilik + görev (`engine.ts` respawnQueue) + online (`OnlineGame.tsx` host, yeni id + brideRespawnQueue).
 - ✅ **YENİ MOD: Sonsuz Hayatta Kalma** (`ENDLESS`) — çıkış yok, gelinler döner + her 18 sn ekstra doğar,
   skor = dayanılan süre, en iyi süre saklanır (`blackout_endless_best`). Menüde "♾️ Hayatta Kalma".
+- ✅ **Müzik akışı düzeltildi**: ses bir kez açılınca menü ekranları arası KESİNTİSİZ çalar (eskiden her
+  ekran değişiminde durup tekrar tıklama istiyordu). `page.tsx` tek-sefer unlock + oyun dışı ekranlarda durdurma yok.
+- ✅ **GİZLİ SON / SIRLAR** (`lib/secrets.ts`) — tek kişilik bölümlere saklı 10 **düğün fotoğrafı parçası**
+  (`engine.ts` withPhoto + photoItem, `secret` sesi). Menüde "📷 Sırlar" → parçalar + ilerleme (X/10),
+  hepsi toplanınca gizli son "Gerçek" açılır. Kayıt: `blackout_fragments`. Merak/koleksiyon kancası.
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

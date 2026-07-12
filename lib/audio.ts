@@ -427,6 +427,14 @@ class SoundEngine {
         this.noise(t, 0.06, 0.1, 3200, "highpass", 0.2, 0, 2);
         break;
       }
+      case "secret": {
+        // Gizli parça: gizemli, hayaletimsi parıltı (ödül ama tekinsiz) + bol reverb
+        this.tone(t, 520, 780, 0.7, 0.16, "sine", 0.8);
+        this.tone(t + 0.12, 660, 990, 0.7, 0.12, "triangle", 0.8);
+        this.tone(t + 0.02, 300, 300, 0.9, 0.08, "sine", 0.9);
+        this.noise(t, 0.5, 0.06, 5000, "highpass", 0.5, 0, 2);
+        break;
+      }
       case "hurt": {
         if (t - this.lastHurt < 0.18) return;
         this.lastHurt = t;

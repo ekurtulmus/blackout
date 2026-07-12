@@ -50,6 +50,7 @@ export type SoundEvent =
   | "kill"
   | "pickup"
   | "heal"
+  | "secret"
   | "hurt"
   | "dooropen"
   | "warn"
@@ -71,6 +72,8 @@ export class GameEngine {
   ammoItems: Ammo[] = [];
   healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
   collectItems: Ammo[] = []; // görev: toplanacak parçalar (Ammo şeklini paylaşır)
+  photoItem: Ammo | null = null; // gizli: düğün fotoğrafı parçası (tek kişilik)
+  photoTaken = false; // bu bölümün parçası toplandı mı
   bullets: Bullet[] = [];
 
   // Ölen gelinlerin yeniden doğma zamanları (saniye) + zemin hücreleri
@@ -107,7 +110,13 @@ export class GameEngine {
   private fireCd = 0;
   private nextId = 1;
 
-  constructor(level: number, score: number, lives: number, mission: Mission | null = null) {
+  constructor(
+    level: number,
+    score: number,
+    lives: number,
+    mission: Mission | null = null,
+    withPhoto = false
+  ) {
     this.level = level;
     this.score = score;
     this.lives = lives;
@@ -245,6 +254,25 @@ export class GameEngine {
         this.collectItems.push({ id: this.nextId++, cell: { x: c.x, y: c.y }, taken: false });
       }
     }
+
+    // Gizli: düğün fotoğrafı parçası (yalnız tek kişilik istenirse), diğer eşyalardan uzak
+    if (withPhoto) {
+      const used = new Set([
+        ...this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+        ...this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+      ]);
+      const cells = this.shuffle(
+        floors.filter(
+          (c) =>
+            !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+            !(c.x === exit.x && c.y === exit.y) &&
+            !used.has(c.y * this.maze.cols + c.x)
+        )
+      );
+      if (cells[0]) {
+        this.photoItem = { id: this.nextId++, cell: { x: cells[0].x, y: cells[0].y }, taken: false };
+      }
+    }
   }
 
   get zombiesRemaining() {
@@ -287,6 +315,7 @@ export class GameEngine {
     this.pickupAmmo();
     this.pickupHealth();
     this.pickupCollect();
+    this.pickupPhoto();
     this.computeVision();
     this.checkExit();
     this.checkMission();
@@ -542,6 +571,17 @@ export class GameEngine {
         this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + HEAL_AMOUNT);
         this.events.push("heal");
       }
+    }
+  }
+
+  private pickupPhoto() {
+    const p = this.photoItem;
+    if (!p || p.taken) return;
+    const pc = cellOf(this.player.pos);
+    if (p.cell.x === pc.x && p.cell.y === pc.y) {
+      p.taken = true;
+      this.photoTaken = true;
+      this.events.push("secret");
     }
   }
 

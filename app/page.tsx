@@ -10,6 +10,7 @@ import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
 import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
 import { MISSIONS, ENDLESS } from "@/lib/missions";
+import { FRAGMENT_COUNT, FRAGMENTS, SECRET_ENDING, SECRET_ENDING_TITLE } from "@/lib/secrets";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 
@@ -22,6 +23,7 @@ type Screen =
   | "missionresult"
   | "endlessplay"
   | "endlessresult"
+  | "secrets"
   | "playing"
   | "dead"
   | "levelclear"
@@ -51,8 +53,10 @@ export default function Page() {
   const [endlessRunId, setEndlessRunId] = useState(0);
   const [endlessBest, setEndlessBest] = useState(0);
   const [endlessResult, setEndlessResult] = useState<{ survived: number; best: number } | null>(null);
+  // Gizli fotoğraf parçaları (bölüm no listesi)
+  const [fragments, setFragments] = useState<number[]>([]);
 
-  // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler)
+  // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + gizli parçalar)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("blackout_missions_cleared");
@@ -61,36 +65,66 @@ export default function Page() {
       if (best) setMissionBest(JSON.parse(best));
       const eb = localStorage.getItem("blackout_endless_best");
       if (eb) setEndlessBest(parseInt(eb, 10) || 0);
+      const fr = localStorage.getItem("blackout_fragments");
+      if (fr) setFragments(JSON.parse(fr));
     } catch {
       /* geç */
     }
   }, []);
 
-  // Menü/ekranlarda (oyun dışı) açılış müziği — göze batmayan otomatik başlatma.
-  // Menüye girince SESSİZ autoplay başlar (tarayıcı izin verir), ilk etkileşimde
-  // (herhangi bir tıklama/tuş/dokunuş) sesi açılır. Görünür uyarı yok.
+  function saveFragment(lv: number) {
+    setFragments((prev) => {
+      if (prev.includes(lv)) return prev;
+      const next = [...prev, lv].sort((a, b) => a - b);
+      try {
+        localStorage.setItem("blackout_fragments", JSON.stringify(next));
+      } catch {
+        /* geç */
+      }
+      return next;
+    });
+  }
+
+  // Ses kilidi: ilk kullanıcı etkileşiminde (tarayıcı kuralı) sesi aç. BİR KEZ
+  // açıldıktan sonra menü müziği ekranlar arası KESİNTİSİZ çalar (tekrar tıklama yok).
+  const audioUnlocked = useRef(false);
   useEffect(() => {
-    if (
-      screen === "playing" ||
-      screen === "onlinegame" ||
-      screen === "missionplay" ||
-      screen === "endlessplay"
-    )
-      return;
-    sound.primeMenuMusic(); // gizlice çalmaya başla (muted)
-    const reveal = () => {
+    const unlock = () => {
+      if (audioUnlocked.current) return;
+      audioUnlocked.current = true;
       sound.resume();
       sound.revealMenuMusic();
     };
-    window.addEventListener("pointerdown", reveal, { once: true });
-    window.addEventListener("keydown", reveal, { once: true });
-    window.addEventListener("touchstart", reveal, { once: true });
+    window.addEventListener("pointerdown", unlock);
+    window.addEventListener("keydown", unlock);
+    window.addEventListener("touchstart", unlock);
     return () => {
-      window.removeEventListener("pointerdown", reveal);
-      window.removeEventListener("keydown", reveal);
-      window.removeEventListener("touchstart", reveal);
-      sound.stopMenuMusic();
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+      window.removeEventListener("touchstart", unlock);
     };
+  }, []);
+
+  // Menü/ekranlarda müzik çalsın; oyun ekranlarında dursun (oyun kendi sesini çalar).
+  // Menü ekranları arası geçişte müziği DURDURMAYIZ — böylece kesintisiz akar.
+  useEffect(() => {
+    const inGame =
+      screen === "playing" ||
+      screen === "onlinegame" ||
+      screen === "missionplay" ||
+      screen === "endlessplay";
+    if (inGame) {
+      sound.stopMenuMusic();
+      return;
+    }
+    // menü tarafı: ses açıldıysa doğrudan çal (tekrar tıklama gerektirmez),
+    // açılmadıysa sessiz autoplay dene (ilk tıklamada yukarıdaki unlock açar)
+    if (audioUnlocked.current) {
+      sound.resume();
+      sound.revealMenuMusic();
+    } else {
+      sound.primeMenuMusic();
+    }
   }, [screen]);
 
   function play(lv: number, sc: number, lv3: number) {
@@ -204,6 +238,8 @@ export default function Page() {
         score={score}
         lives={lives}
         themeSeed={themeSeed}
+        withPhoto={!fragments.includes(level)}
+        onFragment={() => saveFragment(level)}
         onEnd={handleEnd}
         onQuit={() => setScreen("menu")}
       />
@@ -218,6 +254,76 @@ export default function Page() {
 
   if (screen === "ayarlar") {
     return <Settings onBack={() => setScreen("menu")} />;
+  }
+
+  if (screen === "secrets") {
+    const all = fragments.length >= FRAGMENT_COUNT;
+    return (
+      <div className="screen">
+        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
+          SIRLAR
+        </div>
+        <div className="subtitle">
+          Bölümlere saklı <b style={{ color: "#efc987" }}>düğün fotoğrafı parçalarını</b> topla
+          — <b>{fragments.length}/{FRAGMENT_COUNT}</b>. Hepsi gerçeği ortaya çıkarır.
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            width: "100%",
+            maxWidth: 500,
+            textAlign: "left",
+          }}
+        >
+          {FRAGMENTS.map((txt, i) => {
+            const got = fragments.includes(i + 1);
+            return (
+              <div
+                key={i}
+                className="how"
+                style={{
+                  margin: 0,
+                  padding: "8px 12px",
+                  opacity: got ? 1 : 0.5,
+                  borderColor: got ? "rgba(239,201,135,0.4)" : undefined,
+                }}
+              >
+                <b style={{ color: got ? "#efc987" : "var(--muted)" }}>
+                  {got ? "📷" : "🔒"} Parça {i + 1}{" "}
+                  <span style={{ fontSize: 11, opacity: 0.7 }}>(Bölüm {i + 1})</span>
+                </b>
+                <div style={{ fontSize: 13, marginTop: 3 }}>
+                  {got ? txt : "??? — henüz bulunmadı"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {all && (
+          <div
+            className="how"
+            style={{ maxWidth: 500, borderColor: "rgba(239,201,135,0.6)", lineHeight: 1.6 }}
+          >
+            <div className="title" style={{ fontSize: "clamp(22px,5vw,34px)", color: "#efc987" }}>
+              {SECRET_ENDING_TITLE}
+            </div>
+            {SECRET_ENDING.map((line, i) => (
+              <p key={i} style={{ margin: i === 0 ? "8px 0 0" : "8px 0 0" }}>
+                {line}
+              </p>
+            ))}
+          </div>
+        )}
+
+        <button className="btn btn-primary" onClick={() => setScreen("menu")}>
+          ← Menü
+        </button>
+      </div>
+    );
   }
 
   if (screen === "missionplay" && missionIndex != null) {
@@ -408,6 +514,9 @@ export default function Page() {
             </button>
             <button className="btn" onClick={playEndless}>
               ♾️ Hayatta Kalma
+            </button>
+            <button className="btn" onClick={() => setScreen("secrets")}>
+              📷 Sırlar {fragments.length > 0 ? `(${fragments.length}/${FRAGMENT_COUNT})` : ""}
             </button>
             <button className="btn" onClick={() => setScreen("ayarlar")}>
               ⚙ Ayarlar
