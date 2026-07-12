@@ -9,7 +9,7 @@ import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
 import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
-import { MISSIONS } from "@/lib/missions";
+import { MISSIONS, ENDLESS } from "@/lib/missions";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 
@@ -19,6 +19,9 @@ type Screen =
   | "ayarlar"
   | "missions"
   | "missionplay"
+  | "missionresult"
+  | "endlessplay"
+  | "endlessresult"
   | "playing"
   | "dead"
   | "levelclear"
@@ -40,13 +43,24 @@ export default function Page() {
   const [missionIndex, setMissionIndex] = useState<number | null>(null);
   const [missionRunId, setMissionRunId] = useState(0);
   const [cleared, setCleared] = useState<number[]>([]);
-  const [missionBanner, setMissionBanner] = useState<{ ok: boolean; title: string } | null>(null);
+  const [missionBest, setMissionBest] = useState<Record<number, number>>({});
+  const [missionResult, setMissionResult] = useState<
+    { ok: boolean; title: string; time: number; best: number; hasNext: boolean } | null
+  >(null);
+  // Sonsuz mod
+  const [endlessRunId, setEndlessRunId] = useState(0);
+  const [endlessBest, setEndlessBest] = useState(0);
+  const [endlessResult, setEndlessResult] = useState<{ survived: number; best: number } | null>(null);
 
-  // Tamamlanan görevleri yükle
+  // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("blackout_missions_cleared");
       if (raw) setCleared(JSON.parse(raw));
+      const best = localStorage.getItem("blackout_mission_best");
+      if (best) setMissionBest(JSON.parse(best));
+      const eb = localStorage.getItem("blackout_endless_best");
+      if (eb) setEndlessBest(parseInt(eb, 10) || 0);
     } catch {
       /* geç */
     }
@@ -56,7 +70,13 @@ export default function Page() {
   // Menüye girince SESSİZ autoplay başlar (tarayıcı izin verir), ilk etkileşimde
   // (herhangi bir tıklama/tuş/dokunuş) sesi açılır. Görünür uyarı yok.
   useEffect(() => {
-    if (screen === "playing" || screen === "onlinegame" || screen === "missionplay") return;
+    if (
+      screen === "playing" ||
+      screen === "onlinegame" ||
+      screen === "missionplay" ||
+      screen === "endlessplay"
+    )
+      return;
     sound.primeMenuMusic(); // gizlice çalmaya başla (muted)
     const reveal = () => {
       sound.resume();
@@ -96,14 +116,16 @@ export default function Page() {
   function playMission(i: number) {
     setMissionIndex(i);
     setMissionRunId((r) => r + 1);
-    setMissionBanner(null);
     setScreen("missionplay");
   }
 
   function handleMissionEnd(r: EndResult) {
     const m = missionIndex != null ? MISSIONS[missionIndex] : null;
     const ok = r.status === "levelclear";
+    const t = Math.floor(r.time ?? 0);
+    let best = m ? missionBest[m.id] ?? 0 : 0;
     if (ok && m) {
+      // tamamlandı işaretle
       setCleared((prev) => {
         const next = prev.includes(m.id) ? prev : [...prev, m.id];
         try {
@@ -113,9 +135,52 @@ export default function Page() {
         }
         return next;
       });
+      // en iyi (en kısa) süre
+      if (best === 0 || t < best) {
+        best = t;
+        setMissionBest((prev) => {
+          const next = { ...prev, [m.id]: t };
+          try {
+            localStorage.setItem("blackout_mission_best", JSON.stringify(next));
+          } catch {
+            /* geç */
+          }
+          return next;
+        });
+      }
     }
-    setMissionBanner(m ? { ok, title: m.title } : null);
-    setScreen("missions");
+    setMissionResult(
+      m
+        ? {
+            ok,
+            title: m.title,
+            time: t,
+            best,
+            hasNext: missionIndex != null && missionIndex < MISSIONS.length - 1,
+          }
+        : null
+    );
+    setScreen("missionresult");
+  }
+
+  function playEndless() {
+    setEndlessRunId((r) => r + 1);
+    setScreen("endlessplay");
+  }
+
+  function handleEndlessEnd(r: EndResult) {
+    const survived = Math.floor(r.time ?? r.score ?? 0);
+    const best = Math.max(endlessBest, survived);
+    if (best > endlessBest) {
+      setEndlessBest(best);
+      try {
+        localStorage.setItem("blackout_endless_best", String(best));
+      } catch {
+        /* geç */
+      }
+    }
+    setEndlessResult({ survived, best });
+    setScreen("endlessresult");
   }
 
   function handleStarted(room: NetRoom, info: StartInfo) {
@@ -170,25 +235,89 @@ export default function Page() {
     );
   }
 
+  if (screen === "endlessplay") {
+    return (
+      <Game
+        key={`endless-${endlessRunId}`}
+        level={1}
+        score={0}
+        lives={1}
+        themeSeed={endlessRunId}
+        mission={ENDLESS}
+        onEnd={handleEndlessEnd}
+        onQuit={() => setScreen("menu")}
+      />
+    );
+  }
+
+  if (screen === "endlessresult" && endlessResult) {
+    const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
+    return (
+      <div className="screen">
+        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
+          DAYANAMADIN
+        </div>
+        <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,30px)" }}>
+          <b style={{ color: "#8be9ff" }}>{endlessResult.survived} saniye</b> hayatta kaldın
+          {rec && <span style={{ color: "#7dffb0" }}> · yeni rekor! 🏆</span>}
+        </div>
+        <div className="subtitle">En iyi: <b style={{ color: "#7dffb0" }}>{endlessResult.best}s</b></div>
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <button className="btn btn-primary" onClick={playEndless}>↻ Tekrar Dene</button>
+          <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "missionresult" && missionResult) {
+    const mr = missionResult;
+    return (
+      <div className="screen">
+        <div
+          className="title"
+          style={{ fontSize: "clamp(30px,8vw,56px)", color: mr.ok ? "#7dffb0" : "#ff6b6b" }}
+        >
+          {mr.ok ? "GÖREV TAMAM 🏆" : "BAŞARISIZ"}
+        </div>
+        <div className="subtitle" style={{ fontSize: "clamp(18px,4.5vw,26px)" }}>
+          {mr.title}
+        </div>
+        {mr.ok ? (
+          <div className="subtitle">
+            Süre: <b style={{ color: "#8be9ff" }}>{mr.time}s</b> · En iyi:{" "}
+            <b style={{ color: "#7dffb0" }}>{mr.best}s</b>
+          </div>
+        ) : (
+          <div className="subtitle" style={{ opacity: 0.8 }}>
+            Karanlık seni yuttu. Tekrar dene.
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          {mr.ok && mr.hasNext && missionIndex != null && (
+            <button className="btn btn-primary" onClick={() => playMission(missionIndex + 1)}>
+              Sonraki Görev →
+            </button>
+          )}
+          {!mr.ok && missionIndex != null && (
+            <button className="btn btn-primary" onClick={() => playMission(missionIndex)}>
+              ↻ Tekrar Dene
+            </button>
+          )}
+          <button className="btn" onClick={() => setScreen("missions")}>
+            Görev Listesi
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   if (screen === "missions") {
     return (
       <div className="screen">
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
           GÖREV MODU
         </div>
-        {missionBanner && (
-          <div
-            className="subtitle"
-            style={{
-              color: missionBanner.ok ? "#7dffb0" : "#ff6b6b",
-              fontWeight: 700,
-            }}
-          >
-            {missionBanner.ok
-              ? `✓ "${missionBanner.title}" tamamlandı!`
-              : `✗ "${missionBanner.title}" başarısız — tekrar dene`}
-          </div>
-        )}
         <div
           style={{
             display: "flex",
@@ -218,6 +347,7 @@ export default function Page() {
                   <b>{m.id}. {m.title}</b>
                   <span style={{ display: "block", fontSize: 12, opacity: 0.7 }}>
                     {m.objectiveHint}
+                    {missionBest[m.id] ? ` · en iyi ${missionBest[m.id]}s` : ""}
                   </span>
                 </span>
                 <span style={{ color: done ? "#7dffb0" : "var(--muted)", fontSize: 20 }}>
@@ -275,6 +405,9 @@ export default function Page() {
             </button>
             <button className="btn" onClick={() => setScreen("missions")}>
               🎯 Görev Modu
+            </button>
+            <button className="btn" onClick={playEndless}>
+              ♾️ Hayatta Kalma
             </button>
             <button className="btn" onClick={() => setScreen("ayarlar")}>
               ⚙ Ayarlar

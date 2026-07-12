@@ -16,6 +16,8 @@ export type Mission = {
   timeLimit?: number; // bu süre içinde çıkışa ulaş, yoksa başarısız (sn)
   surviveTime?: number; // çıkış YOK; bu kadar dayan → başarı (sn)
   exitOpenAtStart?: boolean; // hedef yoksa çıkış baştan açık
+  endless?: boolean; // Sonsuz Hayatta Kalma: çıkış yok, ölene kadar sür, skor=süre
+  escalateEvery?: number; // endless: bu saniyede bir ekstra gelin doğar (zorluk artar)
 };
 
 export const MISSIONS: Mission[] = [
@@ -102,3 +104,17 @@ export const MISSIONS: Mission[] = [
 export function missionById(id: number): Mission | undefined {
   return MISSIONS.find((m) => m.id === id);
 }
+
+// Ayrı mod: Sonsuz Hayatta Kalma (görev listesinde değil, menüden ayrı)
+export const ENDLESS: Mission = {
+  id: 100,
+  title: "Sonsuz Hayatta Kalma",
+  brief:
+    "Çıkış yok. Gelinler ölür ama geri döner ve zamanla çoğalır. Ne kadar dayanabilirsin? Süren skorundur.",
+  objectiveHint: "Ölene kadar dayan",
+  levelBase: 4,
+  lives: 1,
+  zombies: 10,
+  endless: true,
+  escalateEvery: 18, // her 18 sn bir ekstra gelin
+};

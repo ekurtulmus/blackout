@@ -22,6 +22,7 @@ export type EndResult = {
   level: number;
   score: number;
   lives: number;
+  time?: number; // geçen süre (sn) — görev rekoru / sonsuz mod skoru
 };
 
 type Hud = {
@@ -481,6 +482,7 @@ export default function Game({
           level: engine.level,
           score: engine.score,
           lives: engine.lives,
+          time: engine.time,
         });
         return; // döngüyü durdur
       }
@@ -649,7 +651,7 @@ export default function Game({
             </button>
             {onQuit && (
               <button className="btn" onClick={onQuit} style={{ opacity: 0.7 }}>
-                ← Görevler
+                ← Geri
               </button>
             )}
           </div>

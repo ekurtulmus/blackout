@@ -33,6 +33,7 @@ import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
+const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
 const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır
 
@@ -84,6 +85,8 @@ export default function OnlineGame({
   const hostBrides = useRef<Zombie[]>([]); // host: tam simülasyon
   const guestBrides = useRef<Map<number, RBride>>(new Map()); // misafir: akıştan
   const deadBrides = useRef<Set<number>>(new Set()); // ölmüş id'ler (ıraksamayı önler)
+  const brideRespawnQueue = useRef<number[]>([]); // host: ölen gelinlerin yeniden doğma zamanları (ms)
+  const brideIdCounter = useRef(0); // host: yeniden doğan gelinlere benzersiz id
   // Mermi / ateş
   const ammo = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]);
   const health = useRef<{ x: number; y: number; taken: boolean }[]>([]); // can paketleri (respawn yok)
@@ -155,9 +158,11 @@ export default function OnlineGame({
         path: null,
         repathTimer: 0,
       }));
+      brideIdCounter.current = lvl.brideSpawns.length;
     } else {
       hostBrides.current = [];
     }
+    brideRespawnQueue.current = [];
     resultPending.current = false;
     sentReach.current = false;
     ready.current = true;
@@ -278,8 +283,10 @@ export default function OnlineGame({
         bloodStains.current.push({ x, y, r: 0.5 + Math.random() * 0.35, seed: Math.floor(Math.random() * 1000) });
         sound.play("kill"); // ölen gelinin ağlaması
       }
-      if (amHost.current) hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
-      else guestBrides.current.delete(id);
+      if (amHost.current) {
+        hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
+        brideRespawnQueue.current.push(performance.now() + BRIDE_RESPAWN_MS); // 20 sn sonra yeniden doğ
+      } else guestBrides.current.delete(id);
       if (local) {
         kills.current++;
         if (kills.current >= 1 && !exitOpen.current) {
@@ -404,6 +411,23 @@ export default function OnlineGame({
       return Array.from(guestBrides.current.values());
     }
 
+    // Host: tüm oyunculardan uzak, çıkış olmayan rastgele bir zemin hücresi
+    function spawnBrideFarOnline(): Vec | null {
+      const lvl = levelRef.current!, maze = mazeRef.current!;
+      const players: Vec[] = [selfPos.current];
+      for (const o of others.current.values()) players.push(o.pos);
+      for (let i = 0; i < 50; i++) {
+        const x = 1 + Math.floor(Math.random() * (maze.cols - 2));
+        const y = 1 + Math.floor(Math.random() * (maze.rows - 2));
+        if (maze.walls[y][x]) continue;
+        if (x === lvl.exit.x && y === lvl.exit.y) continue;
+        let far = true;
+        for (const p of players) if (Math.hypot(x + 0.5 - p.x, y + 0.5 - p.y) < 6) { far = false; break; }
+        if (far) return { x, y };
+      }
+      return null;
+    }
+
     function step(dt: number, now: number) {
       const maze = mazeRef.current!;
       const lvl = levelRef.current!;
@@ -461,6 +485,25 @@ export default function OnlineGame({
         const targets: Vec[] = [selfPos.current];
         for (const o of others.current.values()) targets.push(o.pos);
         moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt);
+        // ölen gelinleri 20 sn sonra uzakta yeniden doğur
+        const q = brideRespawnQueue.current;
+        if (q.length) {
+          const remain: number[] = [];
+          for (const t of q) {
+            if (now >= t) {
+              const cell = spawnBrideFarOnline();
+              if (cell) {
+                hostBrides.current.push({
+                  id: ++brideIdCounter.current,
+                  pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
+                  hp: 1, aware: false, lastSeen: null, seenTimer: 4,
+                  wanderDir: randomDir(), wanderTimer: 0, path: null, repathTimer: 0,
+                });
+              } else remain.push(t); // uygun yer yoksa tekrar dene
+            } else remain.push(t);
+          }
+          brideRespawnQueue.current = remain;
+        }
       }
 
       const brides = renderBrides();

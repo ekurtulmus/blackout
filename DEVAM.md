@@ -43,6 +43,12 @@
   `engine.ts` görev desteği (killTarget/collectTarget/timeLimit/surviveTime/visionMul/noFire/exitOpenAtStart,
   ölüm=başarısız). `Game.tsx` görev çipi + brifing (oyunu dondurur) + toplama parçası çizimi + ateş UI gizleme.
   Menüde "🎯 Görev Modu" → görev listesi (tamamlananlar ✓, localStorage `blackout_missions_cleared`).
+  **Cila:** görev sonuç ekranı (Sonraki Görev → / Tekrar Dene / Liste) + görev başına **en iyi süre**
+  (`blackout_mission_best`), listede gösterilir.
+- ✅ **Gelin RESPAWN (toptan)**: ölen gelin **20 sn** sonra oyuncu(lar)dan uzakta yeniden doğar —
+  tek kişilik + görev (`engine.ts` respawnQueue) + online (`OnlineGame.tsx` host, yeni id + brideRespawnQueue).
+- ✅ **YENİ MOD: Sonsuz Hayatta Kalma** (`ENDLESS`) — çıkış yok, gelinler döner + her 18 sn ekstra doğar,
+  skor = dayanılan süre, en iyi süre saklanır (`blackout_endless_best`). Menüde "♾️ Hayatta Kalma".
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

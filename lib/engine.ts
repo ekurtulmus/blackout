@@ -32,6 +32,7 @@ export const CONTACT_DPS = 35; // temas başına saniyelik hasar
 export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
 export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
 export const AMMO_RESPAWN_SEC = 10; // toplanan mermi kaç saniye sonra geri doğar
+export const BRIDE_RESPAWN_SEC = 20; // ölen gelin kaç saniye sonra yeniden doğar
 
 export type Input = {
   up: boolean;
@@ -71,6 +72,11 @@ export class GameEngine {
   healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
   collectItems: Ammo[] = []; // görev: toplanacak parçalar (Ammo şeklini paylaşır)
   bullets: Bullet[] = [];
+
+  // Ölen gelinlerin yeniden doğma zamanları (saniye) + zemin hücreleri
+  private respawnQueue: number[] = [];
+  private floors: Vec[] = [];
+  private nextEscalate = Infinity; // endless: sıradaki ekstra gelin zamanı
 
   // --- Görev modu ---
   mission: Mission | null = null;
@@ -119,6 +125,7 @@ export class GameEngine {
       this.lives = mission.lives;
       this.noFire = !!mission.noFire;
       this.exitOpen = !!mission.exitOpenAtStart;
+      if (mission.endless && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
     }
     this.config = cfg;
     this.maze = generateMaze(
@@ -143,6 +150,7 @@ export class GameEngine {
     const floors = floorCells(this.maze).filter(
       (c) => distMap[c.y][c.x] >= 0 // ulaşılabilir
     );
+    this.floors = floors; // yeniden doğma için sakla
 
     // Çıkış: başlangıçtan en uzak ulaşılabilir hücre
     let exit = spawnCell;
@@ -274,6 +282,7 @@ export class GameEngine {
     this.updatePlayer(dt, input);
     this.updateBullets(dt);
     this.updateZombies(dt);
+    this.processRespawns();
     this.computeTension();
     this.pickupAmmo();
     this.pickupHealth();
@@ -305,6 +314,14 @@ export class GameEngine {
   private checkMission() {
     const m = this.mission;
     if (!m || this.status !== "playing") return;
+    // Sonsuz mod: kazanma yok, zamanla ekstra gelin doğar
+    if (m.endless) {
+      if (this.time >= this.nextEscalate) {
+        this.spawnBrideFar();
+        this.nextEscalate += m.escalateEvery ?? 20;
+      }
+      return;
+    }
     if (m.surviveTime && this.time >= m.surviveTime) {
       this.status = "levelclear"; // görev başarısı
       this.events.push("levelclear");
@@ -416,6 +433,8 @@ export class GameEngine {
     this.zombiesKilled++;
     this.score += 100;
     this.events.push("kill");
+    // 20 sn sonra yeniden doğsun (tüm modlarda)
+    this.respawnQueue.push(this.time + BRIDE_RESPAWN_SEC);
     // kan izi bırak (kalıcı, hafızada kalır)
     this.bloodStains.push({
       x: z.pos.x,
@@ -431,6 +450,44 @@ export class GameEngine {
       this.exitOpen = true;
     }
     if (!wasOpen && this.exitOpen) this.events.push("dooropen");
+  }
+
+  // Süresi gelen ölü gelinleri oyuncudan uzak bir yerde yeniden doğur
+  private processRespawns() {
+    if (this.respawnQueue.length === 0) return;
+    const remain: number[] = [];
+    for (const t of this.respawnQueue) {
+      if (this.time >= t) this.spawnBrideFar();
+      else remain.push(t);
+    }
+    this.respawnQueue = remain;
+  }
+
+  private spawnBrideFar() {
+    let cell: Vec | null = null;
+    for (let i = 0; i < 40; i++) {
+      const c = this.floors[Math.floor(Math.random() * this.floors.length)];
+      if (!c) continue;
+      if (c.x === this.exit.x && c.y === this.exit.y) continue;
+      const d = Math.hypot(c.x + 0.5 - this.player.pos.x, c.y + 0.5 - this.player.pos.y);
+      if (d >= 6) {
+        cell = c;
+        break;
+      }
+    }
+    if (!cell) return; // uygun uzak hücre yoksa bu sefer geç (kuyrukta kalmaz)
+    this.zombies.push({
+      id: this.nextId++,
+      pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
+      hp: 1,
+      aware: false,
+      lastSeen: null,
+      seenTimer: LOSE_AGGRO_TIME,
+      wanderDir: this.randomDir(),
+      wanderTimer: 0,
+      path: null,
+      repathTimer: 0,
+    });
   }
 
   private updateZombies(dt: number) {
@@ -497,8 +554,8 @@ export class GameEngine {
   }
 
   private checkExit() {
-    // Hayatta kalma görevinde çıkış yok — sadece süre dayanılır
-    if (this.mission?.surviveTime) return;
+    // Hayatta kalma / sonsuz modda çıkış yok — sadece dayanılır
+    if (this.mission?.surviveTime || this.mission?.endless) return;
     const pcell = cellOf(this.player.pos);
     if (pcell.x === this.exit.x && pcell.y === this.exit.y) {
       if (this.exitOpen) {
@@ -520,6 +577,8 @@ export class GameEngine {
     if (this.player.hp <= 0) {
       this.player.hp = 0;
       if (this.mission) {
+        // Sonsuz modda skor = dayanılan süre
+        if (this.mission.endless) this.score = Math.floor(this.time);
         // Görev: ölüm = başarısızlık (tek deneme, baştan)
         this.missionFailReason = "death";
         this.status = "gameover";
@@ -536,6 +595,9 @@ export class GameEngine {
   objectiveText(): string {
     const m = this.mission;
     if (!m) return "";
+    if (m.endless) {
+      return `Süre ${Math.floor(this.time)}s`;
+    }
     if (m.surviveTime) {
       return `Dayan ${Math.max(0, Math.ceil(m.surviveTime - this.time))}s`;
     }
