@@ -1,9 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Game, { type EndResult } from "@/components/Game";
+import OnlineLobby from "@/components/OnlineLobby";
+import OnlineGame from "@/components/OnlineGame";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
+import type { NetRoom, NetRole } from "@/lib/net";
 
 type Screen =
   | "menu"
@@ -11,7 +14,9 @@ type Screen =
   | "dead"
   | "levelclear"
   | "gameover"
-  | "win";
+  | "win"
+  | "lobby"
+  | "onlinegame";
 
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -19,6 +24,8 @@ export default function Page() {
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [runId, setRunId] = useState(0);
+  const roomRef = useRef<NetRoom | null>(null);
+  const [onlineRole, setOnlineRole] = useState<NetRole | null>(null);
 
   // Menü/ekranlarda (oyun dışı) açılış müziği — göze batmayan otomatik başlatma.
   // Menüye girince SESSİZ autoplay başlar (tarayıcı izin verir), ilk etkileşimde
@@ -60,6 +67,19 @@ export default function Page() {
     setScreen(r.status);
   }
 
+  function handleConnected(room: NetRoom, role: NetRole) {
+    roomRef.current = room;
+    setOnlineRole(role);
+    setScreen("onlinegame");
+  }
+
+  function leaveOnline() {
+    roomRef.current?.leave();
+    roomRef.current = null;
+    setOnlineRole(null);
+    setScreen("menu");
+  }
+
   if (screen === "playing") {
     return (
       <Game
@@ -68,6 +88,22 @@ export default function Page() {
         score={score}
         lives={lives}
         onEnd={handleEnd}
+      />
+    );
+  }
+
+  if (screen === "lobby") {
+    return (
+      <OnlineLobby onBack={() => setScreen("menu")} onConnected={handleConnected} />
+    );
+  }
+
+  if (screen === "onlinegame" && roomRef.current && onlineRole) {
+    return (
+      <OnlineGame
+        room={roomRef.current}
+        role={onlineRole}
+        onExit={leaveOnline}
       />
     );
   }
@@ -94,9 +130,14 @@ export default function Page() {
             <br />• <b>3 can</b> hakkın var. Gelin teması can barını düşürür.
             <br />• Toplam <b>{TOTAL_LEVELS} bölüm</b> — gittikçe zorlaşır.
           </div>
-          <button className="btn btn-primary" onClick={startNewGame}>
-            ▶ Oyna
-          </button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={startNewGame}>
+              ▶ Tek Kişilik
+            </button>
+            <button className="btn" onClick={() => setScreen("lobby")}>
+              👥 Online Yarış
+            </button>
+          </div>
         </>
       )}
 

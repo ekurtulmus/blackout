@@ -916,7 +916,7 @@ export default function Game({
 }
 
 // Analog joystick (mobil hareket) — sürükleme yönü + itme miktarı = hız
-function Joystick({ onMove }: { onMove: (x: number, y: number) => void }) {
+export function Joystick({ onMove }: { onMove: (x: number, y: number) => void }) {
   const baseRef = useRef<HTMLDivElement | null>(null);
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
   const drag = useRef<{ id: number; cx: number; cy: number; r: number } | null>(

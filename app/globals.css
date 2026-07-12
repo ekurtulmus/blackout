@@ -100,6 +100,27 @@ button {
   border-color: rgba(110, 231, 255, 0.4);
 }
 
+.codeinput {
+  font-size: clamp(32px, 9vw, 56px);
+  font-weight: 900;
+  letter-spacing: 0.35em;
+  text-align: center;
+  text-transform: uppercase;
+  width: min(320px, 80vw);
+  padding: 12px 8px;
+  color: #6ee7ff;
+  background: rgba(12, 16, 26, 0.85);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  outline: none;
+  caret-color: #6ee7ff;
+}
+
+.codeinput:focus {
+  border-color: rgba(110, 231, 255, 0.55);
+  box-shadow: 0 0 24px rgba(110, 231, 255, 0.18);
+}
+
 .how {
   text-align: left;
   max-width: 520px;

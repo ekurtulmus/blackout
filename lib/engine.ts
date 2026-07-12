@@ -15,13 +15,14 @@ import {
   isWall,
   type Maze,
 } from "./maze";
-import { findPath } from "./pathfind";
-import { computeVisible, hasLineOfSight, type VisibleCell } from "./vision";
+import { computeVisible, type VisibleCell } from "./vision";
+import { cellOf, dist, tryMove } from "./physics";
+import { BRIDE_RADIUS, moveBrides } from "./brides";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = 3.4; // hücre/saniye
 export const PLAYER_RADIUS = 0.3;
-export const ZOMBIE_RADIUS = 0.34;
+export const ZOMBIE_RADIUS = BRIDE_RADIUS;
 export const BULLET_SPEED = 12;
 export const BULLET_LIFE = 1.2;
 export const FIRE_COOLDOWN = 0.22;
@@ -56,45 +57,6 @@ export type Player = {
   dir: Vec; // birim yön (ateş için)
   hp: number;
 };
-
-// Çarpışma: daire (merkez p, yarıçap rad) herhangi bir duvar hücresiyle çakışıyor mu?
-function collides(maze: Maze, p: Vec, rad: number): boolean {
-  const minX = Math.floor(p.x - rad);
-  const maxX = Math.floor(p.x + rad);
-  const minY = Math.floor(p.y - rad);
-  const maxY = Math.floor(p.y + rad);
-  for (let cy = minY; cy <= maxY; cy++) {
-    for (let cx = minX; cx <= maxX; cx++) {
-      if (!isWall(maze, cx, cy)) continue;
-      const closestX = Math.max(cx, Math.min(p.x, cx + 1));
-      const closestY = Math.max(cy, Math.min(p.y, cy + 1));
-      const ddx = p.x - closestX;
-      const ddy = p.y - closestY;
-      if (ddx * ddx + ddy * ddy < rad * rad) return true;
-    }
-  }
-  return false;
-}
-
-// Eksen ayrı hareket (duvar boyunca kayma hissi)
-function tryMove(maze: Maze, pos: Vec, rad: number, dx: number, dy: number) {
-  if (dx !== 0) {
-    const nx = pos.x + dx;
-    if (!collides(maze, { x: nx, y: pos.y }, rad)) pos.x = nx;
-  }
-  if (dy !== 0) {
-    const ny = pos.y + dy;
-    if (!collides(maze, { x: pos.x, y: ny }, rad)) pos.y = ny;
-  }
-}
-
-function cellOf(p: Vec): Vec {
-  return { x: Math.floor(p.x), y: Math.floor(p.y) };
-}
-
-function dist(a: Vec, b: Vec) {
-  return Math.hypot(a.x - b.x, a.y - b.y);
-}
 
 export class GameEngine {
   config: LevelConfig;
@@ -364,37 +326,11 @@ export class GameEngine {
   }
 
   private updateZombies(dt: number) {
-    const pcell = cellOf(this.player.pos);
-    const smart = this.config.intelligence; // 0..1
+    // Gelin hareketi — ortak AI (en yakın oyuncuyu hedefler; tek kişilikte tek oyuncu)
+    moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt);
+
+    // Oyuncuya temas: hasar + geri itme
     for (const z of this.zombies) {
-      const zcell = cellOf(z.pos);
-      const d = dist(z.pos, this.player.pos);
-
-      // Oyuncuyu görüyor mu? (görüş yarıçapı + zekâ ile artan algı + görüş hattı)
-      const detect = this.config.visionRadius + 0.5 + smart * 2.5;
-      const canSee =
-        d <= detect && hasLineOfSight(this.maze, zcell, pcell);
-
-      if (canSee) {
-        z.aware = true;
-        z.lastSeen = { x: pcell.x, y: pcell.y };
-        z.seenTimer = 0;
-      } else {
-        z.seenTimer += dt;
-        // ASLA vazgeçmez: bir kez fark ettiyse aware kalır (peşini bırakmaz)
-      }
-
-      if (z.aware) {
-        // Zeki zombiler (üst seviye) oyuncunun GÜNCEL yerini bilir;
-        // aptal zombiler (alt seviye) son görülen noktaya gider.
-        const target =
-          canSee || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
-        this.moveZombieChase(z, zcell, dt, target, canSee, smart, pcell);
-      } else {
-        this.moveZombieWander(z, dt);
-      }
-
-      // Oyuncuya temas: hasar + geri itme
       if (dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
         if (this.hurtFlash <= 0) this.events.push("hurt");
         this.player.hp -= CONTACT_DPS * dt;
@@ -409,83 +345,6 @@ export class GameEngine {
           (nx / nl) * 1.5 * dt,
           (ny / nl) * 1.5 * dt
         );
-      }
-    }
-
-    this.separateZombies();
-  }
-
-  private moveZombieChase(
-    z: Zombie,
-    zcell: Vec,
-    dt: number,
-    target: Vec,
-    canSee: boolean,
-    smart: number,
-    pcell: Vec
-  ) {
-    z.repathTimer -= dt;
-    if (!z.path || z.path.length === 0 || z.repathTimer <= 0) {
-      z.path = findPath(this.maze, zcell, target);
-      // zeki zombiler daha sık yol hesaplar (daha iyi takip): 0.6s -> 0.15s
-      z.repathTimer = 0.6 - smart * 0.45;
-    }
-    if (z.path && z.path.length > 0) {
-      const next = z.path[0];
-      const tp = { x: next.x + 0.5, y: next.y + 0.5 };
-      this.stepToward(z, tp, this.config.zombieSpeed * dt);
-      if (dist(z.pos, tp) < 0.12) z.path.shift();
-    } else if (!canSee) {
-      // Son bilinen noktaya vardı ama oyuncuyu göremiyor.
-      // ASLA vazgeçme: yeni hedef olarak oyuncunun güncel yerini al (av devam eder).
-      z.lastSeen = { x: pcell.x, y: pcell.y };
-      z.path = null;
-      z.repathTimer = 0;
-    }
-  }
-
-  private moveZombieWander(z: Zombie, dt: number) {
-    z.wanderTimer -= dt;
-    if (z.wanderTimer <= 0) {
-      z.wanderDir = this.randomDir();
-      z.wanderTimer = 0.8 + Math.random() * 1.2;
-    }
-    const speed = this.config.zombieSpeed * 0.4;
-    const before = { x: z.pos.x, y: z.pos.y };
-    tryMove(
-      this.maze,
-      z.pos,
-      ZOMBIE_RADIUS,
-      z.wanderDir.x * speed * dt,
-      z.wanderDir.y * speed * dt
-    );
-    // duvara takıldıysa yön değiştir
-    if (dist(before, z.pos) < 0.0005) z.wanderTimer = 0;
-  }
-
-  private stepToward(z: Zombie, tp: Vec, step: number) {
-    const dx = tp.x - z.pos.x;
-    const dy = tp.y - z.pos.y;
-    const len = Math.hypot(dx, dy) || 1;
-    tryMove(this.maze, z.pos, ZOMBIE_RADIUS, (dx / len) * step, (dy / len) * step);
-  }
-
-  private separateZombies() {
-    const minDist = ZOMBIE_RADIUS * 2;
-    for (let i = 0; i < this.zombies.length; i++) {
-      for (let j = i + 1; j < this.zombies.length; j++) {
-        const a = this.zombies[i];
-        const b = this.zombies[j];
-        const dx = b.pos.x - a.pos.x;
-        const dy = b.pos.y - a.pos.y;
-        const d = Math.hypot(dx, dy);
-        if (d > 0 && d < minDist) {
-          const push = (minDist - d) / 2;
-          const ux = dx / d;
-          const uy = dy / d;
-          tryMove(this.maze, a.pos, ZOMBIE_RADIUS, -ux * push, -uy * push);
-          tryMove(this.maze, b.pos, ZOMBIE_RADIUS, ux * push, uy * push);
-        }
       }
     }
   }
