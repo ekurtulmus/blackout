@@ -5,6 +5,8 @@ import { Joystick } from "@/components/Game";
 import {
   PLAYER_SPEED,
   PLAYER_RADIUS,
+  PLAYER_MAX_HP,
+  CONTACT_DPS,
   BULLET_SPEED,
   BULLET_LIFE,
   FIRE_COOLDOWN,
@@ -44,7 +46,7 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false });
   const [phase, setPhase] = useState<Phase>(role === "host" ? "playing" : "loading");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, myScore: 0, oppScore: 0, barriers: 3 });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, myScore: 0, oppScore: 0, barriers: 3, hp: PLAYER_MAX_HP });
 
   // Dünya
   const levelRef = useRef<RaceLevel | null>(null);
@@ -71,6 +73,7 @@ export default function OnlineGame({
   const exitOpen = useRef(false);
   const invulnUntil = useRef(0);
   const hurt = useRef(0);
+  const hp = useRef(PLAYER_MAX_HP);
   const selfMoving = useRef(false);
   const bloodStains = useRef<{ x: number; y: number; r: number; seed: number }[]>([]);
   // Bariyerler (paylaşılan): id -> {x,y,armAt,owner}
@@ -104,6 +107,7 @@ export default function OnlineGame({
     barrierStock.current = 3;
     breakTimer.current = 0;
     bloodStains.current = [];
+    hp.current = PLAYER_MAX_HP;
     invulnUntil.current = performance.now() + 1500;
     // host gelinleri üretir
     if (role === "host") {
@@ -404,17 +408,27 @@ export default function OnlineGame({
         if (!a.taken && a.x === pc.x && a.y === pc.y) { a.taken = true; ammoCount.current++; }
       }
 
-      // ölüm (tek dokunuş) — davetsiz doğuş koruması bittiyse
+      // hasar (dokunulmazlık bittiyse): gelin teması can barını düşürür
       if (now > invulnUntil.current) {
+        let touched = false;
         for (const z of brides) {
           if (Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y) < PLAYER_RADIUS + BRIDE_RADIUS) {
-            // öl → başlangıçta doğ + 1 mermi
+            touched = true;
+            break;
+          }
+        }
+        if (touched) {
+          hp.current -= CONTACT_DPS * dt;
+          hurt.current = 0.25;
+          if (hp.current <= 0) {
+            // öl → GÜVENLİ yeniden doğ: tam can + 2 sn dokunulmazlık (gelinlerin
+            // içinden geçip köşeden çıkabilirsin) + güvenlik için 1 mermi
+            hp.current = PLAYER_MAX_HP;
             selfPos.current = { ...mySpawn.current };
             ammoCount.current = Math.max(ammoCount.current, 1);
-            invulnUntil.current = now + 1500;
-            hurt.current = 0.4;
+            invulnUntil.current = now + 2000;
+            hurt.current = 0.5;
             bullets.current = [];
-            break;
           }
         }
       }
@@ -667,7 +681,7 @@ export default function OnlineGame({
           hudAcc = 0;
           const mine = role === "host" ? scores.current.host : scores.current.guest;
           const opp = role === "host" ? scores.current.guest : scores.current.host;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, myScore: mine, oppScore: opp, barriers: barrierStock.current });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, myScore: mine, oppScore: opp, barriers: barrierStock.current, hp: Math.max(0, hp.current) });
         }
         render();
       }
@@ -693,6 +707,18 @@ export default function OnlineGame({
       <div className="hud">
         <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış</span></div>
         <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
+        <div className="chip">
+          <span className="lbl">Can</span>
+          <div className="hpbar">
+            <div
+              className="hpfill"
+              style={{
+                width: `${(hud.hp / PLAYER_MAX_HP) * 100}%`,
+                background: hud.hp / PLAYER_MAX_HP > 0.35 ? "var(--hp)" : "var(--hp-low)",
+              }}
+            />
+          </div>
+        </div>
         <div className="chip"><span className="lbl">Mermi</span><span className="val">{hud.ammo}</span></div>
         <div className="chip"><span className="lbl">Bariyer</span><span className="val">{hud.barriers}</span></div>
         <div className="chip">
