@@ -44,6 +44,14 @@ export type Input = {
   ay?: number; // analog joystick dikey (-1..1), mobil
 };
 
+// Tek kişilik zorluk seviyesi (gelin sayısı / hız / görüş çarpanları)
+export type Diff = "kolay" | "orta" | "zor";
+const DIFF_MULT: Record<Diff, { count: number; speed: number; vision: number }> = {
+  kolay: { count: 0.6, speed: 0.82, vision: 1.15 },
+  orta: { count: 1.0, speed: 1.0, vision: 1.0 },
+  zor: { count: 1.4, speed: 1.12, vision: 0.85 },
+};
+
 // Ses için ayrık olaylar. Motor bunları biriktirir, Game katmanı her kare boşaltıp çalar.
 export type SoundEvent =
   | "shot"
@@ -115,7 +123,8 @@ export class GameEngine {
     score: number,
     lives: number,
     mission: Mission | null = null,
-    withPhoto = false
+    withPhoto = false,
+    diff: Diff = "orta"
   ) {
     this.level = level;
     this.score = score;
@@ -135,6 +144,13 @@ export class GameEngine {
       this.noFire = !!mission.noFire;
       this.exitOpen = !!mission.exitOpenAtStart;
       if (mission.endless && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
+    } else if (diff !== "orta") {
+      // Tek kişilik zorluk: gelin sayısı/hız/görüş ölçekle
+      const dm = DIFF_MULT[diff];
+      cfg = { ...cfg };
+      cfg.zombies = Math.max(1, Math.round(cfg.zombies * dm.count));
+      cfg.zombieSpeed = Math.min(3.3, cfg.zombieSpeed * dm.speed);
+      cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * dm.vision));
     }
     this.config = cfg;
     this.maze = generateMaze(

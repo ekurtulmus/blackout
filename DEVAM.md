@@ -51,9 +51,13 @@
   skor = dayanılan süre, en iyi süre saklanır (`blackout_endless_best`). Menüde "♾️ Hayatta Kalma".
 - ✅ **Müzik akışı düzeltildi**: ses bir kez açılınca menü ekranları arası KESİNTİSİZ çalar (eskiden her
   ekran değişiminde durup tekrar tıklama istiyordu). `page.tsx` tek-sefer unlock + oyun dışı ekranlarda durdurma yok.
-- ✅ **GİZLİ SON / SIRLAR** (`lib/secrets.ts`) — tek kişilik bölümlere saklı 10 **düğün fotoğrafı parçası**
-  (`engine.ts` withPhoto + photoItem, `secret` sesi). Menüde "📷 Sırlar" → parçalar + ilerleme (X/10),
-  hepsi toplanınca gizli son "Gerçek" açılır. Kayıt: `blackout_fragments`. Merak/koleksiyon kancası.
+- ✅ **GİZLİ SON / SIRLAR — GÖREV MODUNA bağlı** (`lib/secrets.ts`) — 8 sır, her **görev tamamlanınca
+  KARIŞIK eşlemeyle** (Görev 1→Sır 3…) bir sır açılır (`MISSION_SECRET` bijection). Her sırda **sepya
+  SVG fotoğraf** + 120-200 harflik, birbirine bağlı hikâye. Menüde "📷 Sırlar" → kart grid, açık sırra
+  **tıkla → popup** (fotoğraf + altında metin). 8/8 → gizli son "Gerçek". Kayıt: `blackout_secrets`.
+  (Eski tek-kişilik parça toplama kaldırıldı; 10. bölüm zorunluluğu yoktu artık.)
+- ✅ **Tek kişilik ZORLUK** (Kolay/Orta/Zor) — giriş ekranında seçilir (`engine.ts` `Diff` + DIFF_MULT:
+  gelin sayısı/hız/görüş ölçekler), `blackout_sp_diff`'te saklanır. Görevler kendi ayarını korur.
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

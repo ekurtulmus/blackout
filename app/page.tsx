@@ -10,7 +10,14 @@ import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
 import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
 import { MISSIONS, ENDLESS } from "@/lib/missions";
-import { FRAGMENT_COUNT, FRAGMENTS, SECRET_ENDING, SECRET_ENDING_TITLE } from "@/lib/secrets";
+import {
+  SECRETS,
+  SECRET_COUNT,
+  MISSION_SECRET,
+  SECRET_ENDING,
+  SECRET_ENDING_TITLE,
+} from "@/lib/secrets";
+import type { Diff } from "@/lib/engine";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 
@@ -53,10 +60,13 @@ export default function Page() {
   const [endlessRunId, setEndlessRunId] = useState(0);
   const [endlessBest, setEndlessBest] = useState(0);
   const [endlessResult, setEndlessResult] = useState<{ survived: number; best: number } | null>(null);
-  // Gizli fotoğraf parçaları (bölüm no listesi)
-  const [fragments, setFragments] = useState<number[]>([]);
+  // Sırlar (görev modundan açılır) — açılan sır indeksleri
+  const [unlockedSecrets, setUnlockedSecrets] = useState<number[]>([]);
+  const [openSecret, setOpenSecret] = useState<number | null>(null); // popup için
+  // Tek kişilik zorluk
+  const [spDiff, setSpDiff] = useState<Diff>("orta");
 
-  // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + gizli parçalar)
+  // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
     try {
       const raw = localStorage.getItem("blackout_missions_cleared");
@@ -65,24 +75,37 @@ export default function Page() {
       if (best) setMissionBest(JSON.parse(best));
       const eb = localStorage.getItem("blackout_endless_best");
       if (eb) setEndlessBest(parseInt(eb, 10) || 0);
-      const fr = localStorage.getItem("blackout_fragments");
-      if (fr) setFragments(JSON.parse(fr));
+      const sec = localStorage.getItem("blackout_secrets");
+      if (sec) setUnlockedSecrets(JSON.parse(sec));
+      const sd = localStorage.getItem("blackout_sp_diff");
+      if (sd === "kolay" || sd === "orta" || sd === "zor") setSpDiff(sd);
     } catch {
       /* geç */
     }
   }, []);
 
-  function saveFragment(lv: number) {
-    setFragments((prev) => {
-      if (prev.includes(lv)) return prev;
-      const next = [...prev, lv].sort((a, b) => a - b);
+  function unlockSecret(missionId: number) {
+    const idx = MISSION_SECRET[missionId];
+    if (idx === undefined) return;
+    setUnlockedSecrets((prev) => {
+      if (prev.includes(idx)) return prev;
+      const next = [...prev, idx];
       try {
-        localStorage.setItem("blackout_fragments", JSON.stringify(next));
+        localStorage.setItem("blackout_secrets", JSON.stringify(next));
       } catch {
         /* geç */
       }
       return next;
     });
+  }
+
+  function chooseDiff(d: Diff) {
+    setSpDiff(d);
+    try {
+      localStorage.setItem("blackout_sp_diff", d);
+    } catch {
+      /* geç */
+    }
   }
 
   // Ses kilidi: ilk kullanıcı etkileşiminde (tarayıcı kuralı) sesi aç. BİR KEZ
@@ -159,6 +182,7 @@ export default function Page() {
     const t = Math.floor(r.time ?? 0);
     let best = m ? missionBest[m.id] ?? 0 : 0;
     if (ok && m) {
+      unlockSecret(m.id); // görev başarısı → karışık eşlemeyle bir sır aç
       // tamamlandı işaretle
       setCleared((prev) => {
         const next = prev.includes(m.id) ? prev : [...prev, m.id];
@@ -238,8 +262,7 @@ export default function Page() {
         score={score}
         lives={lives}
         themeSeed={themeSeed}
-        withPhoto={!fragments.includes(level)}
-        onFragment={() => saveFragment(level)}
+        diff={spDiff}
         onEnd={handleEnd}
         onQuit={() => setScreen("menu")}
       />
@@ -257,48 +280,72 @@ export default function Page() {
   }
 
   if (screen === "secrets") {
-    const all = fragments.length >= FRAGMENT_COUNT;
+    const all = unlockedSecrets.length >= SECRET_COUNT;
+    const sel = openSecret != null ? SECRETS[openSecret] : null;
     return (
       <div className="screen">
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
           SIRLAR
         </div>
         <div className="subtitle">
-          Bölümlere saklı <b style={{ color: "#efc987" }}>düğün fotoğrafı parçalarını</b> topla
-          — <b>{fragments.length}/{FRAGMENT_COUNT}</b>. Hepsi gerçeği ortaya çıkarır.
+          <b style={{ color: "#efc987" }}>Görevleri tamamladıkça</b> gelinin hikâyesinden bir sır
+          açılır — <b>{unlockedSecrets.length}/{SECRET_COUNT}</b>. Açık bir sırra tıkla, fotoğrafı gör.
         </div>
 
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 8,
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
+            gap: 10,
             width: "100%",
-            maxWidth: 500,
-            textAlign: "left",
+            maxWidth: 520,
           }}
         >
-          {FRAGMENTS.map((txt, i) => {
-            const got = fragments.includes(i + 1);
+          {SECRETS.map((s, i) => {
+            const got = unlockedSecrets.includes(i);
             return (
-              <div
-                key={i}
+              <button
+                key={s.id}
                 className="how"
+                onClick={() => got && setOpenSecret(i)}
+                disabled={!got}
                 style={{
                   margin: 0,
-                  padding: "8px 12px",
-                  opacity: got ? 1 : 0.5,
-                  borderColor: got ? "rgba(239,201,135,0.4)" : undefined,
+                  padding: 8,
+                  cursor: got ? "pointer" : "default",
+                  opacity: got ? 1 : 0.45,
+                  borderColor: got ? "rgba(239,201,135,0.5)" : undefined,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 6,
                 }}
               >
-                <b style={{ color: got ? "#efc987" : "var(--muted)" }}>
-                  {got ? "📷" : "🔒"} Parça {i + 1}{" "}
-                  <span style={{ fontSize: 11, opacity: 0.7 }}>(Bölüm {i + 1})</span>
-                </b>
-                <div style={{ fontSize: 13, marginTop: 3 }}>
-                  {got ? txt : "??? — henüz bulunmadı"}
+                <div
+                  style={{
+                    width: "100%",
+                    aspectRatio: "4 / 3",
+                    borderRadius: 4,
+                    overflow: "hidden",
+                    filter: got ? "none" : "grayscale(1) brightness(0.4)",
+                    background: "#000",
+                    display: "grid",
+                    placeItems: "center",
+                  }}
+                >
+                  {got ? (
+                    <div
+                      style={{ width: "100%", height: "100%" }}
+                      dangerouslySetInnerHTML={{ __html: s.svg }}
+                    />
+                  ) : (
+                    <span style={{ fontSize: 26, opacity: 0.6 }}>🔒</span>
+                  )}
                 </div>
-              </div>
+                <b style={{ fontSize: 13, color: got ? "#efc987" : "var(--muted)" }}>
+                  {got ? s.title : `Sır ${i + 1}`}
+                </b>
+              </button>
             );
           })}
         </div>
@@ -306,13 +353,13 @@ export default function Page() {
         {all && (
           <div
             className="how"
-            style={{ maxWidth: 500, borderColor: "rgba(239,201,135,0.6)", lineHeight: 1.6 }}
+            style={{ maxWidth: 520, borderColor: "rgba(239,201,135,0.6)", lineHeight: 1.6 }}
           >
             <div className="title" style={{ fontSize: "clamp(22px,5vw,34px)", color: "#efc987" }}>
               {SECRET_ENDING_TITLE}
             </div>
             {SECRET_ENDING.map((line, i) => (
-              <p key={i} style={{ margin: i === 0 ? "8px 0 0" : "8px 0 0" }}>
+              <p key={i} style={{ margin: "8px 0 0" }}>
                 {line}
               </p>
             ))}
@@ -322,6 +369,52 @@ export default function Page() {
         <button className="btn btn-primary" onClick={() => setScreen("menu")}>
           ← Menü
         </button>
+
+        {/* Sır popup'ı: fotoğraf + altında metin */}
+        {sel && (
+          <div
+            className="screen"
+            style={{ background: "rgba(0,0,0,0.88)", cursor: "pointer", padding: 20 }}
+            onClick={() => setOpenSecret(null)}
+          >
+            <div
+              className="how"
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                maxWidth: 440,
+                cursor: "default",
+                borderColor: "rgba(239,201,135,0.6)",
+                lineHeight: 1.6,
+              }}
+            >
+              <div
+                style={{
+                  width: "100%",
+                  maxWidth: 360,
+                  margin: "0 auto 12px",
+                  borderRadius: 6,
+                  overflow: "hidden",
+                  boxShadow: "0 6px 30px rgba(0,0,0,0.6)",
+                }}
+                dangerouslySetInnerHTML={{ __html: sel.svg }}
+              />
+              <div
+                className="title"
+                style={{ fontSize: "clamp(20px,5vw,30px)", color: "#efc987", marginBottom: 6 }}
+              >
+                {sel.title}
+              </div>
+              <p style={{ margin: 0 }}>{sel.text}</p>
+              <button
+                className="btn btn-primary"
+                onClick={() => setOpenSecret(null)}
+                style={{ marginTop: 14 }}
+              >
+                Kapat
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -516,7 +609,8 @@ export default function Page() {
               ♾️ Hayatta Kalma
             </button>
             <button className="btn" onClick={() => setScreen("secrets")}>
-              📷 Sırlar {fragments.length > 0 ? `(${fragments.length}/${FRAGMENT_COUNT})` : ""}
+              📷 Sırlar{" "}
+              {unlockedSecrets.length > 0 ? `(${unlockedSecrets.length}/${SECRET_COUNT})` : ""}
             </button>
             <button className="btn" onClick={() => setScreen("ayarlar")}>
               ⚙ Ayarlar
@@ -536,6 +630,26 @@ export default function Page() {
                 {line}
               </p>
             ))}
+          </div>
+          <div>
+            <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk</div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              {([
+                { key: "kolay", label: "Kolay", desc: "az/yavaş gelin" },
+                { key: "orta", label: "Orta", desc: "dengeli" },
+                { key: "zor", label: "Zor", desc: "çok/hızlı gelin, dar görüş" },
+              ] as { key: Diff; label: string; desc: string }[]).map((d) => (
+                <button
+                  key={d.key}
+                  className={"btn" + (spDiff === d.key ? " btn-primary" : "")}
+                  onClick={() => chooseDiff(d.key)}
+                  style={{ opacity: spDiff === d.key ? 1 : 0.7 }}
+                >
+                  {d.label}
+                  <span style={{ display: "block", fontSize: 12, opacity: 0.7 }}>{d.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn btn-primary" onClick={() => play(1, 0, 3)}>

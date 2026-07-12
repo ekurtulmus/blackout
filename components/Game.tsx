@@ -10,6 +10,7 @@ import {
   GameEngine,
   PLAYER_MAX_HP,
   type Input,
+  type Diff,
 } from "@/lib/engine";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
@@ -45,6 +46,7 @@ export default function Game({
   themeSeed = 0,
   mission = null,
   withPhoto = false,
+  diff = "orta",
   onEnd,
   onQuit,
   onFragment,
@@ -55,6 +57,7 @@ export default function Game({
   themeSeed?: number;
   mission?: Mission | null;
   withPhoto?: boolean;
+  diff?: Diff;
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
   onFragment?: () => void;
@@ -96,7 +99,7 @@ export default function Game({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const engine = new GameEngine(level, score, lives, mission, withPhoto);
+    const engine = new GameEngine(level, score, lives, mission, withPhoto, diff);
     let fragmentReported = false;
     const input: Input = {
       up: false,
