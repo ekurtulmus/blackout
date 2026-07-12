@@ -58,6 +58,9 @@
   (Eski tek-kişilik parça toplama kaldırıldı; 10. bölüm zorunluluğu yoktu artık.)
 - ✅ **Tek kişilik ZORLUK** (Kolay/Orta/Zor) — giriş ekranında seçilir (`engine.ts` `Diff` + DIFF_MULT:
   gelin sayısı/hız/görüş ölçekler), `blackout_sp_diff`'te saklanır. Görevler kendi ayarını korur.
+- ✅ **UI metinleri korku tonuna çekildi** (2026-07-12): mod adları — Yalnız Kaçış / **Ölüm Yarışı** /
+  Karanlık Görevler / Bitmeyen Gece; ekran başlıkları (SENİ BULDULAR, KARANLIK KAZANDI, GÜN AĞARDI) ve
+  açıklamalar daha atmosferik. Lobi "ÖLÜM YARIŞI". (Sadece görünen metin; ekran anahtarları aynı.)
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash

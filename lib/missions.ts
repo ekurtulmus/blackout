@@ -108,9 +108,9 @@ export function missionById(id: number): Mission | undefined {
 // Ayrı mod: Sonsuz Hayatta Kalma (görev listesinde değil, menüden ayrı)
 export const ENDLESS: Mission = {
   id: 100,
-  title: "Sonsuz Hayatta Kalma",
+  title: "Bitmeyen Gece",
   brief:
-    "Çıkış yok. Gelinler ölür ama geri döner ve zamanla çoğalır. Ne kadar dayanabilirsin? Süren skorundur.",
+    "Çıkış yok, umut yok. Gelinler ölür ama geri döner ve gitgide çoğalır. Karanlıkta ne kadar dayanabilirsin? Dayandığın her saniye skorundur.",
   objectiveHint: "Ölene kadar dayan",
   levelBase: 4,
   lives: 1,

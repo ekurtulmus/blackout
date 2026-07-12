@@ -515,7 +515,7 @@ export default function Page() {
     return (
       <div className="screen">
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-          GÖREV MODU
+          KARANLIK GÖREVLER
         </div>
         <div
           style={{
@@ -579,10 +579,11 @@ export default function Page() {
         <>
           <div className="title">BLACKOUT</div>
           <div className="subtitle">
-            Karanlık bir labirentte, elinde sadece zayıf bir el feneri.
-            Yolunu keşfet, mermileri topla, seni avlayan <b>kanlı
-            gelinlerden</b> kaç. Çıkış kilitli — yolunu açmak için{" "}
-            <b>en az 1 gelini yok et</b>, sonra karanlıkta gizli çıkışı bul.
+            Zifiri bir labirentte uyanıyorsun; elinde titrek bir el feneri.
+            Kanlı yüzlü <b>gelinler</b> seni çoktan duydu. Yolunu yokla,
+            mermileri topla, nefesini tut. Çıkış mühürlü — açmak için{" "}
+            <b>en az birini sustur</b>, sonra karanlıkta gizli kapıyı bul.
+            Yakalanırsan geri dönüşü yok.
           </div>
           <div className="how">
             <b>Nasıl Oynanır</b>
@@ -597,16 +598,16 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn btn-primary" onClick={startNewGame}>
-              ▶ Tek Kişilik
+              🕯️ Yalnız Kaçış
             </button>
             <button className="btn" onClick={() => setScreen("lobby")}>
-              👥 Online Yarış (2-6)
+              💀 Ölüm Yarışı (2-6)
             </button>
             <button className="btn" onClick={() => setScreen("missions")}>
-              🎯 Görev Modu
+              🩸 Karanlık Görevler
             </button>
             <button className="btn" onClick={playEndless}>
-              ♾️ Hayatta Kalma
+              🌑 Bitmeyen Gece
             </button>
             <button className="btn" onClick={() => setScreen("secrets")}>
               📷 Sırlar{" "}
@@ -665,10 +666,10 @@ export default function Page() {
       {screen === "dead" && (
         <>
           <div className="big" style={{ color: "#ff6b6b" }}>
-            Yakalandın!
+            SENİ BULDULAR
           </div>
           <div className="subtitle">
-            Bir canını kaybettin. Bölüm {level} baştan başlıyor.
+            Soğuk eller ensende… bir canın söndü. Bölüm {level} yeniden başlıyor.
             <br />
             Kalan can: {"♥".repeat(lives)}
           </div>
@@ -687,7 +688,7 @@ export default function Page() {
             “{flavorForLevel(level)}”
           </div>
           <div className="subtitle">
-            Karanlıktan kaçtın. Skor: <b>{score}</b>
+            Bu koridordan sağ çıktın… ama fısıltılar peşinde. Skor: <b>{score}</b>
           </div>
           <button
             className="btn btn-primary"
@@ -701,10 +702,10 @@ export default function Page() {
       {screen === "gameover" && (
         <>
           <div className="title" style={{ fontSize: "clamp(36px,10vw,72px)" }}>
-            OYUN BİTTİ
+            KARANLIK KAZANDI
           </div>
           <div className="subtitle">
-            Karanlık seni yuttu. Ulaştığın bölüm: <b>{level}</b> · Skor:{" "}
+            Gelinlerin arasında kayboldun. Son bölüm: <b>{level}</b> · Skor:{" "}
             <b>{score}</b>
           </div>
           <button className="btn btn-primary" onClick={startNewGame}>
@@ -716,11 +717,11 @@ export default function Page() {
       {screen === "win" && (
         <>
           <div className="title" style={{ color: "#7dffb0" }}>
-            KAÇTIN!
+            GÜN AĞARDI
           </div>
           <div className="subtitle">
-            {TOTAL_LEVELS} bölümün hepsini bitirdin ve karanlıktan tamamen
-            kurtuldun. Final skorun: <b>{score}</b>
+            {TOTAL_LEVELS} bölümün karanlığından da sağ çıktın. Gelinler geride
+            kaldı — şimdilik. Final skorun: <b>{score}</b>
           </div>
           <button className="btn btn-primary" onClick={startNewGame}>
             Yeniden Oyna

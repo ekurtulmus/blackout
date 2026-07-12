@@ -176,14 +176,15 @@ export default function OnlineLobby({
   return (
     <div className="screen">
       <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-        ONLINE YARIŞ
+        ÖLÜM YARIŞI
       </div>
 
       {mode === "choose" && (
         <>
           <div className="subtitle">
-            2-6 kişi aynı labirentte yarışın: kim önce çıkarsa bölümü kazanır.
-            Oda kur ve kodu paylaş, ya da arkadaşının koduyla katıl.
+            2-6 kişi aynı karanlığa hapis. Gelinler hepinizin peşinde — ilk
+            kaçan hayatta kalır, ötekiler geride kalır. Oda kur ve kodu paylaş,
+            ya da bir arkadaşının koduyla karanlığa katıl.
           </div>
           <div className="subtitle" style={{ marginBottom: 2 }}>Oyuncu adın:</div>
           {nameInput}

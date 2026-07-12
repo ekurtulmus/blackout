@@ -667,7 +667,7 @@ export default function Game({
       {brief && mission && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.86)" }}>
           <div className="subtitle" style={{ color: "#8be9ff", letterSpacing: "0.15em" }}>
-            GÖREV {mission.id}
+            {mission.endless ? "MOD" : `GÖREV ${mission.id}`}
           </div>
           <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
             {mission.title}
