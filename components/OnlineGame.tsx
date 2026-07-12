@@ -13,6 +13,7 @@ import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
 import { levelConfig } from "@/lib/levels";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
+import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import type { Maze } from "@/lib/maze";
 import {
   deserializeLevel,
@@ -70,6 +71,8 @@ export default function OnlineGame({
   const exitOpen = useRef(false);
   const invulnUntil = useRef(0);
   const hurt = useRef(0);
+  const selfMoving = useRef(false);
+  const bloodStains = useRef<{ x: number; y: number; r: number; seed: number }[]>([]);
   // Bariyerler (paylaşılan): id -> {x,y,armAt,owner}
   const barriers = useRef<Map<string, { x: number; y: number; armAt: number; owner: NetRole }>>(new Map());
   const barrierStock = useRef(3);
@@ -100,6 +103,7 @@ export default function OnlineGame({
     barriers.current.clear();
     barrierStock.current = 3;
     breakTimer.current = 0;
+    bloodStains.current = [];
     invulnUntil.current = performance.now() + 1500;
     // host gelinleri üretir
     if (role === "host") {
@@ -278,6 +282,20 @@ export default function OnlineGame({
     resize();
     window.addEventListener("resize", resize);
 
+    // Film grain deseni (bir kez)
+    const noiseTile = document.createElement("canvas");
+    noiseTile.width = 64; noiseTile.height = 64;
+    const nctx = noiseTile.getContext("2d");
+    if (nctx) {
+      const img = nctx.createImageData(64, 64);
+      for (let k = 0; k < img.data.length; k += 4) {
+        const v = Math.random() * 255;
+        img.data[k] = v; img.data[k + 1] = v; img.data[k + 2] = v; img.data[k + 3] = 255;
+      }
+      nctx.putImageData(img, 0, 0);
+    }
+    const grainPattern = ctx.createPattern(noiseTile, "repeat");
+
     let raf = 0, last = performance.now(), posAcc = 0, brideAcc = 0, hudAcc = 0;
     const shade = (b: number[], f: number) =>
       `rgb(${(b[0] * f) | 0},${(b[1] * f) | 0},${(b[2] * f) | 0})`;
@@ -303,6 +321,7 @@ export default function OnlineGame({
       const amag = Math.hypot(i.ax, i.ay);
       if (amag > 0.18) { mx = i.ax; my = i.ay; sc = Math.min(1, amag); }
       const moving = mx !== 0 || my !== 0;
+      selfMoving.current = moving;
       const barrierWall = (bx: number, by: number) => activeBarrier(bx, by, now);
       if (moving) {
         const len = Math.hypot(mx, my); mx /= len; my /= len;
@@ -427,56 +446,39 @@ export default function OnlineGame({
     }
 
     function killBride(id: number) {
+      // ölen gelinin yerine kan izi bırak
+      let bpos: Vec | null = null;
       if (role === "host") {
+        const z = hostBrides.current.find((b) => b.id === id);
+        if (z) bpos = z.pos;
         hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
       } else {
+        const z = guestBrides.current.get(id);
+        if (z) bpos = z.pos;
         guestBrides.current.delete(id);
         room.send({ t: "kill", id });
+      }
+      if (bpos) {
+        bloodStains.current.push({
+          x: bpos.x,
+          y: bpos.y,
+          r: 0.5 + Math.random() * 0.35,
+          seed: Math.floor(Math.random() * 1000),
+        });
       }
       kills.current++;
       if (kills.current >= 1) exitOpen.current = true;
     }
 
-    function drawBride(cx: number, cy: number, id: number, aware: boolean) {
-      const S = TS * 0.42;
-      ctx!.save();
-      ctx!.translate(cx, cy);
-      // gölge
-      ctx!.fillStyle = "rgba(0,0,0,0.45)";
-      ctx!.beginPath(); ctx!.ellipse(0, S * 0.9, S * 0.7, S * 0.25, 0, 0, Math.PI * 2); ctx!.fill();
-      // gelinlik (solgun)
-      const g = ctx!.createLinearGradient(0, -S * 0.4, 0, S);
-      g.addColorStop(0, "#d0d0cc"); g.addColorStop(1, "rgba(120,120,120,0.15)");
-      ctx!.fillStyle = g;
-      ctx!.beginPath();
-      ctx!.moveTo(-S * 0.22, -S * 0.1); ctx!.lineTo(-S * 0.6, S * 0.9);
-      ctx!.quadraticCurveTo(0, S * 1.05, S * 0.6, S * 0.9); ctx!.lineTo(S * 0.22, -S * 0.1);
-      ctx!.closePath(); ctx!.fill();
-      // kafa
-      ctx!.fillStyle = "#dfe1e0";
-      ctx!.beginPath(); ctx!.arc(0, -S * 0.35, S * 0.32, 0, Math.PI * 2); ctx!.fill();
-      // saç
-      ctx!.fillStyle = "#0b0b12";
-      ctx!.beginPath(); ctx!.arc(0, -S * 0.45, S * 0.34, Math.PI, 0); ctx!.fill();
-      // gözler
-      ctx!.save();
-      if (aware) { ctx!.shadowColor = "rgba(255,45,30,0.95)"; ctx!.shadowBlur = 10; }
-      ctx!.fillStyle = aware ? "#ff3a22" : "#3a3a30";
-      ctx!.beginPath();
-      ctx!.arc(-S * 0.12, -S * 0.33, S * 0.05, 0, Math.PI * 2);
-      ctx!.arc(S * 0.12, -S * 0.33, S * 0.05, 0, Math.PI * 2);
-      ctx!.fill(); ctx!.restore();
-      // kan izi
-      ctx!.fillStyle = "rgba(150,20,16,0.6)";
-      ctx!.beginPath(); ctx!.arc(-S * 0.1, -S * 0.2, S * 0.06, 0, Math.PI * 2); ctx!.fill();
-      ctx!.restore();
-    }
 
     function render() {
       const lvl = levelRef.current!, maze = mazeRef.current!;
       const p = selfPos.current;
       const camX = p.x * TS - cssW / 2, camY = p.y * TS - cssH / 2;
       const cols = maze.cols;
+      const T = performance.now() / 1000;
+      let flicker = 0.93 + 0.07 * Math.sin(T * 11);
+      if (Math.random() < 0.02) flicker *= 0.62;
 
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx!.fillStyle = "#000";
@@ -497,14 +499,37 @@ export default function OnlineGame({
           const wall = maze.walls[y][x];
           const inten = vis.get(y * cols + x);
           const sx = x * TS - camX, sy = y * TS - camY;
+          const gr = grime(x, y);
           if (inten !== undefined) {
-            const f = wall ? 0.42 + 0.66 * inten : 0.36 + 0.74 * inten;
+            let f = wall ? 0.42 + 0.66 * inten : 0.36 + 0.74 * inten;
+            f *= flicker * (0.9 + 0.22 * gr);
             ctx!.fillStyle = shade(wall ? WALL : FLOOR, f);
           } else {
-            ctx!.fillStyle = wall ? "rgb(34,30,26)" : "rgb(20,17,15)";
+            const base = wall ? 36 : 22;
+            const v = base * (0.72 + 0.5 * gr);
+            ctx!.fillStyle = `rgb(${v | 0},${(v * 0.9) | 0},${(v * 0.82) | 0})`;
           }
           ctx!.fillRect(Math.floor(sx), Math.floor(sy), TS + 1, TS + 1);
         }
+      }
+
+      // kan izleri (kalıcı)
+      for (const bl of bloodStains.current) {
+        const bx = Math.floor(bl.x), by = Math.floor(bl.y);
+        if (!seen.current[by] || !seen.current[by][bx]) continue;
+        const litB = vis.get(by * cols + bx) !== undefined;
+        const sx = bl.x * TS - camX, sy = bl.y * TS - camY;
+        ctx!.save();
+        ctx!.globalAlpha = litB ? 0.9 : 0.45;
+        ctx!.fillStyle = litB ? "rgb(158,20,16)" : "rgb(66,12,10)";
+        for (let i = 0; i < 6; i++) {
+          const a = (bl.seed + i * 97) % 360;
+          const rr = bl.r * TS * (0.2 + ((bl.seed + i * 31) % 100) / 180);
+          const ox = Math.cos((a * Math.PI) / 180) * bl.r * TS * 0.4;
+          const oy = Math.sin((a * Math.PI) / 180) * bl.r * TS * 0.4;
+          ctx!.beginPath(); ctx!.arc(sx + ox, sy + oy, rr, 0, Math.PI * 2); ctx!.fill();
+        }
+        ctx!.restore();
       }
 
       // çıkış
@@ -563,11 +588,12 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // gelinler (görüşte)
+      // gelinler (görüşte) — detaylı ortak sprite
       for (const z of renderBrides()) {
         const zc = cellOf(z.pos);
         if (vis.get(zc.y * cols + zc.x) === undefined) continue;
-        drawBride(z.pos.x * TS - camX, z.pos.y * TS - camY, z.id, z.aware);
+        const lean = p.x < z.pos.x ? -1 : 1;
+        drawBride(ctx!, TS, z.pos.x * TS - camX, z.pos.y * TS - camY, T, z.id, z.aware, lean);
       }
 
       // uçan mermiler
@@ -578,32 +604,34 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // rakip (görüşte)
+      // rakip (görüşte) — turuncu halkalı hayatta-kalan
       const oc = cellOf(oppPos.current);
       if (vis.get(oc.y * cols + oc.x) !== undefined && performance.now() - oppSeenAt.current < 3000) {
         const ox = oppPos.current.x * TS - camX, oy = oppPos.current.y * TS - camY;
-        ctx!.save(); ctx!.shadowColor = "rgba(255,140,60,0.8)"; ctx!.shadowBlur = 12;
-        ctx!.fillStyle = "#ff9a3c";
-        ctx!.beginPath(); ctx!.arc(ox, oy, TS * 0.26, 0, Math.PI * 2); ctx!.fill(); ctx!.restore();
+        drawPlayer(ctx!, TS, ox, oy, oppDir.current, T, true, flicker, lvl.visionRadius, { cone: false, ring: "#ff9a3c" });
       }
 
-      // kendi
+      // kendi (dokunulmazlıkta camgöbeği halka)
       const cx = cssW / 2, cy = cssH / 2;
-      const ang = Math.atan2(selfDir.current.y, selfDir.current.x);
-      const reach = lvl.visionRadius * TS * 0.95;
-      const cone = ctx!.createRadialGradient(cx, cy, TS * 0.3, cx, cy, reach);
-      cone.addColorStop(0, "rgba(200,220,255,0.16)"); cone.addColorStop(1, "rgba(200,220,255,0)");
-      ctx!.save(); ctx!.beginPath(); ctx!.moveTo(cx, cy); ctx!.arc(cx, cy, reach, ang - 0.5, ang + 0.5); ctx!.closePath(); ctx!.fillStyle = cone; ctx!.fill(); ctx!.restore();
-      const blink = performance.now() < invulnUntil.current && Math.floor(performance.now() / 120) % 2 === 0;
-      if (!blink) {
-        ctx!.save(); ctx!.shadowColor = "rgba(110,231,255,0.8)"; ctx!.shadowBlur = 14; ctx!.fillStyle = "#dff6ff";
-        ctx!.beginPath(); ctx!.arc(cx, cy, TS * 0.26, 0, Math.PI * 2); ctx!.fill(); ctx!.restore();
-      }
+      const invuln = performance.now() < invulnUntil.current;
+      drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, lvl.visionRadius, invuln ? { ring: "#6ee7ff" } : undefined);
 
-      // vinyet
-      const g = ctx!.createRadialGradient(cx, cy, lvl.visionRadius * TS * 0.3, cx, cy, lvl.visionRadius * TS);
-      g.addColorStop(0, "rgba(0,0,0,0)"); g.addColorStop(1, "rgba(0,0,0,0.85)");
+      // vinyet (ağır)
+      const g = ctx!.createRadialGradient(cx, cy, lvl.visionRadius * TS * 0.28, cx, cy, lvl.visionRadius * TS);
+      g.addColorStop(0, "rgba(0,0,0,0)");
+      g.addColorStop(0.72, "rgba(0,0,0,0.42)");
+      g.addColorStop(1, "rgba(0,0,0,0.82)");
       ctx!.fillStyle = g; ctx!.fillRect(0, 0, cssW, cssH);
+
+      // film grain
+      if (grainPattern) {
+        ctx!.save();
+        ctx!.globalAlpha = 0.06;
+        ctx!.translate(-Math.floor(Math.random() * 64), -Math.floor(Math.random() * 64));
+        ctx!.fillStyle = grainPattern;
+        ctx!.fillRect(0, 0, cssW + 64, cssH + 64);
+        ctx!.restore();
+      }
 
       // hasar flaşı
       if (hurt.current > 0) {
