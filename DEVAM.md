@@ -135,6 +135,9 @@ ses (ateş/toplama/hasar/kapı/ağlama).
   Host katılanları bir **roster**'da (isimlerle) toplar, zorluk seçer, "Başlat" ile sıra+isim+seviye yayınlar.
 - **İsim:** lobide girilir (localStorage `blackout_name`), start payload'ında seat sırasına göre taşınır.
 - **Ayrılma:** `pos` akışı kalp atışıdır; 4 sn gelmezse "X ayrıldı" toast. Menü butonu hızlı `{t:left}` yollar.
+  **Düzeltme (2026-07-12):** bölüm geçişinde yanlış "ayrıldı" atması giderildi — `buildWorld` diğer
+  oyuncuları "mevcut" (seenAt=şimdi) kurar; tespit sadece 4 sn pos gelmezse tetiklenir (eski `mountTime`
+  tabanlı grace kaldırıldı; o yüzden yeni bölümde herkes anında atılıyordu).
 - **Host göçü:** `amHost = mySeat === min(hayatta koltuklar)`, her kare hesaplanır. Guest→host geçişinde
   gelinleri son akıştan (guestBrides) tam simülasyona çevirir. Tek host kalır (deterministik, split-brain min.).
 - **Devam kuralı:** biri çıkınca kalan ≥2 ise oyun sürer; ≤1 kalırsa "Menü" ekranı (`alone`).

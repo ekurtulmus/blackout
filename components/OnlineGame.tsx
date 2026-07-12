@@ -122,13 +122,16 @@ export default function OnlineGame({
     mySpawn.current = sp(mySeat);
     selfPos.current = { ...mySpawn.current };
     selfDir.current = { x: 0, y: -1 };
-    // diğer oyuncular (ayrılmış olanları dahil etme)
+    // diğer oyuncular (ayrılmış olanları dahil etme). Dünya kurulunca "mevcut"
+    // kabul et (seenAt=şimdi) → bölüm geçişinde yanlışlıkla "ayrıldı" tetiklenmez;
+    // gerçekten çıkan biri yeni bölümde 4 sn pos yollamayınca yakalanır.
     others.current.clear();
+    const nowB = performance.now();
     for (let s = 0; s < order.length; s++) {
       const id = order[s];
       if (id === room.id || goneIds.current.has(id)) continue;
       const p = sp(s);
-      others.current.set(id, { pos: { ...p }, target: { ...p }, dir: { x: 0, y: -1 }, seenAt: 0, seat: s, name: nameOf(s), everSeen: false });
+      others.current.set(id, { pos: { ...p }, target: { ...p }, dir: { x: 0, y: -1 }, seenAt: nowB, seat: s, name: nameOf(s), everSeen: true });
     }
     seen.current = Array.from({ length: lvl.rows }, () => Array.from({ length: lvl.cols }, () => false));
     ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
@@ -175,7 +178,6 @@ export default function OnlineGame({
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    const mountTime = performance.now();
 
     // Ses — online moda bağla (menü müziği page tarafında susturuldu)
     sound.init();
@@ -609,13 +611,12 @@ export default function OnlineGame({
         }
       }
 
-      // ayrılma tespiti (pos akışı = kalp atışı)
+      // ayrılma tespiti (pos akışı = kalp atışı): 4 sn pos gelmezse ayrıldı
       leaveAcc += dt;
       if (leaveAcc >= 0.5) {
         leaveAcc = 0;
         for (const [id, o] of others.current) {
-          const gone = (o.everSeen && now - o.seenAt > LEAVE_MS) || (!o.everSeen && now - mountTime > 8000);
-          if (gone) onPlayerLeft(id);
+          if (now - o.seenAt > LEAVE_MS) onPlayerLeft(id);
         }
       }
 
