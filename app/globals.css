@@ -38,10 +38,13 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
   gap: 22px;
   text-align: center;
   padding: 24px;
+  /* İçerik ekrandan uzunsa kaydırılabilsin (mobil menü/uzun ekranlar) */
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   background: radial-gradient(
       1200px 600px at 50% -10%,
       rgba(90, 12, 12, 0.28),
@@ -49,6 +52,14 @@ button {
     ),
     var(--bg);
   z-index: 20;
+}
+
+/* Kısa içerikte dikey ortala; uzun içerikte 0'a küçülüp kaydırmaya izin ver
+   (justify-content:center'ın taşan içeriği kırpması sorununu çözer) */
+.screen::before,
+.screen::after {
+  content: "";
+  flex: 1 0 0;
 }
 
 .title {
