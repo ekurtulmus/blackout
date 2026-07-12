@@ -31,6 +31,7 @@
 - ✅ **Tek kalınca menü**: ≤1 oyuncu kalırsa "Menü" ekranı (2 kişilikte biri çıkınca).
 - ✅ **Tek kişilik duraklat**: ⏸/Esc/P ile dondur + "Menüye Dön" (Game.tsx).
 - ✅ **Can toplama**: yerde kırmızı haç can paketi (+45), canın tamsa alınmaz; tek kişilik + online. Ses: `heal`.
+- ✅ **Mermi respawn tek kişilikte de**: toplanan mermi 10 sn sonra geri doğar (önce sadece online'daydı; `engine.ts` `AMMO_RESPAWN_SEC`).
 - ✅ **Temalar (otomatik + rastgele)**: `lib/themes.ts` (Zindan/Hastane/Kilise/Orman). Her oyun rastgele
   temadan başlar, her 2 bölümde değişir. Online'da host seed'i herkese yayınlar (aynı tema). HUD'da "Tema".
 - ✅ **Hikaye & ara sahne**: `lib/story.ts` — Tek Kişilik'te giriş anlatısı ("Neden buradasın?"), bölüm

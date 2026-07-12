@@ -22,6 +22,7 @@ export type Ammo = {
   id: number;
   cell: Vec; // hücre koordinatı
   taken: boolean;
+  takenAt?: number; // toplandığı an (saniye) — respawn için
 };
 
 export type Bullet = {

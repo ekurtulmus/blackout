@@ -30,6 +30,7 @@ export const PLAYER_MAX_HP = 100;
 export const CONTACT_DPS = 35; // temas başına saniyelik hasar
 export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
 export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
+export const AMMO_RESPAWN_SEC = 10; // toplanan mermi kaç saniye sonra geri doğar
 
 export type Input = {
   up: boolean;
@@ -376,9 +377,14 @@ export class GameEngine {
   private pickupAmmo() {
     const pcell = cellOf(this.player.pos);
     for (const a of this.ammoItems) {
-      if (a.taken) continue;
+      if (a.taken) {
+        // toplanan mermi 10 sn sonra haritada geri doğar
+        if (this.time - (a.takenAt ?? 0) >= AMMO_RESPAWN_SEC) a.taken = false;
+        continue;
+      }
       if (a.cell.x === pcell.x && a.cell.y === pcell.y) {
         a.taken = true;
+        a.takenAt = this.time;
         this.ammoCount++;
         this.score += 5;
         this.events.push("pickup");
