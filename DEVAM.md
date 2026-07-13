@@ -95,8 +95,12 @@
 - ✅ **Faz D**: Yeni gelinler (tek kişilik) — **Çağıran** (#6, yakındakileri uyandırır), **Bölünen** (#7, ölünce
   2 hızlı yavru), **Duvar-tırmanan** (#10, duvarları aşarak yavaş süzülür), **Kraliçe-boss** (#9, her 4 bölümde
   bir, queenHp isabet, taç+can pip). `assignSpecialKinds` yalnız normal tek kişilikte; online/görev korunur.
-- ⏳ **Faz E**: Kaçış bölümü (#11, +görev moduna) + Rehin kurtarma (#13).
-- ⏳ **Faz F**: Başarımlar (#17) + Günlük/not parçaları (#16).
+- ✅ **Faz E**: **Kaçış bölümü** (#11, seyrek — çıkış açık + çökme geri sayımı, süre dolunca bir can; göreve de:
+  görev 2 "Yıkım") + **Rehin kurtarma** (#13, kurtar → findPath ile takip → birlikte çıkınca bonus).
+- ✅ **Faz F**: **Başarımlar** (#17, `lib/achievements.ts` 12 rozet + menü ekranı + sonuç bildirimi) +
+  **Günlük** (#16, `lib/journal.ts` 6 sayfa — bölümlerde bul, menüde oku).
+- 🎉 **KULLANICI SEÇİMİ PAKETİ TAMAM** (Faz A-F): ekonomi, dükkân+envanter, koşma+tuzak, 4 yeni gelin,
+  kaçış+rehin, başarım+günlük. Kalan (kullanıcı sonraya bıraktı): online'a bu türlerin taşınması (host-otoriter).
 
 ## RİTİM & ÇEŞİTLİLİK PAKETİ (devam ediyor)
 Amaç: tekdüzeliği kırmak, zorluğu artırmadan ritmi değiştirmek, online'da adaleti korumak.
@@ -194,7 +198,11 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 | `lib/decor.ts` | Madde 11: hash tabanlı deterministik zemin süsleri (mezar taşı/ağaç/çalı) — ortak |
 | `lib/miniquests.ts` | Madde 9: mini-görev tanımları + deterministik planlayıcı (online-adil) — ortak |
 | `lib/scares.ts` | Madde 10: rastgele korku olayları yönetici (ScareDirector, hasarsız/yerel) — ortak |
-| `lib/coins.ts` | Para sistemi (kalıcı, localStorage) — mini-görev ödülü + ileride dükkan |
+| `lib/coins.ts` | Para sistemi (kalıcı, localStorage) — gelin/bölüm/mini-görev ödülü |
+| `lib/inventory.ts` | Envanter + dükkân eşyaları (kalkan/radar/tuzak/mermi/can/upgrade/kozmetik) |
+| `components/Shop.tsx` | Dükkân ekranı (parayla satın alma) |
+| `lib/achievements.ts` | Başarımlar (12 rozet, kalıcı) — Faz F |
+| `lib/journal.ts` | Günlük/not sayfaları (hikaye parçaları) — Faz F |
 | `lib/story.ts` | Hikaye girişi + bölüm arası tekinsiz notlar |
 | `lib/maze.ts`, `lib/vision.ts`, `lib/pathfind.ts`, `lib/levels.ts`, `lib/types.ts` | Labirent, görüş/sis, yol bulma, bölüm ayarları, tipler |
 | `public/audio/menu.mp3`, `game.mp3` | Açılış + oyun-içi müzik |
@@ -254,6 +262,12 @@ ses (ateş/toplama/hasar/kapı/ağlama).
 - **Çıkış:** herkes kendi çıkışını açar (≥1 gelin öldür).
 
 ## 10) Son commitler (git log)
+- `c56095e` Faz F: Başarımlar + Günlük
+- `6e30ac7` Faz E: Kaçış bölümü + Rehin kurtarma
+- `91a6272` Faz D: Yeni gelin türleri (çağıran/bölünen/tırmanan/kraliçe)
+- `c40f123` Faz C: Koşma (sprint) + Tuzak
+- `78e67fa` Faz B: Dükkân + Envanter
+- `e9ffa9b` Faz A: Ekonomi temeli (para + risk=ödül)
 - `9dd8b0f` Mini-görev revizyonu + para sistemi + tema/gelin/can-barı iyileştirmeleri
 - `16bdc93` Faz 5 (Madde 11): Mezarlık teması + Orman zenginleştirme
 - `4202802` Faz 5 (Madde 10): Rastgele korku olayları — atmosfer, hasarsız
