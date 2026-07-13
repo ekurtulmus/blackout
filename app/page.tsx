@@ -6,7 +6,9 @@ import OnlineLobby from "@/components/OnlineLobby";
 import OnlineGame from "@/components/OnlineGame";
 import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
+import MainMenu from "@/components/MainMenu";
 import { getInventory } from "@/lib/inventory";
+import { getCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
@@ -57,6 +59,7 @@ export default function Page() {
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
   const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
+  const [menuCoins, setMenuCoins] = useState(0); // ana menüde gösterilen cüzdan
   const [runId, setRunId] = useState(0);
   const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
@@ -94,10 +97,20 @@ export default function Page() {
       if (sd === "kolay" || sd === "orta" || sd === "zor") setSpDiff(sd);
       setAchList(getUnlocked()); // Faz F
       setJournalGot(getCollected());
+      setMenuCoins(getCoins());
     } catch {
       /* geç */
     }
   }, []);
+
+  // Menüye her dönüşte istatistikleri tazele (dükkân/başarım/günlük sonrası güncel görünsün)
+  useEffect(() => {
+    if (screen === "menu") {
+      setMenuCoins(getCoins());
+      setAchList(getUnlocked());
+      setJournalGot(getCollected());
+    }
+  }, [screen]);
 
   function unlockSecret(missionId: number) {
     const idx = MISSION_SECRET[missionId];
@@ -688,61 +701,31 @@ export default function Page() {
     );
   }
 
+  if (screen === "menu") {
+    return (
+      <MainMenu
+        onSolo={startNewGame}
+        onRace={() => setScreen("lobby")}
+        onMissions={() => setScreen("missions")}
+        onEndless={playEndless}
+        onSecrets={() => setScreen("secrets")}
+        onShop={() => { setShopReturn("menu"); setScreen("shop"); }}
+        onAchievements={() => setScreen("achievements")}
+        onJournal={() => setScreen("journal")}
+        onSettings={() => setScreen("ayarlar")}
+        secrets={unlockedSecrets.length}
+        secretTotal={SECRET_COUNT}
+        coins={menuCoins}
+        ach={achList.length}
+        achTotal={ACHIEVEMENTS.length}
+        journal={journalGot.length}
+        journalTotal={JOURNAL.length}
+      />
+    );
+  }
+
   return (
     <div className="screen">
-      {screen === "menu" && (
-        <>
-          <div className="title">BLACKOUT</div>
-          <div className="subtitle">
-            Zifiri bir labirentte uyanıyorsun; elinde titrek bir el feneri.
-            Kanlı yüzlü <b>gelinler</b> seni çoktan duydu. Yolunu yokla,
-            mermileri topla, nefesini tut. Çıkış mühürlü — açmak için{" "}
-            <b>en az birini sustur</b>, sonra karanlıkta gizli kapıyı bul.
-            Yakalanırsan geri dönüşü yok.
-          </div>
-          <div className="how">
-            <b>Nasıl Oynanır</b>
-            <br />• Hareket: <kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd>{" "}
-            veya ok tuşları
-            <br />• Ateş: <kbd>Boşluk</kbd> — gittiğin yöne ateş eder
-            <br />• Yerdeki parlayan <b>mermileri</b> topla (sınırlı!)
-            <br />• En az 1 <b>gelini</b> yok edince <b>çıkış açılır</b>
-            <br />• Yeşil parlayan <b>kapıyı</b> bul ve ulaş → sonraki bölüm
-            <br />• <b>3 can</b> hakkın var. Gelin teması can barını düşürür.
-            <br />• Toplam <b>{TOTAL_LEVELS} bölüm</b> — gittikçe zorlaşır.
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={startNewGame}>
-              🕯️ Yalnız Kaçış
-            </button>
-            <button className="btn" onClick={() => setScreen("lobby")}>
-              💀 Ölüm Koşusu (2-6)
-            </button>
-            <button className="btn" onClick={() => setScreen("missions")}>
-              🩸 Karanlık Görevler
-            </button>
-            <button className="btn" onClick={playEndless}>
-              🌑 Bitmeyen Gece
-            </button>
-            <button className="btn" onClick={() => setScreen("secrets")}>
-              📷 Sırlar{" "}
-              {unlockedSecrets.length > 0 ? `(${unlockedSecrets.length}/${SECRET_COUNT})` : ""}
-            </button>
-            <button className="btn" onClick={() => { setShopReturn("menu"); setScreen("shop"); }}>
-              🛒 Dükkân
-            </button>
-            <button className="btn" onClick={() => setScreen("achievements")}>
-              🏆 Başarımlar ({achList.length}/{ACHIEVEMENTS.length})
-            </button>
-            <button className="btn" onClick={() => setScreen("journal")}>
-              📖 Günlük ({journalGot.length}/{JOURNAL.length})
-            </button>
-            <button className="btn" onClick={() => setScreen("ayarlar")}>
-              ⚙ Ayarlar
-            </button>
-          </div>
-        </>
-      )}
 
       {screen === "intro" && (
         <>
