@@ -165,11 +165,26 @@ export default function Page() {
       screen === "missionplay" ||
       screen === "endlessplay";
     if (inGame) {
+      // Oyun: menü + ekran müziklerini durdur, oyun-içi ıslığı başlat
       sound.stopMenuMusic();
+      sound.stopScreenMusic();
+      sound.startWhistles();
       return;
     }
-    // menü tarafı: ses açıldıysa doğrudan çal (tekrar tıklama gerektirmez),
-    // açılmadıysa sessiz autoplay dene (ilk tıklamada yukarıdaki unlock açar)
+    sound.stopWhistles();
+    // Sırlar / Dükkân: kendi müziği çalar (menü müziği kısılır)
+    if (screen === "secrets") {
+      sound.stopMenuMusic();
+      sound.playScreenMusic("secrets");
+      return;
+    }
+    if (screen === "shop") {
+      sound.stopMenuMusic();
+      sound.playScreenMusic("shop");
+      return;
+    }
+    // Diğer menü ekranları: ekran müziğini durdur, menü müziğine dön
+    sound.stopScreenMusic();
     if (audioUnlocked.current) {
       sound.resume();
       sound.revealMenuMusic();

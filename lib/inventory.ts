@@ -12,8 +12,10 @@ export type Inventory = {
   healthPacks: number; // sonraki bölüme tam can + kalkan (bölüm başı otomatik tüketilir)
   permAmmo: boolean; // KALICI: her bölüm +3 mermiyle başla
   extraLives: number; // KALICI: +1 başlangıç can hakkı (adet)
-  flashColor: string; // kişiselleştirme: fener rengi anahtarı
-  skin: string; // kişiselleştirme: oyuncu görünüm anahtarı
+  flashColor: string; // kişiselleştirme: SEÇİLİ fener rengi
+  skin: string; // kişiselleştirme: SEÇİLİ oyuncu görünümü
+  ownedFlash: string[]; // sahip olunan fener renkleri (tekrar para verilmez)
+  ownedSkin: string[]; // sahip olunan görünümler
 };
 
 const DEFAULT_INV: Inventory = {
@@ -26,6 +28,8 @@ const DEFAULT_INV: Inventory = {
   extraLives: 0,
   flashColor: "default",
   skin: "default",
+  ownedFlash: ["default"],
+  ownedSkin: ["default"],
 };
 
 const KEY = "blackout_inventory";
@@ -72,7 +76,9 @@ export type ShopItem = {
   icon: string;
   price: number;
   kind: "consumable" | "perm" | "cosmetic";
-  // satın alınabilir mi? (kalıcı olanlar bir kez; kozmetik sahipsse gizlenir)
+  // kozmetikler için: hangi slot + değer (sahiplik takibi buyItem'da)
+  cosmetic?: { slot: "flash" | "skin"; value: string };
+  // satın alınabilir mi? (kalıcı olanlar bir kez; kozmetik özel ele alınır)
   canBuy: (inv: Inventory) => boolean;
   apply: (inv: Inventory) => void;
 };
@@ -155,8 +161,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: "💡",
     price: 30,
     kind: "cosmetic",
-    canBuy: (inv) => inv.flashColor !== "amber",
-    apply: (inv) => (inv.flashColor = "amber"),
+    cosmetic: { slot: "flash", value: "amber" },
+    canBuy: () => true,
+    apply: () => {},
   },
   {
     id: "flash_crimson",
@@ -165,8 +172,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: "💡",
     price: 30,
     kind: "cosmetic",
-    canBuy: (inv) => inv.flashColor !== "crimson",
-    apply: (inv) => (inv.flashColor = "crimson"),
+    cosmetic: { slot: "flash", value: "crimson" },
+    canBuy: () => true,
+    apply: () => {},
   },
   {
     id: "skin_gold",
@@ -175,8 +183,9 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: "🩸",
     price: 40,
     kind: "cosmetic",
-    canBuy: (inv) => inv.skin !== "gold",
-    apply: (inv) => (inv.skin = "gold"),
+    cosmetic: { slot: "skin", value: "gold" },
+    canBuy: () => true,
+    apply: () => {},
   },
   {
     id: "skin_violet",
@@ -185,14 +194,44 @@ export const SHOP_ITEMS: ShopItem[] = [
     icon: "🩸",
     price: 40,
     kind: "cosmetic",
-    canBuy: (inv) => inv.skin !== "violet",
-    apply: (inv) => (inv.skin = "violet"),
+    cosmetic: { slot: "skin", value: "violet" },
+    canBuy: () => true,
+    apply: () => {},
   },
 ];
 
-// Satın al: yeter para varsa parayı düş + eşyayı ekle. { ok, coins } döndürür.
+// Bir kozmetik değeri sahip mi / seçili mi (Shop UI kullanır)
+export function ownsCosmetic(inv: Inventory, slot: "flash" | "skin", value: string): boolean {
+  return (slot === "flash" ? inv.ownedFlash : inv.ownedSkin).includes(value);
+}
+export function equippedCosmetic(inv: Inventory, slot: "flash" | "skin"): string {
+  return slot === "flash" ? inv.flashColor : inv.skin;
+}
+
+// Satın al / kuşan. Kozmetiklerde: sahipsen ÜCRETSİZ kuşanılır, değilsen satın alınıp
+// kuşanılır (bir daha para vermezsin). { ok, coins, reason } döndürür.
 export function buyItem(item: ShopItem): { ok: boolean; coins: number; reason?: string } {
   const inv = getInventory();
+
+  if (item.cosmetic) {
+    const { slot, value } = item.cosmetic;
+    if (equippedCosmetic(inv, slot) === value) return { ok: false, coins: getCoins(), reason: "zaten seçili" };
+    if (ownsCosmetic(inv, slot, value)) {
+      // Sahipsin → ücretsiz kuşan
+      if (slot === "flash") inv.flashColor = value;
+      else inv.skin = value;
+      saveInventory(inv);
+      return { ok: true, coins: getCoins() };
+    }
+    // Sahip değilsin → satın al + kuşan
+    if (getCoins() < item.price) return { ok: false, coins: getCoins(), reason: "yetersiz para" };
+    const coins = addCoins(-item.price);
+    if (slot === "flash") { inv.ownedFlash.push(value); inv.flashColor = value; }
+    else { inv.ownedSkin.push(value); inv.skin = value; }
+    saveInventory(inv);
+    return { ok: true, coins };
+  }
+
   if (!item.canBuy(inv)) return { ok: false, coins: getCoins(), reason: "zaten sahipsin" };
   if (getCoins() < item.price) return { ok: false, coins: getCoins(), reason: "yetersiz para" };
   const coins = addCoins(-item.price);

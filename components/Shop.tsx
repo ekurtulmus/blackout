@@ -6,6 +6,8 @@ import {
   SHOP_ITEMS,
   buyItem,
   getInventory,
+  ownsCosmetic,
+  equippedCosmetic,
   type Inventory,
   type ShopItem,
 } from "@/lib/inventory";
@@ -25,7 +27,11 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
     if (it.id === "healthPack") return `Elinde: ${inv.healthPacks}`;
     if (it.id === "permAmmo") return inv.permAmmo ? "✓ Sahipsin" : "";
     if (it.id === "extraLife") return inv.extraLives > 0 ? `+${inv.extraLives} can` : "";
-    if (it.kind === "cosmetic") return it.canBuy(inv) ? "" : "✓ Seçili";
+    if (it.cosmetic) {
+      const eq = equippedCosmetic(inv, it.cosmetic.slot) === it.cosmetic.value;
+      const owned = ownsCosmetic(inv, it.cosmetic.slot, it.cosmetic.value);
+      return eq ? "✓ Seçili" : owned ? "✓ Sahipsin" : "";
+    }
     return "";
   }
 
@@ -59,8 +65,21 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
           {SHOP_ITEMS.map((it) => {
             const owned = ownedText(it);
             const affordable = coins >= it.price;
-            const buyable = it.canBuy(inv) && affordable;
-            const soldOut = !it.canBuy(inv);
+            // Kozmetik: seçili → kapalı; sahip → "Kullan" (ücretsiz); değil → satın al
+            let label: string;
+            let canClick: boolean;
+            if (it.cosmetic) {
+              const eq = equippedCosmetic(inv, it.cosmetic.slot) === it.cosmetic.value;
+              const own = ownsCosmetic(inv, it.cosmetic.slot, it.cosmetic.value);
+              if (eq) { label = "✓ Seçili"; canClick = false; }
+              else if (own) { label = "Kullan"; canClick = true; }
+              else { label = `🪙 ${it.price} — Satın Al`; canClick = affordable; }
+            } else if (!it.canBuy(inv)) {
+              label = "Sahipsin"; canClick = false;
+            } else {
+              label = `🪙 ${it.price} — Satın Al`; canClick = affordable;
+            }
+            const buyable = canClick;
             return (
               <div
                 key={it.id}
@@ -82,7 +101,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
                   onClick={() => handleBuy(it)}
                   style={{ opacity: buyable ? 1 : 0.45, cursor: buyable ? "pointer" : "not-allowed" }}
                 >
-                  {soldOut ? "Sahipsin" : `🪙 ${it.price} — Satın Al`}
+                  {label}
                 </button>
               </div>
             );

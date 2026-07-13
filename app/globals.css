@@ -292,6 +292,22 @@ button {
   border-color: rgba(110, 231, 255, 0.5);
 }
 
+/* Dokunmatik cihazlarda HUD butonları daha büyük/kolay basılır */
+@media (pointer: coarse) {
+  .hud {
+    gap: 10px;
+  }
+  .mutebtn {
+    min-width: 46px;
+    min-height: 42px;
+    justify-content: center;
+    font-size: 18px;
+  }
+  .mutebtn .val {
+    font-size: 18px;
+  }
+}
+
 .hpbar {
   width: 160px;
   height: 12px;

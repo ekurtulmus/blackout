@@ -324,9 +324,19 @@ export default function MainMenu({
     return () => window.removeEventListener("keydown", onEsc);
   }, []);
 
-  const primary: { label: string; onClick: () => void }[] = [
+  const mpIcon = (
+    <svg className="mm-mp" viewBox="0 0 48 24" width="42" height="21" aria-hidden="true">
+      {[6, 20, 34].map((cx, i) => (
+        <g key={cx} opacity={i === 1 ? 1 : 0.75}>
+          <circle cx={cx + 4} cy="8" r="3.4" />
+          <path d={`M${cx - 0.5} 22 v-5 a4.5 4.5 0 0 1 9 0 v5 z`} />
+        </g>
+      ))}
+    </svg>
+  );
+  const primary: { label: string; onClick: () => void; icon?: React.ReactNode }[] = [
     { label: "Yalnız Kaçış", onClick: onSolo },
-    { label: "Ölüm Koşusu", onClick: onRace },
+    { label: "Ölüm Koşusu", onClick: onRace, icon: mpIcon },
     { label: "Karanlık Görevler", onClick: onMissions },
     { label: "Bitmeyen Gece", onClick: onEndless },
   ];
@@ -355,10 +365,11 @@ export default function MainMenu({
           {primary.map((it, i) => (
             <div
               key={it.label}
-              className="mm-item mm-in"
+              className={"mm-item mm-in" + (it.icon ? " mm-item-mp" : "")}
               style={{ animationDelay: `${1.1 + i * 0.12}s` }}
               onClick={it.onClick}
             >
+              {it.icon}
               {it.label}
             </div>
           ))}
@@ -427,6 +438,8 @@ const MM_CSS = `
 .mm-item::after{content:"";position:absolute;left:50%;bottom:7px;width:0;height:1px;background:#d11a1a;transform:translateX(-50%);transition:width .3s;box-shadow:0 0 6px #d11a1a;}
 .mm-item:hover{color:#fff;background:rgba(209,26,26,.07);border-color:rgba(209,26,26,.4);text-shadow:0 0 18px rgba(209,26,26,.6),0 0 6px #000;}
 .mm-item:hover::after{width:56%;}
+.mm-item-mp{display:inline-flex;align-items:center;justify-content:center;gap:13px;}
+.mm-mp{fill:currentColor;opacity:.9;filter:drop-shadow(0 0 8px rgba(209,26,26,.4));flex:none;}
 .mm-secondary{margin-top:38px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 12px;opacity:0;animation:mm-fade 1s ease-out 1.7s forwards;}
 .mm-schip{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.015);border:1px solid rgba(200,180,150,.08);border-radius:6px;font-family:'Cinzel',serif;font-size:12.5px;letter-spacing:.16em;color:#8a8474;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 0 10px #000;padding:9px 15px;}
 .mm-schip:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.4);}

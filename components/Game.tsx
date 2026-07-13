@@ -930,6 +930,45 @@ export default function Game({
           ctx!.fillRect(0, 0, cssW, cssH);
         }
       }
+
+      // --- Radar oku: 1.5 sn çıkışa dönük parlak ok (metin yok) ---
+      if (engine.radarUntil > engine.time) {
+        const rem = engine.radarUntil - engine.time;
+        const a = Math.min(1, rem / 1.5);
+        const ang = engine.radarAngle;
+        const cx = cssW / 2, cy = cssH / 2;
+        const pulse = 1 + 0.12 * Math.sin(engine.time * 12);
+        const dist = TS * (2.1 + 0.25 * Math.sin(engine.time * 6));
+        const ax = cx + Math.cos(ang) * dist;
+        const ay = cy + Math.sin(ang) * dist;
+        ctx!.save();
+        ctx!.globalAlpha = a;
+        // oyuncudan oka doğru soluk iz
+        const trail = ctx!.createLinearGradient(cx, cy, ax, ay);
+        trail.addColorStop(0, "rgba(120,220,255,0)");
+        trail.addColorStop(1, "rgba(120,220,255,0.5)");
+        ctx!.strokeStyle = trail;
+        ctx!.lineWidth = 3;
+        ctx!.beginPath();
+        ctx!.moveTo(cx, cy);
+        ctx!.lineTo(ax, ay);
+        ctx!.stroke();
+        // ok başı
+        ctx!.translate(ax, ay);
+        ctx!.rotate(ang);
+        ctx!.shadowColor = "rgba(120,220,255,0.95)";
+        ctx!.shadowBlur = 22;
+        ctx!.fillStyle = "#cfeeff";
+        const s = TS * 0.5 * pulse;
+        ctx!.beginPath();
+        ctx!.moveTo(s, 0);
+        ctx!.lineTo(-s * 0.55, -s * 0.62);
+        ctx!.lineTo(-s * 0.22, 0);
+        ctx!.lineTo(-s * 0.55, s * 0.62);
+        ctx!.closePath();
+        ctx!.fill();
+        ctx!.restore();
+      }
     }
 
     // Ekran kenarından geçen gölge / fenerin anlık sıçraması (atmosfer)
@@ -1372,24 +1411,35 @@ export default function Game({
         </button>
       </div>
 
+      {/* Oyun-içi envanter (Faz B) — ortalanmış modal, mobil dostu */}
       {invOpen && !mission && (
         <div
+          onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
           style={{
             position: "fixed",
-            right: 12,
-            bottom: 12,
-            zIndex: 14,
+            inset: 0,
+            zIndex: 16,
             display: "flex",
-            flexDirection: "column",
-            gap: 8,
-            background: "rgba(10,12,16,0.94)",
-            border: "1px solid var(--border)",
-            borderRadius: 12,
-            padding: 12,
-            minWidth: 200,
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
           }}
         >
-          <div style={{ fontWeight: 800, color: "#ffd75a" }}>📦 Envanter</div>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: 12,
+            background: "linear-gradient(180deg, rgba(20,15,13,0.98), rgba(10,8,7,0.98))",
+            border: "1px solid rgba(120,110,95,0.3)",
+            borderTop: "2px solid #d11a1a",
+            borderRadius: 10,
+            padding: 18,
+            minWidth: "min(300px, 88vw)",
+            boxShadow: "0 30px 90px rgba(0,0,0,0.7)",
+          }}
+        >
+          <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
           <button
             className="btn"
             disabled={invCounts.shields <= 0}
@@ -1422,6 +1472,7 @@ export default function Game({
           <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
             Kapat
           </button>
+        </div>
         </div>
       )}
 

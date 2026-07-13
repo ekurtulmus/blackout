@@ -135,6 +135,8 @@ export class GameEngine {
   private mqMirrorNear = 0; // ayna: yanında kesintisiz geçirilen süre (sn)
   mqHintDir = ""; // ayna kehaneti: çıkışa giden yön ("Sağ/Sol/Yukarı/Aşağı")
   private mqHintUntil = 0; // yön ipucunun HUD'da kalacağı ana kadar (sn)
+  radarUntil = 0; // radar oku: bu ana kadar ekranda ok gösterilir (sn)
+  radarAngle = 0; // radar oku yönü (radyan)
 
   // --- Görev modu ---
   mission: Mission | null = null;
@@ -956,10 +958,17 @@ export class GameEngine {
     this.events.push("veil"); // hayaletimsi kalkan sesi
   }
 
-  // Envanter: radarı aktive et — çıkış yönünü 1 kez göster (ayna kehanetiyle aynı HUD)
+  // Envanter: radarı aktive et — 1.5 sn ekranda çıkışa dönük OK göster (metin yok)
   activateRadar() {
-    this.mqHintDir = this.computeExitDir();
-    this.mqHintUntil = this.time + 20;
+    const dir = this.computeExitDir();
+    const map: Record<string, number> = {
+      "Sağ": 0,
+      "Sol": Math.PI,
+      "Yukarı": -Math.PI / 2,
+      "Aşağı": Math.PI / 2,
+    };
+    this.radarAngle = map[dir] ?? 0;
+    this.radarUntil = this.time + 1.5;
     this.events.push("secret");
   }
 

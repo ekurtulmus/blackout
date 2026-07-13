@@ -16,6 +16,11 @@ class SoundEngine {
   private timers: number[] = [];
   private menuAudio: HTMLAudioElement | null = null;
   private gameAudio: HTMLAudioElement | null = null;
+  private secretsAudio: HTMLAudioElement | null = null; // sırlar ekranı müziği
+  private shopAudio: HTMLAudioElement | null = null; // dükkân/envanter müziği
+  private islikAudio: HTMLAudioElement | null = null; // oyun-içi ıslık (ara sıra)
+  private whistleTimer = 0; // ıslık zamanlayıcısı
+  private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
   muted = false;
   tension = 0; // 0..1 (Game her kare günceller)
   private lastHurt = -1;
@@ -53,6 +58,13 @@ class SoundEngine {
       this.gameAudio.muted = this.muted;
       this.gameAudio.volume = this.musicOn ? this.vol * 0.45 : 0;
     }
+    // Ekran müzikleri (çalıyorsa ses seviyesini uygula; fade bunu yönetebilir)
+    for (const el of [this.secretsAudio, this.shopAudio]) {
+      if (!el) continue;
+      el.muted = this.muted;
+      if (!el.paused && !this.fades.has(el)) el.volume = this.musicOn ? this.vol * 0.5 : 0;
+    }
+    if (this.islikAudio) this.islikAudio.muted = this.muted;
   }
 
   getVolume() {
@@ -252,6 +264,97 @@ class SoundEngine {
 
   stopGameMusic() {
     if (this.gameAudio) this.gameAudio.pause();
+  }
+
+  // --- Yumuşak geçiş yardımcısı: element sesini hedefe rampalar; 0'a inince duraklat ---
+  private fadeTo(el: HTMLAudioElement, target: number, ms = 500, pauseAtZero = false) {
+    const prev = this.fades.get(el);
+    if (prev) window.clearInterval(prev);
+    const steps = Math.max(1, Math.floor(ms / 40));
+    const start = el.volume;
+    let i = 0;
+    const id = window.setInterval(() => {
+      i++;
+      const t = i / steps;
+      el.volume = Math.max(0, Math.min(1, start + (target - start) * t));
+      if (i >= steps) {
+        window.clearInterval(id);
+        this.fades.delete(el);
+        if (pauseAtZero && target <= 0.001) el.pause();
+      }
+    }, 40);
+    this.fades.set(el, id);
+  }
+
+  private ensureScreenEl(kind: "secrets" | "shop"): HTMLAudioElement {
+    if (kind === "secrets") {
+      if (!this.secretsAudio) {
+        const a = new Audio("/audio/sirlar.mp3");
+        a.loop = true;
+        a.preload = "auto";
+        a.volume = 0;
+        a.muted = this.muted;
+        this.secretsAudio = a;
+      }
+      return this.secretsAudio;
+    }
+    if (!this.shopAudio) {
+      const a = new Audio("/audio/envanter.mp3");
+      a.loop = true;
+      a.preload = "auto";
+      a.volume = 0;
+      a.muted = this.muted;
+      this.shopAudio = a;
+    }
+    return this.shopAudio;
+  }
+
+  // Ekran müziği (sırlar/dükkân): menü müziğini kısıp bu parçayı yumuşakça açar.
+  playScreenMusic(kind: "secrets" | "shop") {
+    if (!this.musicOn) return;
+    this.resume();
+    const target = this.vol * 0.5;
+    const el = this.ensureScreenEl(kind);
+    const other = kind === "secrets" ? this.shopAudio : this.secretsAudio;
+    if (other) this.fadeTo(other, 0, 400, true);
+    if (this.menuAudio && !this.menuAudio.paused) this.fadeTo(this.menuAudio, 0, 400, true);
+    el.muted = this.muted;
+    el.volume = 0;
+    el.play().then(() => this.fadeTo(el, target, 600)).catch(() => {});
+  }
+
+  // Ekran müziğini durdur (menü müziğine geri dönülür — page.tsx yönetir).
+  stopScreenMusic() {
+    if (this.secretsAudio && !this.secretsAudio.paused) this.fadeTo(this.secretsAudio, 0, 350, true);
+    if (this.shopAudio && !this.shopAudio.paused) this.fadeTo(this.shopAudio, 0, 350, true);
+  }
+
+  // --- Oyun-içi ıslık (ara sıra, ürkütücü) ---
+  startWhistles() {
+    this.stopWhistles();
+    this.scheduleWhistle();
+  }
+  stopWhistles() {
+    if (this.whistleTimer) {
+      window.clearTimeout(this.whistleTimer);
+      this.whistleTimer = 0;
+    }
+  }
+  private scheduleWhistle() {
+    const delay = 20 + Math.random() * 40; // 20-60 sn
+    this.whistleTimer = window.setTimeout(() => {
+      if (!this.muted && this.musicOn) {
+        if (!this.islikAudio) {
+          const a = new Audio("/audio/islik.mp3");
+          a.preload = "auto";
+          this.islikAudio = a;
+        }
+        this.islikAudio.volume = Math.min(1, this.vol * 0.6);
+        this.islikAudio.currentTime = 0;
+        this.islikAudio.play().catch(() => {});
+      }
+      this.scheduleWhistle();
+    }, delay * 1000);
   }
 
   setTension(v: number) {
