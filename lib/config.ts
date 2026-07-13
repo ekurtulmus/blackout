@@ -25,4 +25,18 @@ export const TUNING = {
   densityPer: 0.4,
   healthBase: 3, // online can paketi taban sayısı (yoğunlukla ölçeklenir)
   healthMax: 12,
+
+  // --- Madde 4: lastik-bant dinamik görüş ---
+  visionCalmSec: 3, // bu kadar süre gelin görmezsen görüş daralmaya başlar
+  visionCalmFactor: 0.65, // rahatken base'in %65'ine kadar sıkışır
+  visionLerp: 1.5, // görüş yumuşama hızı (LERP), düşük = daha yavaş
+
+  // --- Madde 5: telegraph'lı fener kararması ---
+  dimMinSec: 8, // kararmalar arası min süre
+  dimMaxSec: 12, // kararmalar arası max süre (aralık rastgele)
+  dimTelegraphSec: 0.5, // kararmadan önce uyarı süresi (hafif kısılma)
+  dimTelegraphFactor: 0.85, // uyarıda fener çarpanı
+  dimDipSec: 0.5, // asıl kararma süresi
+  dimFactor: 0.42, // kararma anında fener çarpanı (görüş bu kadar düşer)
+  dimLerp: 8, // kararma yumuşama hızı
 };

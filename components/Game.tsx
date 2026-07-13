@@ -402,17 +402,18 @@ export default function Game({
         ctx!.restore();
       }
 
-      // --- Oyuncu + el feneri konisi ---
-      drawPlayer(ctx!, TS, cssW / 2, cssH / 2, p.dir, engine.time, engine.playerMoving, flicker, engine.config.visionRadius);
+      // --- Oyuncu + el feneri konisi (dinamik efektif yarıçap) ---
+      const vEff = engine.flashlight.eff;
+      drawPlayer(ctx!, TS, cssW / 2, cssH / 2, p.dir, engine.time, engine.playerMoving, flicker, vEff);
 
-      // --- Vinyet (ağır, boğucu kenar kararması) ---
+      // --- Vinyet (ağır, boğucu kenar kararması) — dinamik görüşe göre ---
       const grad = ctx!.createRadialGradient(
         cssW / 2,
         cssH / 2,
-        engine.config.visionRadius * TS * 0.28,
+        vEff * TS * 0.28,
         cssW / 2,
         cssH / 2,
-        engine.config.visionRadius * TS * 1.0
+        vEff * TS * 1.0
       );
       grad.addColorStop(0, "rgba(0,0,0,0)");
       grad.addColorStop(0.72, "rgba(0,0,0,0.42)");

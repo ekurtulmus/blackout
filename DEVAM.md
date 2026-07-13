@@ -69,7 +69,10 @@ Merkezi ayar: **`lib/config.ts`** (`TUNING`) — tüm denge sayıları burada.
   tek kişilik Infinity) · Madde 1 **kişi sayısına oranlı harita+yoğunluk** (`online.generateRaceLevel(...,playerCount)`) ·
   Madde 2 temas hasarı **35→20** · Madde 3 **yumuşak ease-in hız + %92 tavan** (`brideSpeedCap`, Zor'da bile geçilmez).
   Test: 12 Faz-1 + regresyon (573) geçti.
-- ⏳ Faz 2: dinamik görüş (lastik-bant) + telegraph'lı fener kararması.
+- ✅ **Faz 2**: Madde 4 **lastik-bant görüş** + Madde 5 **telegraph'lı fener kararması** — ortak
+  `lib/flashlight.ts` (LERP yumuşak; gelin görmezsen görüş %65'e daralır, gelin çıkınca genişler;
+  8-12sn'de bir 0.5sn uyarı + kısa dip + `flicker` sesi). Hem engine hem OnlineGame (yerel, her istemci
+  kendi görüşü). Test: 6 Flashlight + regresyon geçti.
 - ⏳ Faz 3: karanlıkta hızlanan gelin + mukus gelin + görünmezlik duvağı.
 - ⏳ Faz 4: mini-görevler (online-adil). ⏳ Faz 5: korku olayları + Mezarlık teması.
 

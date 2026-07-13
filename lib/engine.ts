@@ -19,6 +19,7 @@ import { computeVisible, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
 import { BRIDE_RADIUS, moveBrides } from "./brides";
 import { TUNING } from "./config";
+import { Flashlight } from "./flashlight";
 import type { Mission } from "./missions";
 
 // --- Sabitler ---
@@ -60,6 +61,7 @@ export type SoundEvent =
   | "pickup"
   | "heal"
   | "secret"
+  | "flicker"
   | "hurt"
   | "dooropen"
   | "warn"
@@ -89,6 +91,7 @@ export class GameEngine {
   private respawnQueue: number[] = [];
   private floors: Vec[] = [];
   private nextEscalate = Infinity; // endless: sıradaki ekstra gelin zamanı
+  flashlight!: Flashlight; // dinamik görüş + kararma (Madde 4,5)
 
   // --- Görev modu ---
   mission: Mission | null = null;
@@ -155,6 +158,9 @@ export class GameEngine {
       cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * dm.vision));
     }
     this.config = cfg;
+    // Dinamik fener/görüş (Madde 4,5) — dip anında ses ipucu
+    this.flashlight = new Flashlight(this.config.visionRadius);
+    this.flashlight.onDip = () => this.events.push("flicker");
     this.maze = generateMaze(
       this.config.cols,
       this.config.rows,
@@ -330,6 +336,11 @@ export class GameEngine {
     this.updateZombies(dt);
     this.processRespawns();
     this.computeTension();
+    // Dinamik görüş: menzilde gelin var mı? (Madde 4,5)
+    const brideInRange = this.zombies.some(
+      (z) => dist(z.pos, this.player.pos) <= this.flashlight.base
+    );
+    this.flashlight.update(dt, brideInRange);
     this.pickupAmmo();
     this.pickupHealth();
     this.pickupCollect();
@@ -605,7 +616,8 @@ export class GameEngine {
 
   private computeVision() {
     const origin = cellOf(this.player.pos);
-    this.visible = computeVisible(this.maze, origin, this.config.visionRadius);
+    // Dinamik efektif yarıçap (lastik-bant + kararma)
+    this.visible = computeVisible(this.maze, origin, this.flashlight.eff);
     for (const c of this.visible) {
       this.seen[c.y][c.x] = true;
     }

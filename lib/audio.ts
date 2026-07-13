@@ -427,6 +427,12 @@ class SoundEngine {
         this.noise(t, 0.06, 0.1, 3200, "highpass", 0.2, 0, 2);
         break;
       }
+      case "flicker": {
+        // Fener kısılması ipucu: kısa elektrik cızırtısı + alçalan ton (tekinsiz)
+        this.noise(t, 0.12, 0.14, 2600, "bandpass", 0.2, 0, 4);
+        this.tone(t, 240, 90, 0.14, 0.1, "sawtooth", 0.25);
+        break;
+      }
       case "secret": {
         // Gizli parça: gizemli, hayaletimsi parıltı (ödül ama tekinsiz) + bol reverb
         this.tone(t, 520, 780, 0.7, 0.16, "sine", 0.8);

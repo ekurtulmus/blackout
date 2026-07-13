@@ -14,6 +14,7 @@ import {
 } from "@/lib/engine";
 import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
 import { TUNING } from "@/lib/config";
+import { Flashlight } from "@/lib/flashlight";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
 import { sound } from "@/lib/audio";
@@ -79,6 +80,7 @@ export default function OnlineGame({
   const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
+  const flashlight = useRef<Flashlight | null>(null); // dinamik görüş + kararma (Madde 4,5)
   // Host otoritesi: en küçük koltuk numaralı hayatta-kalan host olur (host göçü)
   const amHost = useRef(info.seat === 0);
 
@@ -167,6 +169,13 @@ export default function OnlineGame({
       hostBrides.current = [];
     }
     brideRespawnQueue.current = [];
+    // Dinamik fener/görüş (yerel; her istemci kendi görüşünü yönetir)
+    if (!flashlight.current) {
+      flashlight.current = new Flashlight(lvl.visionRadius);
+      flashlight.current.onDip = () => sound.play("flicker");
+    } else {
+      flashlight.current.reset(lvl.visionRadius);
+    }
     resultPending.current = false;
     sentReach.current = false;
     ready.current = true;
@@ -512,6 +521,15 @@ export default function OnlineGame({
 
       const brides = renderBrides();
 
+      // Dinamik görüş/fener: menzilde gelin var mı? (Madde 4,5)
+      const fl = flashlight.current;
+      if (fl) {
+        const inR = brides.some(
+          (z) => Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y) <= fl.base
+        );
+        fl.update(dt, inR);
+      }
+
       // mermiler
       for (const b of bullets.current) {
         b.life -= dt;
@@ -639,6 +657,7 @@ export default function OnlineGame({
     function render() {
       const lvl = levelRef.current!, maze = mazeRef.current!;
       const theme = THEMES[lvl.theme] ?? THEMES[0];
+      const vEff = flashlight.current ? flashlight.current.eff : lvl.visionRadius; // dinamik görüş
       const p = selfPos.current;
       const camX = p.x * TS - cssW / 2, camY = p.y * TS - cssH / 2;
       const cols = maze.cols;
@@ -652,7 +671,7 @@ export default function OnlineGame({
 
       const origin = cellOf(p);
       const vis = new Map<number, number>();
-      for (const c of computeVisible(maze, origin, lvl.visionRadius)) {
+      for (const c of computeVisible(maze, origin, vEff)) {
         vis.set(c.y * cols + c.x, c.intensity);
         seen.current[c.y][c.x] = true;
       }
@@ -804,10 +823,10 @@ export default function OnlineGame({
       // kendi (dokunulmazlıkta camgöbeği halka)
       const cx = cssW / 2, cy = cssH / 2;
       const invuln = performance.now() < invulnUntil.current;
-      drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, lvl.visionRadius, invuln ? { ring: "#6ee7ff" } : undefined);
+      drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, vEff, invuln ? { ring: "#6ee7ff" } : undefined);
 
       // vinyet (ağır)
-      const g = ctx!.createRadialGradient(cx, cy, lvl.visionRadius * TS * 0.28, cx, cy, lvl.visionRadius * TS);
+      const g = ctx!.createRadialGradient(cx, cy, vEff * TS * 0.28, cx, cy, vEff * TS);
       g.addColorStop(0, "rgba(0,0,0,0)");
       g.addColorStop(0.72, "rgba(0,0,0,0.42)");
       g.addColorStop(1, "rgba(0,0,0,0.82)");
