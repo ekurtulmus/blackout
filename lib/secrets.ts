@@ -1,10 +1,10 @@
 // Gizli Son / Sırlar — GÖREV MODUNA bağlı. Her görev tamamlanınca KARIŞIK
-// eşlemeyle 1 sır açılır (Görev 1 → Sır 3 gibi). 8 görev = 8 sır. Hepsi
-// açılınca gizli son "Gerçek" görünür. Metinler 120-200 harf, birbirine bağlı.
-// Görseller: kendi kendine yeten sepya SVG (dış dosya yok, telif yok).
+// eşlemeyle 1 sır açılır (Görev 1 → Sır 3 gibi). 12 görev = 12 sır. Hepsi
+// açılınca gizli son "Gerçek" görünür. Metinler birbirine bağlı; sonunda TERS
+// KÖŞE: kaçan damat = OYUNCU. Görseller: kendi kendine yeten sepya SVG (telif yok).
 
 export type Secret = {
-  id: number; // 1..8 (hikaye sırası)
+  id: number; // 1..12 (hikaye sırası)
   title: string;
   text: string; // 120-200 harf
   svg: string; // sepya illüstrasyon (tam <svg> dizesi)
@@ -71,42 +71,83 @@ export const SECRETS: Secret[] = [
   },
   {
     id: 7,
-    title: "Damadın Sırrı",
+    title: "Fısıltıların Kaynağı",
     text:
-      "Damat aslında hiç gelmedi çünkü çoktan gitmişti — çok önceden, sessizce. Ona söylemeye kimse cesaret edemedi. Gelin, artık var olmayan birini ömür boyu bekledi.",
+      "Koridorlarda hep aynı isim dolaşır; taşın içine sinmiş bir fısıltı, bitmeyen bir yalvarış. Gelinler onu tekrar eder durur. Bir damadın adı. Belki de… seninki.",
     svg: wrap(
-      `<g opacity="0.35"><circle cx="120" cy="52" r="16" fill="#6f5c43"/><path d="M120 68 L146 150 L94 150 Z" fill="#6f5c43"/></g><path d="M120 68 L146 150 L94 150 Z" fill="none" stroke="#6f5c43" stroke-width="2" stroke-dasharray="5 5"/><path d="M78 120 L162 60" stroke="#7a1f1f" stroke-width="3"/>`
+      `<circle cx="90" cy="90" r="16" fill="#cbb892"/><g fill="none" stroke="#8a6b6b" stroke-width="2"><path d="M112 66 A34 34 0 0 1 112 114"/><path d="M124 56 A50 50 0 0 1 124 124"/><path d="M136 46 A66 66 0 0 1 136 134"/></g>`
     ),
   },
   {
     id: 8,
+    title: "Damadın Kaçışı",
+    text:
+      "Damat ölmedi. O gece, nikâhtan saatler önce içine bir korku düştü; duvağa, yeminlere, o bakışa dayanamadı. Karanlığa daldı ve bu koridorlarda kayboldu — sözünden değil, kendinden kaçarak.",
+    svg: wrap(
+      `<g fill="#6f5c43"><circle cx="150" cy="54" r="13"/><path d="M150 66 Q140 92 156 100 L146 140 M156 100 L172 138" stroke="#6f5c43" stroke-width="7" fill="none" stroke-linecap="round"/><path d="M150 78 L126 96 M150 84 L176 74" stroke="#6f5c43" stroke-width="6" stroke-linecap="round"/></g><rect x="40" y="40" width="42" height="104" fill="none" stroke="#6f5c43" stroke-width="5"/><path d="M78 44 L78 140" stroke="#7a1f1f" stroke-width="3"/>`
+    ),
+  },
+  {
+    id: 9,
+    title: "Düşen Fener",
+    text:
+      "Elindeki fener bir zamanlar onundu. Kaçarken düşürdü; ışığı bir titredi, sonra karanlığa yenildi. Şimdi aynı feneri sen taşıyorsun, aynı karanlıkta. Onun bıraktığı yerden yürüyorsun.",
+    svg: wrap(
+      `<path d="M120 72 L120 60 M110 60 L130 60" stroke="#6f5c43" stroke-width="3"/><rect x="106" y="72" width="28" height="34" rx="4" fill="#cdbb95" stroke="#6f5c43" stroke-width="3"/><path d="M120 106 L96 152 L144 152 Z" fill="#e8cf90" opacity="0.5"/><circle cx="120" cy="90" r="7" fill="#d9a441"/>`
+    ),
+  },
+  {
+    id: 10,
+    title: "Senin Adın",
+    text:
+      "Gelin sana yaklaştığında bağırmaz. Fısıldar — ve fısıldadığı isim tanıdık gelir. Çünkü o isim senin. Bunca yıl bekledi; bir başkasını değil, seni bekledi.",
+    svg: wrap(
+      `<rect x="52" y="74" width="136" height="46" fill="#ddcfae" stroke="#6f5c43" stroke-width="2"/><g stroke="#6f5c43" stroke-width="3" fill="none"><path d="M70 108 L70 86 L82 108 L82 86"/><path d="M94 86 L94 108 M94 86 L106 86 M94 97 L104 97 M94 108 L106 108"/><path d="M118 86 L118 108 M118 86 L130 108 L130 86"/></g><path d="M150 84 L172 110" stroke="#7a1f1f" stroke-width="3"/>`
+    ),
+  },
+  {
+    id: 11,
     title: "Çağrı",
     text:
-      "İstediği intikam değildi. Yalnızca birinin durup onu görmesini, hikâyesini dinlemesini istiyordu. Belki bu labirent bir hapishane değil, bir çağrıydı: “Beni hatırla.”",
+      "İstediği intikam değil. Yalnızca dönüp onu görmeni, kaçmayı bırakmanı istiyor. Bu labirent bir hapishane değil; yarım kalmış bir sözün yankısı, bir çağrı: “Kal.”",
     svg: wrap(
       `<path d="M120 145 C60 100 70 50 120 78 C170 50 180 100 120 145 Z" fill="#9c3a3a" stroke="#6f5c43" stroke-width="2"/><path d="M120 78 L120 145" stroke="#7a2a2a" stroke-width="2" opacity="0.6"/>`
     ),
   },
+  {
+    id: 12,
+    title: "Gerçek Damat",
+    text:
+      "Ve gerçek iner: kaçan damat sensin. Her deneyişte o geceyi yeniden yaşıyorsun; karanlık senin suçun, gelinler senin pişmanlığın. Tek kaçış çıkıştan geçmez — durmaktan, dönmekten, kalmaktan geçer.",
+    svg: wrap(
+      `<rect x="80" y="34" width="80" height="112" rx="38" fill="#cdbb95" stroke="#6f5c43" stroke-width="4"/><g opacity="0.5"><circle cx="120" cy="72" r="13" fill="#6f5c43"/><path d="M120 86 L142 140 L98 140 Z" fill="#6f5c43"/></g><circle cx="110" cy="70" r="4" fill="#7a1f1f"/><circle cx="130" cy="70" r="4" fill="#7a1f1f"/>`
+    ),
+  },
 ];
 
-// KARIŞIK eşleme: görev id (1..8) → sır indeksi (0..7). Birebir (bijection).
+// KARIŞIK eşleme: görev id (1..12) → sır indeksi (0..11). Birebir (bijection).
+// Sıralı DEĞİL → görevleri bitirdikçe hikâye dağınık açılır, ancak 12/12'de tamamlanır.
 export const MISSION_SECRET: Record<number, number> = {
-  1: 2, // Görev 1 → Sır 3
-  2: 4, // Görev 2 → Sır 5
-  3: 0, // Görev 3 → Sır 1
-  4: 6, // Görev 4 → Sır 7
-  5: 1, // Görev 5 → Sır 2
-  6: 7, // Görev 6 → Sır 8
-  7: 3, // Görev 7 → Sır 4
-  8: 5, // Görev 8 → Sır 6
+  1: 2,
+  2: 7,
+  3: 0,
+  4: 9,
+  5: 4,
+  6: 11,
+  7: 3,
+  8: 5,
+  9: 1,
+  10: 8,
+  11: 6,
+  12: 10,
 };
 
 export const SECRET_COUNT = SECRETS.length;
 
 export const SECRET_ENDING_TITLE = "Gerçek";
 export const SECRET_ENDING: string[] = [
-  "Parçalar birleşince gerçek ortaya çıkar: terk edilen gelin, düğün gününü sonsuza dek yaşamaya mahkûm oldu.",
-  "Beklemekten, öfkeden ve kırgınlıktan doğan bir lanet… ta ki biri onu görene, duyana ve hikâyesini tamamlayana kadar.",
-  "Belki de kaçış hiçbir zaman çıkıştan geçmiyordu. Belki tek gereken, sonunda birinin dinlemesiydi.",
-  "Gelinler bir an duraklar. Ve karanlık, ilk kez, biraz daha az soğuktur.",
+  "Parçalar birleşince perde iner: bu labirentte kaçan hep sendin. Terk eden damat, arkasına bakmadan giden.",
+  "Gelinler seni avlamıyor — hatırlaman için yalvarıyorlar. Her tur, o geceye atılmış bir çağrı.",
+  "Belki kaçış hiçbir zaman çıkıştan geçmedi. Belki tek gereken durmak, dönmek ve sonunda kalmaktı.",
+  "Fener elinde titrer. Ve karanlık, ilk kez, biraz daha az yalnızdır.",
 ];

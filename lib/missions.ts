@@ -114,6 +114,41 @@ export const MISSIONS: Mission[] = [
     escort: true,
     exitOpenAtStart: true,
   },
+  {
+    id: 10,
+    title: "Gelin Alayı",
+    brief:
+      "Salon beyaz bir kalabalıkla dolar. Duvaklar her yerde, fısıltılar kulaklarında. Bu alaydan 8 gelini indir, ancak o zaman kapı açılır.",
+    objectiveHint: "8 gelin öldür → çık",
+    levelBase: 5,
+    lives: 2,
+    zombies: 18,
+    killTarget: 8,
+  },
+  {
+    id: 11,
+    title: "Kör Sessizlik",
+    brief:
+      "Fenerin neredeyse sönük, silahın da yok. Yalnızca nefesini tut ve karanlığın içinden sıvışıp çıkışa ulaş. Bir gürültü, bir yanlış adım — yeter.",
+    objectiveHint: "Fenersiz + ateş yasak · çıkışa ulaş",
+    levelBase: 4,
+    lives: 2,
+    visionMul: 0.4,
+    noFire: true,
+    exitOpenAtStart: true,
+  },
+  {
+    id: 12,
+    title: "Kal",
+    brief:
+      "Kaçacak yer kalmadı — belki de hiç olmadı. Bu kez koşma. Dur, dayan ve o geceyle yüzleş: 75 saniye boyunca karanlıkta ayakta kal. Sonunda, belki, fısıltılar diner.",
+    objectiveHint: "Kaçma · 75 sn dayan",
+    levelBase: 5,
+    lives: 1,
+    zombies: 16,
+    visionMul: 0.75,
+    surviveTime: 75,
+  },
 ];
 
 export function missionById(id: number): Mission | undefined {

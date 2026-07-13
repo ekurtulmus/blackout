@@ -31,7 +31,7 @@ import {
   type MQPlan,
 } from "./miniquests";
 import { ScareDirector, type ScareKind } from "./scares";
-import { JOURNAL } from "./journal";
+import { JOURNAL, getCollected } from "./journal";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -442,7 +442,13 @@ export class GameEngine {
         );
         if (nCells[0]) {
           this.noteItem = { id: this.nextId++, cell: { x: nCells[0].x, y: nCells[0].y }, taken: false };
-          this.noteId = (this.level - 1) % JOURNAL.length;
+          // Henüz TOPLANMAMIŞ bir günlük sayfası seç (10 bölümde 14 sayfa tamamlanabilsin;
+          // seviye-tabanlı sabit indeks 10-13'ü hiç göstermezdi). Hepsi toplanınca sıradan seç.
+          const collected = getCollected();
+          const remaining = JOURNAL.map((e) => e.id).filter((id) => !collected.includes(id));
+          this.noteId = remaining.length
+            ? remaining[(this.level - 1) % remaining.length]
+            : (this.level - 1) % JOURNAL.length;
         }
       }
       // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)

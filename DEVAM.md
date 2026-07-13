@@ -30,7 +30,11 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   SP mobil ayrı Tuzak butonu kaldırıldı (slot kapsıyor). SP+online uygulandı; canlı doğrulandı (kuşan→slot "🛡️2").
 - ✅ **Ek istekler (2026-07-13)**: alt ekranlarda "← Menü" HER ZAMAN sol üstte (`.topback` intro + online lobiye de
   eklendi); Nasıl Oynanır konu detayında belirgin **"← Geri"** çip butonu (`.mm-help-back`).
-- ⏳ **Faz 4 — İçerik**: Sırlar 8→12 (bağlı, ters köşeli hikaye), Günlük 7→14 (oyuncu ağzından), Görevler 9→12.
+- ✅ **Faz 4 — İçerik**: **Sırlar 8→12** (`secrets.ts`) — birbirine bağlı + **TERS KÖŞE**: kaçan damat = OYUNCU
+  (yeni sırlar: Fısıltıların Kaynağı/Damadın Kaçışı/Düşen Fener/Senin Adın/Gerçek Damat); MISSION_SECRET 12'lik
+  bijection; SECRET_ENDING twist'e göre. **Görevler 9→12** (`missions.ts`: Gelin Alayı/Kör Sessizlik/Kal-finale).
+  **Günlük 6→14** (`journal.ts`) oyuncunun ağzından, twist arkı. `engine.ts` günlük seçimi TOPLANMAMIŞ sayfadan
+  (10 bölümde 14 sayfa toplanabilsin — eski `(level-1)%len` 10-13'ü hiç göstermezdi). Canlı: 12 görev/12 sır/14 günlük.
 - ⏳ **Faz 5 — Ekonomi & başarım**: başarıma zorluğa göre altın + "Ödülü Al" butonu; dükkânda "Altın Satın Al"
   (sembolik, 500 altın=12₺, ödeme almadan ver).
 - ⏳ **Faz 6 — Modlar & Arena**: menüde "Modlar" ekranı + yeni **Arena (dalga hayatta kalma)** modu.
