@@ -73,6 +73,26 @@ export function moveBrides(
       chase(z, maze, zc0, dt, z.distractTarget, false, smart, z.distractTarget, applyMul(config.zombieSpeed, trapMul(z)));
       continue;
     }
+    // Faz D "climber": duvarları AŞARAK (tırmanarak) en yakın oyuncuya YAVAŞ süzülür.
+    if (z.kind === "climber") {
+      let ci = -1;
+      let cd = Infinity;
+      for (let i = 0; i < players.length; i++) {
+        if (!targetable(i)) continue;
+        const d = dist(z.pos, players[i]);
+        if (d < cd) { cd = d; ci = i; }
+      }
+      if (ci === -1) { z.aware = false; continue; }
+      z.aware = true;
+      z.lastSeen = cellOf(players[ci]);
+      const sp = applyMul(config.zombieSpeed * TUNING.climberSpeedMul, trapMul(z));
+      const dx = players[ci].x - z.pos.x;
+      const dy = players[ci].y - z.pos.y;
+      const len = Math.hypot(dx, dy) || 1;
+      z.pos.x += (dx / len) * sp * dt; // DUVAR KONTROLÜ YOK — tırmanır
+      z.pos.y += (dy / len) * sp * dt;
+      continue;
+    }
     // en yakın HEDEFLENEBİLİR (görünmez olmayan) oyuncu
     let nIdx = -1;
     let nd = Infinity;

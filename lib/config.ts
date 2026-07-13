@@ -67,4 +67,15 @@ export const TUNING = {
   // --- Faz C: Tuzak (gelini yavaşlatır, DURDURMAZ) ---
   trapSlowMul: 0.4, // tuzak üstündeki gelin hızı (%40)
   trapSec: 8, // tuzak kaç saniye aktif kalır
+
+  // --- Faz D: Yeni gelin türleri (tek kişilik) ---
+  callerCooldown: 6, // caller kaç saniyede bir yakındakileri çağırır
+  callerRadius: 7, // çağrının etki yarıçapı (hücre)
+  splitChildSpeedMul: 1.28, // bölünen yavrular biraz daha hızlı
+  climberSpeedMul: 0.6, // duvar tırmanan yavaş ilerler (gerçekçi/tırmanır gibi)
+  queenHp: 6, // kraliçe kaç isabetle ölür
+  queenSpeedMul: 0.72, // kraliçe yavaş ama asla durmaz
+  queenScale: 1.6, // kraliçe görsel büyüklük çarpanı
+  queenEveryLevels: 4, // her bu kadar bölümde bir kraliçe (4, 8...)
+  queenReward: 8, // kraliçe öldürünce ekstra para
 };

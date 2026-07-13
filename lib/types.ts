@@ -5,8 +5,18 @@ export type Vec = { x: number; y: number };
 // Hücre görüş durumu: hiç görülmedi / hafızada (soluk) / şu an aydınlık
 export type CellVisibility = 0 | 1 | 2; // 0 = unseen, 1 = memory, 2 = visible
 
-// Gelin arketipleri: normal / karanlıkta hızlanan (dark) / mukus bırakan (mucus)
-export type BrideKind = "normal" | "dark" | "mucus";
+// Gelin arketipleri (Faz D ile genişledi):
+//  normal · dark (karanlıkta hızlı) · mucus (leke bırakır) ·
+//  caller (yakındaki gelinleri çağırır) · splitter (ölünce ikiye bölünür) ·
+//  climber (duvarlardan yavaşça tırmanır) · queen (çok canlı mini-boss)
+export type BrideKind =
+  | "normal"
+  | "dark"
+  | "mucus"
+  | "caller"
+  | "splitter"
+  | "climber"
+  | "queen";
 
 export type Zombie = {
   id: number;
@@ -23,6 +33,10 @@ export type Zombie = {
   speedMul?: number; // hız çarpanı (mini-görev "yüzük" → bir gelin delirir/hızlanır); tavan yine geçerli
   distractTimer?: number; // mini-görev "çan": bu süre boyunca oyuncuyu bırakıp çana gider (sn)
   distractTarget?: Vec; // çanın konumu (dikkat dağıtma hedefi)
+  callTimer?: number; // Faz D "caller": bir sonraki çağırma anına kadar süre (sn)
+  screamT?: number; // Faz D "caller": çığlık görsel efektinin kalan süresi (sn)
+  maxHp?: number; // Faz D "queen": can pip'i göstermek için başlangıç canı
+  noSplit?: boolean; // Faz D "splitter": bölünmeden doğan yavru tekrar bölünmez
 };
 
 // Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi

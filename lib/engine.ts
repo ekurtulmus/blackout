@@ -365,7 +365,61 @@ export class GameEngine {
         this.miniQuest = plan;
         this.mqDef = MQ_DEFS[plan.kind];
       }
+      // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)
+      this.assignSpecialKinds();
     }
+  }
+
+  // Faz D: bazı normal gelinleri özel türlere çevir + boss bölümlerinde kraliçe ekle.
+  private assignSpecialKinds() {
+    const normals = this.shuffle(this.zombies.filter((z) => z.kind === "normal"));
+    let idx = 0;
+    const take = () => normals[idx++];
+    if (this.level >= 2) {
+      const s = take();
+      if (s) s.kind = "splitter";
+    }
+    if (this.level >= 3) {
+      const s2 = take();
+      if (s2) s2.kind = "splitter";
+      const c = take();
+      if (c) {
+        c.kind = "caller";
+        c.callTimer = TUNING.callerCooldown;
+      }
+    }
+    if (this.level >= 4) {
+      const cl = take();
+      if (cl) cl.kind = "climber";
+    }
+    // Kraliçe (mini-boss): her queenEveryLevels bölümde bir EKSTRA
+    if (this.level % TUNING.queenEveryLevels === 0) this.spawnQueen();
+  }
+
+  private spawnQueen() {
+    const far = this.floors.filter(
+      (c) =>
+        !(c.x === this.exit.x && c.y === this.exit.y) &&
+        Math.hypot(c.x + 0.5 - 1.5, c.y + 0.5 - 1.5) >= 6
+    );
+    const pool = far.length ? far : this.floors;
+    const cell = this.shuffle(pool)[0];
+    if (!cell) return;
+    this.zombies.push({
+      id: this.nextId++,
+      pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
+      hp: TUNING.queenHp,
+      maxHp: TUNING.queenHp,
+      aware: false,
+      lastSeen: null,
+      seenTimer: LOSE_AGGRO_TIME,
+      wanderDir: this.randomDir(),
+      wanderTimer: 0,
+      path: null,
+      repathTimer: 0,
+      kind: "queen",
+      speedMul: TUNING.queenSpeedMul, // yavaş ama asla durmaz
+    });
   }
 
   get zombiesRemaining() {
@@ -603,6 +657,32 @@ export class GameEngine {
     if (z.kind === "mucus") {
       this.mucus.push({ x: Math.floor(z.pos.x), y: Math.floor(z.pos.y), until: this.time + TUNING.mucusSec });
     }
+    // Faz D "splitter": ölünce iki HIZLI yavruya bölünür (yavrular tekrar bölünmez)
+    if (z.kind === "splitter" && !z.noSplit) {
+      const pc = { x: Math.floor(this.player.pos.x), y: Math.floor(this.player.pos.y) };
+      for (let k = 0; k < 2; k++) {
+        this.zombies.push({
+          id: this.nextId++,
+          pos: { x: z.pos.x + (k === 0 ? -0.3 : 0.3), y: z.pos.y },
+          hp: 1,
+          aware: true,
+          lastSeen: { x: pc.x, y: pc.y },
+          seenTimer: 0,
+          wanderDir: this.randomDir(),
+          wanderTimer: 0,
+          path: null,
+          repathTimer: 0,
+          kind: "normal",
+          noSplit: true,
+          speedMul: TUNING.splitChildSpeedMul,
+        });
+      }
+    }
+    // Faz D "queen": ekstra para + puan ödülü
+    if (z.kind === "queen") {
+      this.coinsEarned += Math.round(TUNING.queenReward * this.riskMul);
+      this.score += Math.round(300 * this.riskMul);
+    }
     // 20 sn sonra yeniden doğsun (tüm modlarda)
     this.respawnQueue.push(this.time + BRIDE_RESPAWN_SEC);
     // kan izi bırak (kalıcı, hafızada kalır)
@@ -688,6 +768,34 @@ export class GameEngine {
           (nx / nl) * 1.5 * dt,
           (ny / nl) * 1.5 * dt
         );
+      }
+    }
+    this.updateCallers(dt);
+  }
+
+  // Faz D "caller": oyuncuyu fark eden çağıran gelin, cooldown'la yakındaki uyumayan
+  // gelinleri uyandırır (çığlık). Baskıyı artırır ama art arda spam yapmaz.
+  private updateCallers(dt: number) {
+    for (const z of this.zombies) {
+      if (z.kind !== "caller") continue;
+      if (z.screamT && z.screamT > 0) z.screamT -= dt;
+      if (z.callTimer == null) z.callTimer = TUNING.callerCooldown;
+      z.callTimer -= dt;
+      if (z.aware && z.callTimer <= 0) {
+        z.callTimer = TUNING.callerCooldown;
+        z.screamT = 0.7;
+        this.events.push("whisper"); // çığlık ipucu
+        const pc = { x: Math.floor(this.player.pos.x), y: Math.floor(this.player.pos.y) };
+        for (const o of this.zombies) {
+          if (o === z || o.aware) continue;
+          if (dist(o.pos, z.pos) <= TUNING.callerRadius) {
+            o.aware = true;
+            o.lastSeen = { x: pc.x, y: pc.y };
+            o.seenTimer = 0;
+            o.path = null;
+            o.repathTimer = 0;
+          }
+        }
       }
     }
   }

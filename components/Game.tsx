@@ -18,6 +18,7 @@ import { themeFor } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { getCoins, addCoins } from "@/lib/coins";
 import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS } from "@/lib/inventory";
+import { TUNING } from "@/lib/config";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 
@@ -642,14 +643,66 @@ export default function Game({
         ctx!.restore();
       }
 
-      // --- Kanlı Gelinler (4 çeşit karışık, hep oyuncuya dönük) ---
+      // --- Kanlı Gelinler (türlere göre) ---
       for (const z of engine.zombies) {
-        const zc = { x: Math.floor(z.pos.x), y: Math.floor(z.pos.y) };
-        if (vis.get(zc.y * cols + zc.x) === undefined) continue;
         const s = worldToScreen(z.pos.x, z.pos.y, camX, camY);
-        // oyuncu solda mı sağda mı (hafif yön eğimi için)
+        if (s.sx < -TS * 2 || s.sy < -TS * 2 || s.sx > cssW + TS * 2 || s.sy > cssH + TS * 2) continue;
+        const zc = { x: Math.floor(z.pos.x), y: Math.floor(z.pos.y) };
+        const visible = vis.get(zc.y * cols + zc.x) !== undefined;
+        // climber/queen görüş dışında da (duvarda/karanlıkta) hafifçe belli olur
+        const ghost = z.kind === "climber" || z.kind === "queen";
+        if (!visible && !ghost) continue;
         const lean = engine.player.pos.x < z.pos.x ? -1 : 1;
-        drawBride(ctx!, TS, s.sx, s.sy, engine.time, z.id, z.aware, lean);
+        const scale = z.kind === "queen" ? TUNING.queenScale : 1;
+        ctx!.save();
+        if (!visible) ctx!.globalAlpha = 0.5; // karanlıktaki tırmanan/kraliçe soluk
+        drawBride(ctx!, TS * scale, s.sx, s.sy, engine.time, z.id, z.aware, lean);
+        ctx!.restore();
+
+        // Kraliçe: taç + can pip'leri
+        if (z.kind === "queen") {
+          const r = TS * scale * 0.42;
+          ctx!.save();
+          ctx!.fillStyle = "#ffd75a";
+          ctx!.shadowColor = "rgba(255,215,90,0.9)";
+          ctx!.shadowBlur = 10;
+          // basit taç (üç sivri)
+          ctx!.beginPath();
+          const cyTop = s.sy - r * 1.15;
+          ctx!.moveTo(s.sx - r * 0.6, cyTop);
+          ctx!.lineTo(s.sx - r * 0.6, cyTop - r * 0.35);
+          ctx!.lineTo(s.sx - r * 0.3, cyTop - r * 0.1);
+          ctx!.lineTo(s.sx, cyTop - r * 0.45);
+          ctx!.lineTo(s.sx + r * 0.3, cyTop - r * 0.1);
+          ctx!.lineTo(s.sx + r * 0.6, cyTop - r * 0.35);
+          ctx!.lineTo(s.sx + r * 0.6, cyTop);
+          ctx!.closePath();
+          ctx!.fill();
+          // can pip'leri
+          const mx = z.maxHp ?? TUNING.queenHp;
+          const pw = TS * 0.12;
+          const total = mx * pw + (mx - 1) * 3;
+          for (let i = 0; i < mx; i++) {
+            ctx!.fillStyle = i < z.hp ? "#ff5a5a" : "rgba(120,120,120,0.5)";
+            ctx!.fillRect(s.sx - total / 2 + i * (pw + 3), s.sy - r * 1.6, pw, pw * 0.5);
+          }
+          ctx!.restore();
+        }
+
+        // Caller: çığlık anında genişleyen ses halkaları
+        if (z.kind === "caller" && z.screamT && z.screamT > 0) {
+          const prog = 1 - z.screamT / 0.7;
+          ctx!.save();
+          ctx!.globalAlpha = z.screamT / 0.7;
+          ctx!.strokeStyle = "rgba(255,120,200,0.9)";
+          ctx!.lineWidth = 2;
+          for (let k = 0; k < 2; k++) {
+            ctx!.beginPath();
+            ctx!.arc(s.sx, s.sy, TS * (0.5 + prog * 2 + k * 0.4), 0, Math.PI * 2);
+            ctx!.stroke();
+          }
+          ctx!.restore();
+        }
       }
 
       // --- Madde 6: karanlıkta hızlanan gelinlerin KIRMIZI GÖZLERİ ---
