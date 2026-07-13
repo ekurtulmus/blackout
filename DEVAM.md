@@ -82,6 +82,18 @@
   ileride başka kaynaklar/dükkan gelecek.
 - ✅ **Gelin düzeltme**: karanlık gelini bizi GÖRÜNCE normal hızda koşar (eski 0.28x yavaşlama kaldırıldı).
 - ✅ **Can barı**: can azalınca kısa yanıp sönme (fark edilsin).
+- ✅ **Ekonomi (Faz A)**: gelin öldürünce/bölüm geçince **para**; **risk=ödül** çarpanı (kolay 1.0/orta 1.3/
+  zor 1.7 → para+puan). `engine.coinsEarned` → kalıcı cüzdan (`coins.ts`). levelclear/win ekranında gösterilir.
+- ✅ **Dükkân + Envanter (Faz B)**: `lib/inventory.ts` (kalıcı) + `components/Shop.tsx`. Menüden + bölüm-arası
+  dükkân. Tüketilebilir: **kalkan** (oyunda istediğin an 3sn dokunulmazlık), **radar** (çıkış yönü 1 kez),
+  mermi/can paketi (bölüm başı). KALICI: sürekli cephane, +can hakkı. Kişiselleştirme: fener rengi, görünüm.
+  Oyun-içi **📦 envanter paneli** ile kalkan/radar tıklayarak kullanılır. `engine.activateShield/Radar` + invuln.
+
+### KALAN — sonraki fazlar (kullanıcı seçimi, 2026-07-13)
+- ⏳ **Faz C**: Koşma/sprint (#2) + Tuzak (#4, gelini yavaşlatır).
+- ⏳ **Faz D**: Yeni gelinler — Çağıran (#6), Bölünen (#7), Duvar-tırmanan (#10, gerçekçi), Kraliçe-boss (#9).
+- ⏳ **Faz E**: Kaçış bölümü (#11, +görev moduna) + Rehin kurtarma (#13).
+- ⏳ **Faz F**: Başarımlar (#17) + Günlük/not parçaları (#16).
 
 ## RİTİM & ÇEŞİTLİLİK PAKETİ (devam ediyor)
 Amaç: tekdüzeliği kırmak, zorluğu artırmadan ritmi değiştirmek, online'da adaleti korumak.
