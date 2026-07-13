@@ -3,10 +3,40 @@
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/audio";
 
+// Sıfırlanacak ilerleme/satın alma anahtarları (ses tercihleri KORUNUR)
+const PROGRESS_KEYS = [
+  "blackout_coins",
+  "blackout_inventory",
+  "blackout_missions_cleared",
+  "blackout_mission_best",
+  "blackout_endless_best",
+  "blackout_arena_best",
+  "blackout_secrets",
+  "blackout_sp_diff",
+  "blackout_achievements",
+  "blackout_ach_claimed",
+  "blackout_journal",
+];
+
 export default function Settings({ onBack }: { onBack: () => void }) {
   const [vol, setVol] = useState(100);
   const [music, setMusic] = useState(true);
   const [muted, setMuted] = useState(false);
+  const [confirmReset, setConfirmReset] = useState(false);
+
+  function resetProgress() {
+    try {
+      for (const k of PROGRESS_KEYS) localStorage.removeItem(k);
+    } catch {
+      /* geç */
+    }
+    // Tüm bellek önbelleklerini de temizlemek için sayfayı yeniden yükle
+    try {
+      window.location.reload();
+    } catch {
+      onBack();
+    }
+  }
 
   // Ses motorunu hazırla ve kayıtlı tercihleri oku
   useEffect(() => {
@@ -80,6 +110,39 @@ export default function Settings({ onBack }: { onBack: () => void }) {
           <b>İpucu:</b> Oyun içinde <kbd>Esc</kbd> / <kbd>P</kbd> ile duraklat, HUD'daki
           🔊 ile sesi hızlıca kıs. Ayarların bu cihazda saklanır.
         </div>
+      </div>
+
+      {/* Tehlikeli bölge: oyunu sıfırla */}
+      <div
+        className="how"
+        style={{ maxWidth: 440, width: "100%", borderColor: "rgba(255,90,90,0.4)", display: "flex", flexDirection: "column", gap: 12 }}
+      >
+        <b style={{ color: "#ff6b6b", letterSpacing: "0.06em" }}>⚠️ Oyunu Sıfırla</b>
+        {!confirmReset ? (
+          <>
+            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
+              Tüm ilerlemen silinir: <b>para, envanter ve satın almalar</b>, tamamlanan görevler,
+              açılan sırlar, günlük sayfaları, başarımlar ve en iyi skorlar. <b>Geri alınamaz.</b>
+            </div>
+            <button className="btn" style={{ borderColor: "rgba(255,90,90,0.5)", color: "#ff9a3c" }} onClick={() => setConfirmReset(true)}>
+              Oyunu Sıfırla
+            </button>
+          </>
+        ) : (
+          <>
+            <div style={{ fontSize: 14, color: "#ff9a3c", lineHeight: 1.5, fontWeight: 700 }}>
+              Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.
+            </div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <button className="btn btn-primary" style={{ background: "#7a1f1f", borderColor: "#ff6b6b" }} onClick={resetProgress}>
+                Evet, hepsini sil
+              </button>
+              <button className="btn" onClick={() => setConfirmReset(false)}>
+                Vazgeç
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
     </div>

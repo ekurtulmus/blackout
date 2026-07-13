@@ -54,7 +54,10 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   → burst gelin + para bonusu; skor=dalga (`blackout_arena_best`). HUD "Dalga N · k/6". `arenaplay`/`arenaresult`
   ekranları (endless mimarisi). Canlı: Modlar/Arena açılıyor, "MOD" brief, konsol temiz.
 - ⏳ **Faz 7 — Online**: oda kurma 200 altın; 2 kişiden az kalınca oda kapanır. (global erişim zaten var)
-- ⏳ **Faz 8 — Kayıt & sıfırla**: Ayarlar'a "Oyunu Sıfırla" (onaylı); ilerleme/satın alma geçmişi.
+- ✅ **Faz 8 — Kayıt & sıfırla**: `Settings.tsx`'e **"⚠️ Oyunu Sıfırla"** — iki adımlı onay ("Emin misin?"),
+  tüm ilerleme/satın alma anahtarlarını (`PROGRESS_KEYS`: coins/inventory/missions/secrets/journal/achievements/
+  ach_claimed/best skorlar) siler + reload; **ses tercihleri korunur**. Canlı: para/başarım/arena silindi, vol=0.5 kaldı.
+  (İlerleme/satın alma kaydı zaten localStorage'da kalıcı ✅.)
 - ⏳ **Faz 9 — Line icon geçişi**: menü+oyun tüm emoji → temaya uygun özel SVG line-icon.
 - ⏳ **Faz 10 — Arkadaş sistemi**: arkadaş kodu + presence; menü & oda-kurmada "Arkadaşlarım" + oyun daveti.
 Zaten yapılmış: eşya tüm modlarda ortak/kalıcı ✅, ilerleme kaydı ✅, online global ✅.
