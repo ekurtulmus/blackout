@@ -17,6 +17,7 @@ import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { getCoins, addCoins } from "@/lib/coins";
+import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS } from "@/lib/inventory";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 
@@ -83,6 +84,10 @@ export default function Game({
   const prevHpRef = useRef(PLAYER_MAX_HP);
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
+  const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
+  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 }); // kullanılabilir eşyalar
+  const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
+  const skinRingRef = useRef<string | undefined>(undefined);
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
@@ -120,6 +125,30 @@ export default function Game({
     const engine = new GameEngine(level, score, lives, mission, withPhoto, diff);
     engineRef.current = engine;
     setCoins(getCoins()); // kalıcı parayı yükle
+    // Envanter (Faz B): yalnız normal tek kişilikte başlangıç eşyalarını uygula
+    if (!mission) {
+      const inv = getInventory();
+      let changed = false;
+      let ammoBonus = 0;
+      if (inv.permAmmo) ammoBonus += 3; // KALICI: her bölüm +3
+      if (inv.ammoPacks > 0) {
+        ammoBonus += 3;
+        inv.ammoPacks -= 1;
+        changed = true;
+      } // tek kullanım
+      if (inv.healthPacks > 0) {
+        engine.player.hp = PLAYER_MAX_HP;
+        engine.activateShield(3); // tam can + kısa kalkan
+        inv.healthPacks -= 1;
+        changed = true;
+      }
+      engine.ammoCount += ammoBonus;
+      if (changed) saveInventory(inv);
+      // Kişiselleştirme: fener rengi + görünüm halkası
+      flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
+      skinRingRef.current = SKIN_RINGS[inv.skin];
+      setInvCounts({ shields: inv.shields, radars: inv.radars });
+    }
     // Çember görevi çıkışı kilitler → bölüm başında oyuncuyu uyar
     if (!mission && engine.miniQuest?.kind === "markedkill") {
       setMqNotice(
@@ -612,7 +641,21 @@ export default function Game({
 
       // --- Oyuncu + el feneri konisi (dinamik efektif yarıçap) ---
       const vEff = engine.flashlight.eff;
-      drawPlayer(ctx!, TS, cssW / 2, cssH / 2, p.dir, engine.time, engine.playerMoving, flicker, vEff);
+      drawPlayer(ctx!, TS, cssW / 2, cssH / 2, p.dir, engine.time, engine.playerMoving, flicker, vEff, {
+        coneColor: flashColorRef.current,
+        ring: engine.invuln ? "#6ee7ff" : skinRingRef.current,
+      });
+      // Kalkan (dokunulmazlık) halkası
+      if (engine.invuln) {
+        ctx!.save();
+        ctx!.globalAlpha = 0.35 + 0.2 * Math.sin(engine.time * 8);
+        ctx!.strokeStyle = "rgba(120,220,255,0.9)";
+        ctx!.lineWidth = 2.5;
+        ctx!.beginPath();
+        ctx!.arc(cssW / 2, cssH / 2, TS * 0.55, 0, Math.PI * 2);
+        ctx!.stroke();
+        ctx!.restore();
+      }
       // Madde 8: görünmezken (duvak) titreşen tül halkası
       if (engine.veiled) {
         ctx!.save();
@@ -868,6 +911,29 @@ export default function Game({
     if (i) i[k] = v;
   };
 
+  // Envanter: kalkanı kullan (istediğin an 3 sn dokunulmazlık)
+  const useShield = () => {
+    const e = engineRef.current;
+    if (!e || e.invuln) return;
+    const inv = getInventory();
+    if (inv.shields <= 0) return;
+    inv.shields -= 1;
+    saveInventory(inv);
+    e.activateShield(3);
+    setInvCounts({ shields: inv.shields, radars: inv.radars });
+  };
+  // Envanter: radarı kullan (çıkış yönünü 1 kez göster)
+  const useRadar = () => {
+    const e = engineRef.current;
+    if (!e) return;
+    const inv = getInventory();
+    if (inv.radars <= 0) return;
+    inv.radars -= 1;
+    saveInventory(inv);
+    e.activateRadar();
+    setInvCounts({ shields: inv.shields, radars: inv.radars });
+  };
+
   const hpPct = (hud.hp / PLAYER_MAX_HP) * 100;
   const hpColor = hpPct > 35 ? "var(--hp)" : "var(--hp-low)";
   const mm = Math.floor(hud.time / 60)
@@ -935,7 +1001,7 @@ export default function Game({
         )}
         <div className="chip">
           <div className="lives">
-            {[0, 1, 2].map((i) => (
+            {Array.from({ length: Math.max(3, hud.lives) }, (_, i) => (
               <span
                 key={i}
                 className={"heart" + (i < hud.lives ? "" : " gone")}
@@ -994,6 +1060,15 @@ export default function Game({
         >
           <span className="val">{muted ? "🔇" : "🔊"}</span>
         </button>
+        {!mission && (
+          <button
+            className="chip mutebtn"
+            onClick={() => setInvOpen((v) => !v)}
+            title="Envanter (kalkan / radar)"
+          >
+            <span className="val">📦 {invCounts.shields + invCounts.radars}</span>
+          </button>
+        )}
         <button
           className="chip mutebtn"
           onClick={togglePause}
@@ -1002,6 +1077,51 @@ export default function Game({
           <span className="val">{paused ? "▶" : "⏸"}</span>
         </button>
       </div>
+
+      {invOpen && !mission && (
+        <div
+          style={{
+            position: "fixed",
+            right: 12,
+            bottom: 12,
+            zIndex: 14,
+            display: "flex",
+            flexDirection: "column",
+            gap: 8,
+            background: "rgba(10,12,16,0.94)",
+            border: "1px solid var(--border)",
+            borderRadius: 12,
+            padding: 12,
+            minWidth: 200,
+          }}
+        >
+          <div style={{ fontWeight: 800, color: "#ffd75a" }}>📦 Envanter</div>
+          <button
+            className="btn"
+            disabled={invCounts.shields <= 0}
+            onClick={useShield}
+            style={{ opacity: invCounts.shields > 0 ? 1 : 0.4 }}
+          >
+            🛡️ Kalkan ({invCounts.shields}) — 3 sn dokunulmazlık
+          </button>
+          <button
+            className="btn"
+            disabled={invCounts.radars <= 0}
+            onClick={useRadar}
+            style={{ opacity: invCounts.radars > 0 ? 1 : 0.4 }}
+          >
+            📻 Radar ({invCounts.radars}) — çıkış yönünü göster
+          </button>
+          {invCounts.shields <= 0 && invCounts.radars <= 0 && (
+            <div style={{ fontSize: 12, color: "var(--muted)" }}>
+              Boş — dükkândan alabilirsin.
+            </div>
+          )}
+          <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
+            Kapat
+          </button>
+        </div>
+      )}
 
       {(hud.warn || exitMsg) && (
         <div className="warn">

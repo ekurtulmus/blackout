@@ -5,6 +5,8 @@ import Game, { type EndResult } from "@/components/Game";
 import OnlineLobby from "@/components/OnlineLobby";
 import OnlineGame from "@/components/OnlineGame";
 import Settings from "@/components/Settings";
+import Shop from "@/components/Shop";
+import { getInventory } from "@/lib/inventory";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
@@ -31,6 +33,7 @@ type Screen =
   | "endlessplay"
   | "endlessresult"
   | "secrets"
+  | "shop"
   | "playing"
   | "dead"
   | "levelclear"
@@ -46,6 +49,7 @@ export default function Page() {
   const [lives, setLives] = useState(3);
   // Ekonomi (Faz A): bölüm sonu para bilgisi
   const [coinInfo, setCoinInfo] = useState({ gained: 0, bonus: 0, total: 0 });
+  const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
   const [runId, setRunId] = useState(0);
   const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
@@ -284,6 +288,15 @@ export default function Page() {
 
   if (screen === "ayarlar") {
     return <Settings onBack={() => setScreen("menu")} />;
+  }
+
+  if (screen === "shop") {
+    return (
+      <Shop
+        title={shopReturn === "levelclear" ? "BÖLÜM ARASI DÜKKÂN" : "DÜKKÂN"}
+        onBack={() => setScreen(shopReturn)}
+      />
+    );
   }
 
   if (screen === "secrets") {
@@ -620,6 +633,9 @@ export default function Page() {
               📷 Sırlar{" "}
               {unlockedSecrets.length > 0 ? `(${unlockedSecrets.length}/${SECRET_COUNT})` : ""}
             </button>
+            <button className="btn" onClick={() => { setShopReturn("menu"); setScreen("shop"); }}>
+              🛒 Dükkân
+            </button>
             <button className="btn" onClick={() => setScreen("ayarlar")}>
               ⚙ Ayarlar
             </button>
@@ -660,7 +676,7 @@ export default function Page() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={() => play(1, 0, 3)}>
+            <button className="btn btn-primary" onClick={() => play(1, 0, 3 + getInventory().extraLives)}>
               Karanlığa Gir →
             </button>
             <button className="btn" onClick={() => setScreen("menu")} style={{ opacity: 0.7 }}>
@@ -704,12 +720,20 @@ export default function Page() {
             )}
             {" · "}Cüzdan: <b>{coinInfo.total}</b>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={() => play(level + 1, score, lives)}
-          >
-            Sonraki Bölüm →
-          </button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button
+              className="btn btn-primary"
+              onClick={() => play(level + 1, score, lives)}
+            >
+              Sonraki Bölüm →
+            </button>
+            <button
+              className="btn"
+              onClick={() => { setShopReturn("levelclear"); setScreen("shop"); }}
+            >
+              🛒 Dükkâna Uğra
+            </button>
+          </div>
         </>
       )}
 

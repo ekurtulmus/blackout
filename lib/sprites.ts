@@ -20,16 +20,17 @@ export function drawPlayer(
   moving: boolean,
   flicker: number,
   visionRadius: number,
-  opts?: { cone?: boolean; ring?: string }
+  opts?: { cone?: boolean; ring?: string; coneColor?: [number, number, number] }
 ) {
   const ang = Math.atan2(dir.y, dir.x);
 
   if (opts?.cone !== false) {
     const reach = visionRadius * TS * 0.95;
     const spread = 0.46;
+    const [cr, cg, cb] = opts?.coneColor ?? [200, 220, 255]; // fener rengi (kişiselleştirme)
     const cone = ctx.createRadialGradient(cx, cy, TS * 0.3, cx, cy, reach);
-    cone.addColorStop(0, `rgba(200,220,255,${0.15 * flicker})`);
-    cone.addColorStop(1, "rgba(200,220,255,0)");
+    cone.addColorStop(0, `rgba(${cr},${cg},${cb},${0.15 * flicker})`);
+    cone.addColorStop(1, `rgba(${cr},${cg},${cb},0)`);
     ctx.save();
     ctx.beginPath();
     ctx.moveTo(cx, cy);

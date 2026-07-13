@@ -103,6 +103,7 @@ export class GameEngine {
   mucus: Mucus[] = []; // Madde 7: ölen mukus gelinlerinin bıraktığı hasar lekeleri
   veilItems: Ammo[] = []; // Madde 8: gelin duvağı (görünmezlik) eşyası
   veilUntil = 0; // (saniye) bu ana kadar görünmez
+  invulnUntil = 0; // (saniye) kalkan: bu ana kadar dokunulmaz (Faz B envanter)
   photoItem: Ammo | null = null; // gizli: düğün fotoğrafı parçası (tek kişilik)
   photoTaken = false; // bu bölümün parçası toplandı mı
   bullets: Bullet[] = [];
@@ -646,9 +647,9 @@ export class GameEngine {
     // Madde 8: duvak açıkken oyuncu AI'ya görünmez
     moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt, Infinity, [this.veiled]);
 
-    // Oyuncuya temas: hasar + geri itme (duvak açıkken temas hasarı yok — görünmez)
+    // Oyuncuya temas: hasar + geri itme (duvak/kalkan açıkken temas hasarı yok)
     for (const z of this.zombies) {
-      if (!this.veiled && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
+      if (!this.veiled && !this.invuln && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
         if (this.hurtFlash <= 0) this.events.push("hurt");
         this.player.hp -= CONTACT_DPS * dt;
         this.hurtFlash = 0.25;
@@ -701,6 +702,23 @@ export class GameEngine {
     return this.veilUntil > this.time;
   }
 
+  get invuln(): boolean {
+    return this.invulnUntil > this.time;
+  }
+
+  // Envanter: kalkanı aktive et — 3 sn dokunulmazlık (Game tüketimi yönetir)
+  activateShield(seconds = 3) {
+    this.invulnUntil = this.time + seconds;
+    this.events.push("veil"); // hayaletimsi kalkan sesi
+  }
+
+  // Envanter: radarı aktive et — çıkış yönünü 1 kez göster (ayna kehanetiyle aynı HUD)
+  activateRadar() {
+    this.mqHintDir = this.computeExitDir();
+    this.mqHintUntil = this.time + 20;
+    this.events.push("secret");
+  }
+
   private pickupVeil() {
     const pc = cellOf(this.player.pos);
     for (const v of this.veilItems) {
@@ -716,6 +734,7 @@ export class GameEngine {
   private updateMucus(dt: number) {
     if (this.mucus.length === 0) return;
     this.mucus = this.mucus.filter((m) => this.time < m.until);
+    if (this.invuln) return; // kalkan mukus hasarını da engeller
     const pc = cellOf(this.player.pos);
     for (const m of this.mucus) {
       if (m.x === pc.x && m.y === pc.y) {

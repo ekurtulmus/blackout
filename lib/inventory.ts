@@ -1,0 +1,190 @@
+// BLACKOUT — envanter + dükkân (Faz B). Parayla eşya al; kimi tüketilir (oyunda
+// istediğin an aktive: kalkan/radar), kimi bölüm başı otomatik (mermi/can paketi),
+// kimi KALICI upgrade (her bölüm +mermi, +can hakkı, kişiselleştirme).
+// Kalıcı (localStorage). SSR/test'te bellek yedeğiyle güvenli.
+import { getCoins, addCoins } from "./coins";
+
+export type Inventory = {
+  shields: number; // kalkan — oyunda istediğin an 3 sn dokunulmazlık (tüketilir)
+  radars: number; // radar — oyunda istediğin an çıkış yönünü 1 kez gösterir (tüketilir)
+  ammoPacks: number; // sonraki bölüme +3 mermi (bölüm başı otomatik tüketilir)
+  healthPacks: number; // sonraki bölüme tam can + kalkan (bölüm başı otomatik tüketilir)
+  permAmmo: boolean; // KALICI: her bölüm +3 mermiyle başla
+  extraLives: number; // KALICI: +1 başlangıç can hakkı (adet)
+  flashColor: string; // kişiselleştirme: fener rengi anahtarı
+  skin: string; // kişiselleştirme: oyuncu görünüm anahtarı
+};
+
+const DEFAULT_INV: Inventory = {
+  shields: 0,
+  radars: 0,
+  ammoPacks: 0,
+  healthPacks: 0,
+  permAmmo: false,
+  extraLives: 0,
+  flashColor: "default",
+  skin: "default",
+};
+
+const KEY = "blackout_inventory";
+let mem: Inventory = { ...DEFAULT_INV };
+
+export function getInventory(): Inventory {
+  try {
+    const v = localStorage.getItem(KEY);
+    if (v) return { ...DEFAULT_INV, ...JSON.parse(v) };
+  } catch {
+    /* geç */
+  }
+  return { ...mem };
+}
+
+export function saveInventory(inv: Inventory) {
+  mem = { ...inv };
+  try {
+    localStorage.setItem(KEY, JSON.stringify(inv));
+  } catch {
+    /* geç */
+  }
+}
+
+// Kişiselleştirme paletleri (satın alınınca seçilebilir)
+export const FLASH_COLORS: Record<string, [number, number, number]> = {
+  default: [200, 220, 255], // soğuk beyaz
+  amber: [255, 200, 120], // kehribar
+  crimson: [255, 120, 120], // kızıl
+  toxic: [170, 255, 140], // zehir yeşili
+};
+export const SKIN_RINGS: Record<string, string | undefined> = {
+  default: undefined,
+  cyan: "#6ee7ff",
+  gold: "#ffd75a",
+  violet: "#c58bff",
+};
+
+// --- Dükkân eşya tanımları ---
+export type ShopItem = {
+  id: string;
+  title: string;
+  desc: string;
+  icon: string;
+  price: number;
+  kind: "consumable" | "perm" | "cosmetic";
+  // satın alınabilir mi? (kalıcı olanlar bir kez; kozmetik sahipsse gizlenir)
+  canBuy: (inv: Inventory) => boolean;
+  apply: (inv: Inventory) => void;
+};
+
+export const SHOP_ITEMS: ShopItem[] = [
+  {
+    id: "radar",
+    title: "Radar",
+    desc: "Oyunda istediğin an kullan — çıkış yönünü 1 kez gösterir.",
+    icon: "📻",
+    price: 15,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.radars += 1),
+  },
+  {
+    id: "shield",
+    title: "Kalkan",
+    desc: "Oyunda istediğin an kullan — 3 sn dokunulmazlık.",
+    icon: "🛡️",
+    price: 20,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.shields += 1),
+  },
+  {
+    id: "ammoPack",
+    title: "Ekstra Mermi",
+    desc: "Sonraki bölüme +3 mermiyle başla (tek kullanım).",
+    icon: "🔫",
+    price: 10,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.ammoPacks += 1),
+  },
+  {
+    id: "healthPack",
+    title: "Can Paketi",
+    desc: "Sonraki bölüme tam can + kalkanla başla (tek kullanım).",
+    icon: "❤️",
+    price: 25,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.healthPacks += 1),
+  },
+  {
+    id: "permAmmo",
+    title: "Sürekli Cephane",
+    desc: "KALICI: her bölüme +3 mermiyle başla.",
+    icon: "🔫✨",
+    price: 90,
+    kind: "perm",
+    canBuy: (inv) => !inv.permAmmo,
+    apply: (inv) => (inv.permAmmo = true),
+  },
+  {
+    id: "extraLife",
+    title: "Ekstra Can Hakkı",
+    desc: "KALICI: +1 başlangıç can hakkı.",
+    icon: "❤️➕",
+    price: 80,
+    kind: "perm",
+    canBuy: (inv) => inv.extraLives < 3,
+    apply: (inv) => (inv.extraLives += 1),
+  },
+  {
+    id: "flash_amber",
+    title: "Fener: Kehribar",
+    desc: "Kişiselleştirme — sıcak kehribar fener ışığı.",
+    icon: "💡",
+    price: 30,
+    kind: "cosmetic",
+    canBuy: (inv) => inv.flashColor !== "amber",
+    apply: (inv) => (inv.flashColor = "amber"),
+  },
+  {
+    id: "flash_crimson",
+    title: "Fener: Kızıl",
+    desc: "Kişiselleştirme — tekinsiz kızıl fener ışığı.",
+    icon: "💡",
+    price: 30,
+    kind: "cosmetic",
+    canBuy: (inv) => inv.flashColor !== "crimson",
+    apply: (inv) => (inv.flashColor = "crimson"),
+  },
+  {
+    id: "skin_gold",
+    title: "Görünüm: Altın Halka",
+    desc: "Kişiselleştirme — oyuncu altın halkayla parlar.",
+    icon: "🩸",
+    price: 40,
+    kind: "cosmetic",
+    canBuy: (inv) => inv.skin !== "gold",
+    apply: (inv) => (inv.skin = "gold"),
+  },
+  {
+    id: "skin_violet",
+    title: "Görünüm: Mor Halka",
+    desc: "Kişiselleştirme — oyuncu mor halkayla parlar.",
+    icon: "🩸",
+    price: 40,
+    kind: "cosmetic",
+    canBuy: (inv) => inv.skin !== "violet",
+    apply: (inv) => (inv.skin = "violet"),
+  },
+];
+
+// Satın al: yeter para varsa parayı düş + eşyayı ekle. { ok, coins } döndürür.
+export function buyItem(item: ShopItem): { ok: boolean; coins: number; reason?: string } {
+  const inv = getInventory();
+  if (!item.canBuy(inv)) return { ok: false, coins: getCoins(), reason: "zaten sahipsin" };
+  if (getCoins() < item.price) return { ok: false, coins: getCoins(), reason: "yetersiz para" };
+  const coins = addCoins(-item.price);
+  item.apply(inv);
+  saveInventory(inv);
+  return { ok: true, coins };
+}
