@@ -87,7 +87,8 @@ export default function Game({
   const mqReportedRef = useRef(false);
   const [coins, setCoins] = useState(0); // para (kalıcı; mount'ta yüklenir)
   const [exitHint, setExitHint] = useState(""); // ayna kehaneti: çıkış yönü
-  const [mqNotice, setMqNotice] = useState(""); // bölüm başı uyarı (ör. çember görevi)
+  const [levelNotice, setLevelNotice] = useState(""); // bu bölümün özel uyarısı ("" = yok)
+  const [helpOpen, setHelpOpen] = useState(false); // hazırlık/yardım ekranı (oyunu duraklatır)
   const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
   const [escapeSec, setEscapeSec] = useState(""); // Faz E: kaçış geri sayımı
   const [soldierState, setSoldierState] = useState<"none" | "rescue" | "escort">("none");
@@ -161,18 +162,20 @@ export default function Game({
       skinRingRef.current = SKIN_RINGS[inv.skin];
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
     }
-    // Bölüm başı uyarıları (çember / kaçış / rehin)
+    // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
+    let notice = "";
     if (engine.escape) {
-      setMqNotice("ÇIKIŞ ÇÖKÜYOR! Gizli kapıya koş — vaktin azalıyor!");
-      window.setTimeout(() => setMqNotice(""), 6000);
+      notice = "🧨 ÇIKIŞ ÇÖKÜYOR! Çıkış baştan açık — geri sayım bitmeden gizli kapıya ulaş, yoksa altında kalırsın.";
     } else if (engine.soldiers.length > 0) {
-      setMqNotice("Karanlıkta zincirli asker(ler) var — çöz, arkanda gelir ve gelinlere ateş eder!");
-      window.setTimeout(() => setMqNotice(""), 6000);
+      notice = "🪖 Karanlıkta zincirli asker(ler) var. Yanına git, zincirini çöz — arkanda gelir ve gelinlere ateş eder. Ölürse başka yerde doğar.";
     } else if (!mission && engine.miniQuest?.kind === "markedkill") {
-      setMqNotice(
-        "Bu bölümde çıkış KİLİTLİ: işaretli ⊚ çemberin içinde bir gelin öldürmelisin."
-      );
-      window.setTimeout(() => setMqNotice(""), 7000);
+      notice = "⊚ Çıkış KİLİTLİ: işaretli çemberin içinde bir gelin öldürünce açılır.";
+    }
+    setLevelNotice(notice);
+    // Normal bölümde özel uyarı varsa oyunu başlatmadan brifing göster (loop briefRef ile durur)
+    if (!mission && notice) {
+      briefRef.current = true;
+      setHelpOpen(true);
     }
     let fragmentReported = false;
     let noteReported = false;
@@ -706,13 +709,20 @@ export default function Game({
         ctx!.arc(s.sx, s.sy - TS * 0.16, TS * 0.11, 0, Math.PI * 2);
         ctx!.fill();
         if (escort) {
-          // tüfek (namlu oyuncuya doğru değil, ileri)
+          // tüfek (namlu ileri)
           ctx!.strokeStyle = "#20242a";
           ctx!.lineWidth = Math.max(2, TS * 0.05);
           ctx!.beginPath();
           ctx!.moveTo(s.sx - TS * 0.05, s.sy);
           ctx!.lineTo(s.sx + TS * 0.28, s.sy - TS * 0.04);
           ctx!.stroke();
+          // küçük can barı
+          const hpFrac = Math.max(0, Math.min(1, sd.hp / TUNING.soldierMaxHp));
+          const bw = TS * 0.44;
+          ctx!.fillStyle = "rgba(0,0,0,0.6)";
+          ctx!.fillRect(s.sx - bw / 2, s.sy - TS * 0.4, bw, TS * 0.07);
+          ctx!.fillStyle = hpFrac > 0.35 ? "#7dffb0" : "#ff9a3c";
+          ctx!.fillRect(s.sx - bw / 2, s.sy - TS * 0.4, bw * hpFrac, TS * 0.07);
         } else {
           // kilit/zincir halkası (kurtar!)
           ctx!.globalAlpha = 0.4 + 0.3 * Math.sin(engine.time * 4);
@@ -1169,6 +1179,15 @@ export default function Game({
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
     }
   };
+  // ? butonu: hazırlık/yardım ekranını aç (oyunu duraklatır); Devam ile kapat
+  const openHelp = () => {
+    briefRef.current = true;
+    setHelpOpen(true);
+  };
+  const closeHelp = () => {
+    briefRef.current = false;
+    setHelpOpen(false);
+  };
 
   const hpPct = (hud.hp / PLAYER_MAX_HP) * 100;
   const hpColor = hpPct > 35 ? "var(--hp)" : "var(--hp-low)";
@@ -1313,6 +1332,14 @@ export default function Game({
         )}
         <button
           className="chip mutebtn"
+          onClick={openHelp}
+          title="Hedef / kontroller / uyarı"
+          style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
+        >
+          <span className="val">?</span>
+        </button>
+        <button
+          className="chip mutebtn"
           onClick={() => {
             const m = !sound.muted;
             sound.setMuted(m);
@@ -1419,20 +1446,30 @@ export default function Game({
         </div>
       )}
 
-      {mqNotice && (
-        <div
-          className="warn"
-          style={{
-            top: "38%",
-            maxWidth: 420,
-            textAlign: "center",
-            lineHeight: 1.5,
-            background: "rgba(60,20,20,0.94)",
-            border: "1px solid rgba(255,150,150,0.6)",
-            color: "#ffdede",
-          }}
-        >
-          {mqNotice}
+      {helpOpen && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
+          <div className="subtitle" style={{ color: "#ffd75a", letterSpacing: "0.15em" }}>
+            HAZIRLIK
+          </div>
+          {levelNotice ? (
+            <div
+              className="how"
+              style={{ maxWidth: 460, lineHeight: 1.6, fontSize: 17, color: "#ffe9a8", borderColor: "rgba(255,200,90,0.4)" }}
+            >
+              {levelNotice}
+            </div>
+          ) : (
+            <div className="how" style={{ maxWidth: 460, lineHeight: 1.6 }}>
+              Gelinleri yok et, gizli çıkışı bul. Karanlıkta hızlı ol.
+            </div>
+          )}
+          <div className="how" style={{ maxWidth: 460, lineHeight: 1.7, fontSize: 13, color: "var(--muted)" }}>
+            <b>Kontroller:</b> WASD/ok hareket · Boşluk ateş · <kbd>Shift</kbd> koş ·{" "}
+            <kbd>E</kbd> tuzak · <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · 📦 envanter
+          </div>
+          <button className="btn btn-primary" onClick={closeHelp}>
+            {hud.time > 0.1 ? "Devam →" : "Başla →"}
+          </button>
         </div>
       )}
 

@@ -152,6 +152,7 @@ export class GameEngine {
   soldiers: {
     pos: Vec;
     state: "locked" | "escort" | "dead";
+    hp: number;
     fireCd: number;
     respawnAt: number;
     path?: Vec[] | null;
@@ -411,6 +412,7 @@ export class GameEngine {
           this.soldiers.push({
             pos: { x: sCells[i].x + 0.5, y: sCells[i].y + 0.5 },
             state: "locked",
+            hp: TUNING.soldierMaxHp,
             fireCd: 0,
             respawnAt: 0,
           });
@@ -443,6 +445,27 @@ export class GameEngine {
       }
       // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)
       this.assignSpecialKinds();
+    }
+
+    // Görev: "askeri bulup çıkışa götür" — 1 asker yerleştir (çıkışa uzak)
+    if (mission?.escort) {
+      const sCells = this.shuffle(
+        floors.filter(
+          (c) =>
+            distMap[c.y][c.x] >= 6 &&
+            !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+            !(c.x === exit.x && c.y === exit.y)
+        )
+      );
+      if (sCells[0]) {
+        this.soldiers.push({
+          pos: { x: sCells[0].x + 0.5, y: sCells[0].y + 0.5 },
+          state: "locked",
+          hp: TUNING.soldierMaxHp,
+          fireCd: 0,
+          respawnAt: 0,
+        });
+      }
     }
   }
 
@@ -1160,6 +1183,7 @@ export class GameEngine {
           if (cell) {
             s.pos = { x: cell.x + 0.5, y: cell.y + 0.5 };
             s.state = "locked";
+            s.hp = TUNING.soldierMaxHp; // yeniden doğunca tam can
             s.path = null;
           }
         }
@@ -1175,18 +1199,23 @@ export class GameEngine {
         }
         continue;
       }
-      // escort: önce ölüm kontrolü (gelin teması)
-      let died = false;
+      // escort: gelin teması canını azaltır (tek temasta ölmez — 1.5x dayanıklılık)
+      let touching = false;
       for (const z of this.zombies) {
         if (dist(z.pos, s.pos) < ZOMBIE_RADIUS + PLAYER_RADIUS) {
-          s.state = "dead";
-          s.respawnAt = this.time + TUNING.soldierRespawnSec;
-          this.events.push("hurt");
-          died = true;
+          touching = true;
           break;
         }
       }
-      if (died) continue;
+      if (touching) {
+        s.hp -= CONTACT_DPS * dt;
+        if (this.hurtFlash <= 0) this.events.push("hurt");
+        if (s.hp <= 0) {
+          s.state = "dead";
+          s.respawnAt = this.time + TUNING.soldierRespawnSec;
+          continue;
+        }
+      }
       // takip (labirentte yol bularak, oyuncunun biraz gerisinde)
       const d = dist(s.pos, this.player.pos);
       if (d > 1.2) {
@@ -1300,6 +1329,12 @@ export class GameEngine {
     if (pcell.x === this.exit.x && pcell.y === this.exit.y) {
       if (this.exitOpen) {
         if (this.mission) {
+          // Escort görevi: askeri yanında getirmediysen çıkış sayılmaz
+          if (this.mission.escort && !this.hasEscort) {
+            if (this.warnTimer <= 0) this.events.push("warn");
+            this.warnTimer = 2;
+            return;
+          }
           this.status = "levelclear"; // görev başarısı
           this.events.push("levelclear");
         } else {
@@ -1347,7 +1382,9 @@ export class GameEngine {
       return `Dayan ${Math.max(0, Math.ceil(m.surviveTime - this.time))}s`;
     }
     const parts: string[] = [];
-    if (m.killTarget) {
+    if (m.escort) {
+      parts.push(this.hasEscort ? "Askeri çıkışa götür" : "Askeri bul ve kurtar");
+    } else if (m.killTarget) {
       parts.push(this.exitOpen ? "Çıkışa git" : `Gelin ${this.zombiesKilled}/${m.killTarget}`);
     } else if (m.collectTarget) {
       parts.push(this.exitOpen ? "Çıkışa git" : `Parça ${this.collected}/${m.collectTarget}`);

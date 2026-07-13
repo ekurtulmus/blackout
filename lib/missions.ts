@@ -20,6 +20,7 @@ export type Mission = {
   escalateEvery?: number; // endless: bu saniyede bir ekstra gelin doğar (zorluk artar)
   escape?: boolean; // Faz E: kaçış görevi — çıkış çöküyor, geri sayımla kaç
   escapeSeconds?: number; // kaçış için saniye
+  escort?: boolean; // Askeri bul, zincirini çöz ve çıkışa birlikte götür
 };
 
 export const MISSIONS: Mission[] = [
@@ -101,6 +102,17 @@ export const MISSIONS: Mission[] = [
     zombies: 22,
     killTarget: 5,
     timeLimit: 150,
+  },
+  {
+    id: 9,
+    title: "Kayıp Asker",
+    brief:
+      "Karanlıkta zincire vurulmuş bir asker var. Onu bul, zincirini çöz — arkanda gelir ve gelinlere ateş eder. Sonra onu SAĞ SALİM çıkışa götür. Asker ölürse başka yerde yeniden doğar, tekrar kurtarabilirsin.",
+    objectiveHint: "Askeri kurtar → birlikte çık",
+    levelBase: 4,
+    lives: 2,
+    escort: true,
+    exitOpenAtStart: true,
   },
 ];
 

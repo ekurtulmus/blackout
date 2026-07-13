@@ -86,4 +86,5 @@ export const TUNING = {
   soldierFireCd: 3, // asker kaç saniyede bir ateş eder
   soldierRange: 8, // asker bu menzildeki gelinlere ateş eder (hücre)
   soldierRespawnSec: 8, // ölen asker kaç saniye sonra başka yerde doğar
+  soldierMaxHp: 30, // asker canı (temasla azalır; CONTACT_DPS 20 → ~1.5 sn dayanır = 1.5x)
 };
