@@ -2,7 +2,12 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-12**
+> Son güncelleme: **2026-07-13**
+>
+> **NEREDE KALDIK (özet):** "Ritim & Çeşitlilik Paketi" uygulanıyor. **Faz 1-2-3 BİTTİ ve commit'lendi**
+> (madde 0-8). **Sırada Faz 4 (madde 9 mini-görevler) ve Faz 5 (madde 10 korku olayları + madde 11
+> Mezarlık teması).** Tam şartname aşağıda "RİTİM & ÇEŞİTLİLİK PAKETİ" bölümünde. Commit'ler local'de
+> (push edilmedi — istersen `git push origin main`). Yeni sohbette: "DEVAM.md oku, Faz 4'ten devam et".
 
 ---
 
@@ -78,6 +83,41 @@ Merkezi ayar: **`lib/config.ts`** (`TUNING`) — tüm denge sayıları burada.
   (5sn görünmez, ateş=iptal, temas hasarı yok). `types.BrideKind` + `brides.assignBrideKind`; online host-otoriter
   (kind stream'e eklendi, mukus kill mesajıyla, duvak seat bazlı `{t:veil,on}` ile). Test: 13 Faz-3 + regresyon.
 - ⏳ Faz 4: mini-görevler (online-adil). ⏳ Faz 5: korku olayları + Mezarlık teması.
+
+### KURALLAR (tüm paket boyunca geçerli)
+- localStorage şemasını bozma; yeni alanlar default'lu/geriye uyumlu.
+- Online'da her yeni değişken **host-otoriter** (host simüle + broadcast); `deadBrides`/roster/host-göçü korunur.
+- Tüm geçişler **LERP/ease** ile yumuşak (ani zıplama yok). Sabitler **`lib/config.ts` → `TUNING`**'de.
+- Doğrulama: `npx tsc --noEmit` + headless Node testleri (scratchpad'de test-*.js; motor/brides/online saf mantık).
+  Panelde rAF durur; görsel/online ancak gerçek tarayıcı/2 cihazla görünür.
+
+### KALAN — Faz 4 (Madde 9): MİNİ-GÖREVLER  (lib/missions, lib/engine, lib/online, components/*)
+Bölüm içine serpiştirilen **opsiyonel** mini-hedefler; tamamlayınca küçük ödül (mermi/can/puan). HUD'da aktif göster.
+- **ÇOK ÖNEMLİ online dengesi:** Ölüm Koşusu bir YARIŞ → görevler oyunu UZATMAMALI. Her göreve KISA/UZUN etiketi.
+  Online'da **sadece KISA/bonus** çıksın; UZUN olanlar (gezme/toplama) online'a YANSIMASIN. Online'da görev
+  çıkışı geciktiren zorunlu adım OLMASIN (çıkış koşulu ≥1 gelin öldürme kalır); bölüm başına en fazla 1 kısa bonus.
+- Görevler: "Üç mumu yak"[UZUN→tek kişilik], "Gelinin yüzüğünü bul"[ORTA: yüzük→bir gelin delirir/hızlanır],
+  "İşaretli bölgede gelin öldür"[UZUN→tek], + paket: "Aynadan kaçma"[KISA], "Çanı çal"[ORTA: tüm gelinleri sana çeker
+  — online'da kişi-başı-4 yine geçerli], "Kanı takip et"[KISA: sahte izler de var], "Fenersiz koridor"[UZUN→tek].
+
+### KALAN — Faz 5 (Madde 10): RASTGELE KORKU OLAYLARI  (lib/engine, lib/audio, lib/vision, lib/themes)
+- Ara ara (rastgele, seyrek, **cooldown'lu**) scripted anlar: ani fısıltı, ekran kenarından gölge, uzak kapı
+  çarpması, fenerin bir anlık sıçraması, kısa kalp atışı yükselişi. **Hasar VERMEZ** (atmosfer, ceza değil).
+  Sıklık ayardan/temadan etkilenebilir; art arda spam yok.
+
+### KALAN — Faz 5 (Madde 11): YENİ TEMA (Mezarlık) + Orman zenginleştirme  (lib/themes, lib/maze, lib/sprites)
+- `lib/themes.ts` THEMES dizisine **Mezarlık** ekle (mezar taşları, farklı zemin dokusu/renk paleti; ağaç/çalı/sis
+  isteğe bağlı). Orman'ı zenginleştir. Online'da tema seed'i host'tan yayılıyor (mevcut mekanizma; RaceLevel.theme).
+  NOT: yeni tema THEMES'e eklenince `themeIndexFor` otomatik kapsar; online serialize'da theme index zaten var.
+
+### MİMARİ NOTLAR (uygulanan paketten)
+- **`lib/config.ts` `TUNING`**: tüm denge (contactDps 20, brideSpeedCap=%92, maxHuntersPerPlayer 4, harita/yoğunluk,
+  görüş lastik-bant, fener kararması, dark/mukus/duvak sabitleri).
+- **`lib/flashlight.ts` `Flashlight`**: dinamik görüş+kararma; engine + OnlineGame yerel kullanır (her istemci kendi).
+- **`lib/brides.ts`**: `moveBrides(...maxHunters, veiled?)`; `assignBrideKind(i,total)`; kind'e göre dark hızı.
+- **`types.BrideKind`** (normal/dark/mucus) + `Mucus`. Online gelin stream'i 5. eleman = kind kodu.
+- **Duvak (online):** seat bazlı `{t:"veil", seat, on}` mesajı; host `veiledUntil[seat]` tutar, `moveBrides`'a `veiled[]` verir.
+- **Mukus (online):** kill mesajına `k` (kind) eklendi; `applyKill` mucus'ta leke ekler (herkeste).
 
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash
