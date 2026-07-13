@@ -47,7 +47,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
             <b>Ses Seviyesi</b>
-            <span style={{ color: "#6ee7ff" }}>{vol}%</span>
+            <span style={{ color: "#e0a24a" }}>{vol}%</span>
           </div>
           <input
             type="range"
@@ -55,7 +55,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             max={100}
             value={vol}
             onChange={(e) => changeVol(Number(e.target.value))}
-            style={{ width: "100%", accentColor: "#6ee7ff", cursor: "pointer" }}
+            style={{ width: "100%", accentColor: "#e0a24a", cursor: "pointer" }}
           />
         </div>
 

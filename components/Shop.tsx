@@ -43,7 +43,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
   }
 
   return (
-    <div className="stage" style={{ overflowY: "auto", padding: "24px 16px" }}>
+    <div className="menuscreen">
       <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div className="big" style={{ color: "#ffd75a" }}>🛒 {title}</div>
@@ -64,11 +64,9 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
             return (
               <div
                 key={it.id}
+                className="card-parch"
                 style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 12,
                   padding: 14,
-                  background: "rgba(255,255,255,0.03)",
                   display: "flex",
                   flexDirection: "column",
                   gap: 8,

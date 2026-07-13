@@ -354,15 +354,15 @@ export default function Page() {
 
   if (screen === "achievements") {
     return (
-      <div className="stage" style={{ overflowY: "auto", padding: "24px 16px" }}>
+      <div className="menuscreen">
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
-          <div className="big" style={{ color: "#ffd75a" }}>🏆 Başarımlar</div>
+          <div className="big" style={{ color: "#e0a24a" }}>🏆 Başarımlar</div>
           <div className="subtitle">{achList.length}/{ACHIEVEMENTS.length} açıldı</div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
             {ACHIEVEMENTS.map((a) => {
               const got = achList.includes(a.id);
               return (
-                <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, opacity: got ? 1 : 0.5, background: got ? "rgba(255,215,90,0.06)" : "rgba(255,255,255,0.02)" }}>
+                <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5 }}>
                   <div style={{ fontSize: 26 }}>{got ? a.icon : "🔒"}</div>
                   <div style={{ fontWeight: 800 }}>{a.title}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4 }}>{a.desc}</div>
@@ -380,7 +380,7 @@ export default function Page() {
 
   if (screen === "journal") {
     return (
-      <div className="stage" style={{ overflowY: "auto", padding: "24px 16px" }}>
+      <div className="menuscreen">
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e9e0c4" }}>📖 Günlük</div>
           <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
@@ -388,7 +388,7 @@ export default function Page() {
             {JOURNAL.map((e) => {
               const got = journalGot.includes(e.id);
               return (
-                <div key={e.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: got ? "rgba(233,224,196,0.05)" : "rgba(255,255,255,0.02)" }}>
+                <div key={e.id} className="card-parch" style={{ padding: 16 }}>
                   <div style={{ fontWeight: 800, color: got ? "#e9e0c4" : "var(--muted)" }}>
                     {got ? `“${e.title}”` : "🔒 Kayıp Sayfa"}
                   </div>
