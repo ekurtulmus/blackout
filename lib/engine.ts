@@ -44,6 +44,10 @@ export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
 export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
 export const AMMO_RESPAWN_SEC = 10; // toplanan mermi kaç saniye sonra geri doğar
 export const BRIDE_RESPAWN_SEC = 20; // ölen gelin kaç saniye sonra yeniden doğar
+export const COIN_PER_KILL = 1; // gelin başına temel para (risk çarpanıyla ölçeklenir)
+
+// Faz A / Madde 18: risk = ödül. Zor oynadıkça para VE puan çarpanı artar.
+const RISK_MUL: Record<Diff, number> = { kolay: 1.0, orta: 1.3, zor: 1.7 };
 
 export type Input = {
   up: boolean;
@@ -128,6 +132,9 @@ export class GameEngine {
   exitOpen = false;
   ammoCount = 0;
   zombiesKilled = 0;
+  coinsEarned = 0; // bu bölümde kazanılan para (Game kalıcı cüzdana işler)
+  levelClearBonus = 0; // bölüm bitince verilen para bonusu (ekranda göster)
+  private riskMul = 1; // Madde 18: zorluğa göre para/puan çarpanı
   score: number;
   lives: number;
   level: number;
@@ -160,6 +167,7 @@ export class GameEngine {
     this.score = score;
     this.lives = lives;
     this.mission = mission;
+    this.riskMul = RISK_MUL[diff] ?? 1; // Madde 18: risk = ödül
 
     // Görev varsa temel seviyeyi ve kuralları ona göre ayarla
     const baseLevel = mission ? mission.levelBase : level;
@@ -557,7 +565,8 @@ export class GameEngine {
   private killZombie(z: Zombie) {
     this.zombies = this.zombies.filter((o) => o.id !== z.id);
     this.zombiesKilled++;
-    this.score += 100;
+    this.score += Math.round(100 * this.riskMul); // Madde 18: puan çarpanı
+    this.coinsEarned += Math.max(1, Math.round(COIN_PER_KILL * this.riskMul)); // gelin başına para
     this.events.push("kill");
     // Mini-görev "çember" (markedkill): AKTİFKEN çıkış SADECE çemberde infazla açılır.
     const mq = this.miniQuest;
@@ -843,8 +852,9 @@ export class GameEngine {
     this.mqDone = true;
     if (d.reward.ammo) this.ammoCount += d.reward.ammo;
     if (d.reward.health) this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + d.reward.health);
-    if (d.reward.score) this.score += d.reward.score;
-    // para ödülü Game katmanında localStorage'a işlenir (mqDef.reward.coins)
+    if (d.reward.score) this.score += Math.round(d.reward.score * this.riskMul);
+    // para ödülü coinsEarned'e eklenir (Game kalıcı cüzdana işler)
+    if (d.reward.coins) this.coinsEarned += Math.round(d.reward.coins * this.riskMul);
     this.mqRewardMsg = d.title;
     this.events.push("secret");
   }
@@ -917,6 +927,9 @@ export class GameEngine {
           this.status = "levelclear"; // görev başarısı
           this.events.push("levelclear");
         } else {
+          // Bölüm geçince para bonusu (Madde: yeni para kazanma + risk çarpanı)
+          this.levelClearBonus = Math.round((8 + this.level * 2) * this.riskMul);
+          this.coinsEarned += this.levelClearBonus;
           this.status = this.level >= 10 ? "win" : "levelclear";
           this.events.push(this.status === "win" ? "win" : "levelclear");
         }

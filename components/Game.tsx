@@ -26,6 +26,9 @@ export type EndResult = {
   score: number;
   lives: number;
   time?: number; // geçen süre (sn) — görev rekoru / sonsuz mod skoru
+  coins?: number; // kalıcı cüzdandaki toplam para (senkron sonrası)
+  coinsGained?: number; // bu bölümde kazanılan para
+  levelClearBonus?: number; // bölüm-geçince bonusu (levelclear ekranında göster)
 };
 
 type Hud = {
@@ -79,6 +82,7 @@ export default function Game({
   const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
   const prevHpRef = useRef(PLAYER_MAX_HP);
   const engineRef = useRef<GameEngine | null>(null);
+  const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
@@ -772,12 +776,19 @@ export default function Game({
 
       if (!ended && engine.status !== "playing") {
         ended = true;
+        // Son para senkronu (bölüm bonusu / son öldürmeler kalıcı cüzdana geçsin)
+        const finalGain = engine.coinsEarned - coinSyncRef.current;
+        const total = finalGain > 0 ? addCoins(finalGain) : getCoins();
+        coinSyncRef.current = engine.coinsEarned;
         onEnd({
           status: engine.status,
           level: engine.level,
           score: engine.score,
           lives: engine.lives,
           time: engine.time,
+          coins: total,
+          coinsGained: engine.coinsEarned,
+          levelClearBonus: engine.levelClearBonus,
         });
         return; // döngüyü durdur
       }
@@ -808,6 +819,12 @@ export default function Game({
         window.setTimeout(() => setHpBlink(false), 550);
       }
       prevHpRef.current = curHp;
+      // Kazanılan parayı kalıcı cüzdana işle (gelin/mini-görev/bölüm bonusu)
+      const gained = engine.coinsEarned - coinSyncRef.current;
+      if (gained > 0) {
+        coinSyncRef.current = engine.coinsEarned;
+        setCoins(addCoins(gained));
+      }
       // Mini-görev (Faz 4): aktif hedef metni + ayna kehaneti yönü
       setMq(engine.miniQuestText());
       setExitHint(engine.exitHintText());
@@ -815,10 +832,7 @@ export default function Game({
         mqReportedRef.current = true;
         const d = engine.mqDef;
         const bits: string[] = [];
-        if (d?.reward.coins) {
-          setCoins(addCoins(d.reward.coins)); // parayı kalıcı olarak ekle
-          bits.push(`+${d.reward.coins} para`);
-        }
+        if (d?.reward.coins) bits.push(`+${d.reward.coins} para`);
         if (d?.reward.ammo) bits.push(`+${d.reward.ammo} mermi`);
         if (d?.reward.health) bits.push(`+${d.reward.health} can`);
         if (d?.reward.score) bits.push(`+${d.reward.score} puan`);

@@ -44,6 +44,8 @@ export default function Page() {
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
+  // Ekonomi (Faz A): bölüm sonu para bilgisi
+  const [coinInfo, setCoinInfo] = useState({ gained: 0, bonus: 0, total: 0 });
   const [runId, setRunId] = useState(0);
   const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
@@ -167,6 +169,11 @@ export default function Page() {
     setScore(r.score);
     setLives(r.lives);
     setLevel(r.level);
+    setCoinInfo({
+      gained: r.coinsGained ?? 0,
+      bonus: r.levelClearBonus ?? 0,
+      total: r.coins ?? 0,
+    });
     setScreen(r.status);
   }
 
@@ -690,6 +697,13 @@ export default function Page() {
           <div className="subtitle">
             Bu koridordan sağ çıktın… ama fısıltılar peşinde. Skor: <b>{score}</b>
           </div>
+          <div className="subtitle" style={{ color: "#ffd75a" }}>
+            🪙 Kazanılan: <b>+{coinInfo.gained} para</b>
+            {coinInfo.bonus > 0 && (
+              <span style={{ color: "#c9b8d0" }}> (bölüm bonusu +{coinInfo.bonus})</span>
+            )}
+            {" · "}Cüzdan: <b>{coinInfo.total}</b>
+          </div>
           <button
             className="btn btn-primary"
             onClick={() => play(level + 1, score, lives)}
@@ -722,6 +736,9 @@ export default function Page() {
           <div className="subtitle">
             {TOTAL_LEVELS} bölümün karanlığından da sağ çıktın. Gelinler geride
             kaldı — şimdilik. Final skorun: <b>{score}</b>
+          </div>
+          <div className="subtitle" style={{ color: "#ffd75a" }}>
+            🪙 Cüzdan: <b>{coinInfo.total} para</b>
           </div>
           <button className="btn btn-primary" onClick={startNewGame}>
             Yeniden Oyna
