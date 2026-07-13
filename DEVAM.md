@@ -90,7 +90,8 @@
   Oyun-içi **📦 envanter paneli** ile kalkan/radar tıklayarak kullanılır. `engine.activateShield/Radar` + invuln.
 
 ### KALAN — sonraki fazlar (kullanıcı seçimi, 2026-07-13)
-- ⏳ **Faz C**: Koşma/sprint (#2) + Tuzak (#4, gelini yavaşlatır).
+- ✅ **Faz C**: **Koşma/sprint** (#2, Shift/KOŞ + Nefes barı, stamina) + **Tuzak** (#4, dükkândan al, E/mobil
+  ile koy, gelini %40'a yavaşlatır 8sn — DURDURMAZ). `config` sprint/trap sabitleri + `brides.slowCells`.
 - ⏳ **Faz D**: Yeni gelinler — Çağıran (#6), Bölünen (#7), Duvar-tırmanan (#10, gerçekçi), Kraliçe-boss (#9).
 - ⏳ **Faz E**: Kaçış bölümü (#11, +görev moduna) + Rehin kurtarma (#13).
 - ⏳ **Faz F**: Başarımlar (#17) + Günlük/not parçaları (#16).
