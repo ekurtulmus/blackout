@@ -42,6 +42,14 @@ export default function MainMenu({
   const gameRef = useRef<HTMLCanvasElement | null>(null);
   const grainRef = useRef<HTMLCanvasElement | null>(null);
   const [modal, setModal] = useState(false);
+  const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
+  const [isTouch, setIsTouch] = useState(false); // dokunmatik mi (kontrol anlatımı için)
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.matchMedia) {
+      setIsTouch(window.matchMedia("(pointer: coarse)").matches);
+    }
+  }, []);
 
   // --- Grain (film taneciği) ---
   useEffect(() => {
@@ -347,6 +355,117 @@ export default function MainMenu({
     { icon: "📖", label: "Günlük", note: `${journal}/${journalTotal}`, onClick: onJournal },
   ];
 
+  // Nasıl Oynanır — konu-konu bilgi (kullanıcı merak ettiğine tıklar)
+  const helpTopics: { key: string; title: string; items: { k?: string; t: string }[] }[] = [
+    {
+      key: "kontrol",
+      title: "Kontroller",
+      items: isTouch
+        ? [
+            { k: "Hareket", t: "Sol alttaki joystick'i sürükle — çektiğin yöne yürürsün." },
+            { k: "Ateş", t: "Sağ alttaki ATEŞ düğmesi; baktığın yöne mermi atar." },
+            { k: "Bariyer / Tuzak", t: "Sağ alttaki BARİYER ve 🕸️ düğmeleriyle yere koyarsın." },
+            { k: "Envanter / Dükkân", t: "Üstteki 📦 (envanter) ve 🛒 (dükkân) düğmeleri." },
+          ]
+        : [
+            { k: "Hareket", t: "WASD veya ok tuşları · Shift ile koş (nefes barı tükenir)." },
+            { k: "Ateş", t: "Boşluk tuşu — baktığın yöne ateş eder." },
+            { k: "Eşya", t: "Q kalkan · R radar · E bariyer · T tuzak/duvak." },
+            { k: "Envanter", t: "📦 düğmesiyle envanteri aç, eşyanı kuşan." },
+          ],
+    },
+    {
+      key: "amac",
+      title: "Amaç & Bölüm",
+      items: [
+        { t: "Kapkaranlık labirentte fenerinle yolunu bul." },
+        { k: "Çıkış kilidi", t: "Çıkış önce KİLİTLİ. En az 1 gelini yok edince açılır." },
+        { k: "Bölüm geç", t: "Yeşil parlayan kapıya ulaş → sonraki bölüm. Yalnız Kaçış'ta 10 bölüm." },
+      ],
+    },
+    {
+      key: "gelinler",
+      title: "Kanlı Gelinler",
+      items: [
+        { k: "Kanlı Gelin", t: "Klasik avcı. Görünce koşar, asla vazgeçmez; bölümle zekileşir." },
+        { k: "Karanlık Gelin", t: "Işıkta yavaş, karanlıkta hızlanır. Karanlıkta gözleri kırmızı parlar." },
+        { k: "Mukus Gelini", t: "Öldüğünde 10 sn zehirli yeşil leke bırakır; üstünden geçme." },
+        { k: "Çağıran Gelin", t: "Çığlık atıp yakındaki uyuyan gelinleri uyandırır, sürü çeker." },
+        { k: "Bölünen Gelin", t: "Öldürünce iki hızlı yavruya bölünür. Köşede sıkışma." },
+        { k: "Duvar Aşan Gelin", t: "Duvarların içinden yavaşça süzülür; labirent durduramaz." },
+        { k: "Kraliçe Gelin", t: "Dev boss, birkaç bölümde bir. Taçlı, kızıl auralı, çok tehlikeli." },
+      ],
+    },
+    {
+      key: "can",
+      title: "Can & Ölüm",
+      items: [
+        { k: "3 can", t: "Gelin teması can barını düşürür. Bar bitince bir can gider." },
+        { k: "Yeniden doğuş", t: "Ölünce bölüm başında kısa dokunulmazlıkla doğarsın." },
+        { k: "Kalp atışı", t: "Karanlıkta kalbin hızlanır — yakında gelin var demektir." },
+      ],
+    },
+    {
+      key: "mermi",
+      title: "Mermi & Ateş",
+      items: [
+        { k: "Sınırlı mermi", t: "Yerdeki parlayan mermileri topla; boşa harcama." },
+        { k: "Ses çeker", t: "Ateş sesi gelinleri üstüne çeker." },
+        { k: "Geri doğar", t: "Toplanan mermi 10 sn sonra yerinde geri belirir." },
+      ],
+    },
+    {
+      key: "para",
+      title: "Dükkân & Para",
+      items: [
+        { k: "Altın kazan", t: "Gelin öldürünce ve bölüm geçince altın kazanırsın." },
+        { k: "Dükkân", t: "🛒 Dükkân'dan kalkan, radar, tuzak, ekstra can, kalıcı geliştirme ve kozmetik al." },
+        { k: "Her yerde geçerli", t: "Aldığın eşya tüm modlarda ve bölümlerde kullanılır." },
+      ],
+    },
+    {
+      key: "envanter",
+      title: "Envanter",
+      items: [
+        { k: "Kalkan", t: "Kısa süre dokunulmazlık — sıkıştığında kullan." },
+        { k: "Radar", t: "Çıkış yönünü bir kez ok olarak gösterir." },
+        { k: "Tuzak", t: "Yere koy; üstünden geçen gelin bir süre yavaşlar (durdurmaz)." },
+        { t: "Eşyanı 📦 envanterden kuşanıp istediğin an tetikle." },
+      ],
+    },
+    {
+      key: "duvak",
+      title: "Duvak (Görünmezlik)",
+      items: [
+        { k: "Duvak eşyası", t: "Yerde bulursun; alınca 5 sn görünmez olursun." },
+        { k: "Gizlen", t: "Görünmezken gelinler seni göremez — köşeden sıvış." },
+        { k: "Dikkat", t: "Ateş edersen görünmezlik anında bozulur." },
+      ],
+    },
+    {
+      key: "firsat",
+      title: "Fırsatlar (Yüzük, Ayna, Çan…)",
+      items: [
+        { t: "Bölümlerde ara sıra opsiyonel 'Fırsat' hedefleri çıkar. Çıkışı geciktirmez." },
+        { k: "Yüzük", t: "Ekstra para verir — ama bir gelini çıldırtıp hızlandırır." },
+        { k: "Ayna", t: "Kehanet: birkaç sn beklersen çıkış yönünü gösterir." },
+        { k: "Çan", t: "Tüm gelinleri çana çeker — tuzak kurmak için birebir." },
+        { k: "Mumlar / Kan izi", t: "Mumları yak ya da doğru kan izini takip et → ödül." },
+      ],
+    },
+    {
+      key: "yaris",
+      title: "Ölüm Koşusu (Online)",
+      items: [
+        { t: "2-6 kişi aynı labirentte yarışır; ilk çıkan bölümü kazanır, puan birikir." },
+        { k: "Bariyer", t: "Bölüm başına 3 hakkın var; koyduğun bariyer rakibin yolunu kapar, bir atışla yıkılır." },
+        { k: "Dükkân", t: "Turlar arası 🛒 ile kazandığın parayla eşya al." },
+        { k: "Ölüm", t: "Can barın bitince başta güvenle doğarsın; yarış sürer." },
+      ],
+    },
+  ];
+  const openTopic = topic ? helpTopics.find((h) => h.key === topic) : null;
+
   return (
     <div className="mm-root">
       <style>{MM_CSS}</style>
@@ -384,16 +503,16 @@ export default function MainMenu({
             </button>
           ))}
         </div>
-      </div>
 
-      <div className="mm-lore">
-        Bir düğün vardı… kimse ondan sağ dönmedi.{" "}
-        <span className="mm-r">Kanlı gelinler</span> hâlâ damadını arıyor.
-      </div>
+        <div className="mm-foot">
+          <button onClick={() => { setTopic(null); setModal(true); }}>Nasıl Oynanır</button>
+          <button onClick={onSettings}>Ayarlar</button>
+        </div>
 
-      <div className="mm-foot">
-        <button onClick={() => setModal(true)}>Nasıl Oynanır</button>
-        <button onClick={onSettings}>Ayarlar</button>
+        <div className="mm-lore">
+          Bir düğün vardı… kimse ondan sağ dönmedi.{" "}
+          <span className="mm-r">Kanlı gelinler</span> hâlâ damadını arıyor.
+        </div>
       </div>
 
       <div
@@ -402,36 +521,29 @@ export default function MainMenu({
       >
         <div className="mm-card">
           <span className="mm-close" onClick={() => setModal(false)}>✕</span>
-          <h2>Nasıl Oynanır</h2>
-          <p className="mm-intro">
-            Bir düğün gecesi kana bulandı. Şimdi kapkaranlık labirentte, elinde titrek bir
-            fenerle kaçıyorsun. <b>Kanlı gelinler</b> damadını arıyor — ve seni ona benzetiyorlar.
-            Fenerin yalnızca önünü aydınlatır; arkan hep karanlık. Sessiz ol, mermini boşa harcama,
-            yolunu bul.
-          </p>
-          <ul>
-            <li>Hareket: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / ok tuşları · <kbd>Shift</kbd> koş (nefesin tükenir)</li>
-            <li>Ateş: <kbd>Boşluk</kbd> — baktığın yöne ateş eder. Mermi <b>azdır</b>, yerden topla.</li>
-            <li>En az <b>1 gelini</b> yok edince <b>çıkış açılır</b>; parlayan yeşil kapıya ulaş.</li>
-            <li>Envanter: <kbd>Q</kbd> kalkan (kısa dokunulmazlık) · <kbd>R</kbd> radar (çıkış yönü) · <kbd>E</kbd> tuzak · <kbd>T</kbd> duvak</li>
-            <li>Gelin başına ve bölüm sonunda <b>para</b> kazan → <b>Dükkân</b>'dan eşya/geliştirme al.</li>
-            <li><b>3 canın</b> var; gelin teması can barını düşürür. Karanlıkta <b>kalp atışın</b> hızlanır.</li>
-          </ul>
-
-          <h3>Kanlı Gelinler</h3>
-          <ul className="mm-brides">
-            <li><b>🕯️ Kanlı Gelin</b> — Klasik avcı. Seni görünce koşar, <b>asla vazgeçmez</b>; bölüm ilerledikçe daha zekileşir.</li>
-            <li><b>🌑 Karanlık Gelin</b> — Işıkta yavaş, <b>karanlıkta hızlanır</b>. Fenersiz köşelerde kırmızı gözleri parlar.</li>
-            <li><b>🟢 Mukus Gelini</b> — Öldüğünde yere <b>10 sn zehirli yeşil leke</b> bırakır; üstünden geçersen canın erir.</li>
-            <li><b>🗣️ Çağıran Gelin</b> — <b>Çığlık atıp</b> yakındaki uyuyan gelinleri uyandırır, üzerine sürü çeker.</li>
-            <li><b>👯 Bölünen Gelin</b> — Vurup öldürünce <b>iki hızlı yavruya bölünür</b>. Köşede sıkışma!</li>
-            <li><b>🧱 Duvar Aşan Gelin</b> — Duvarların içinden yavaşça <b>süzülür</b>; labirent onu durduramaz.</li>
-            <li><b>👑 Kraliçe Gelin</b> — <b>Dev boss</b>, birkaç bölümde bir çıkar. Taçlı, kızıl auralı, çok hızlı ve ölümcül.</li>
-          </ul>
-          <p className="mm-tip">
-            İpucu: <b>Duvak</b> eşyasını al → 5 sn görünmez ol (ateş edersen bozulur). <b>Bariyer</b>
-            koyup gelinlere yolu kapa. Panikleme; karanlık en çok acele edeni yutar.
-          </p>
+          {openTopic ? (
+            <>
+              <button className="mm-help-back" onClick={() => setTopic(null)}>‹ Konular</button>
+              <h2>{openTopic.title}</h2>
+              <ul className="mm-help-detail">
+                {openTopic.items.map((it, i) => (
+                  <li key={i}>{it.k ? <b>{it.k}</b> : null}{it.k ? " — " : ""}{it.t}</li>
+                ))}
+              </ul>
+            </>
+          ) : (
+            <>
+              <h2>Nasıl Oynanır</h2>
+              <p className="mm-help-lead">Merak ettiğin konuya dokun:</p>
+              <div className="mm-help-grid">
+                {helpTopics.map((h) => (
+                  <button key={h.key} className="mm-help-topic" onClick={() => setTopic(h.key)}>
+                    {h.title}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -439,13 +551,13 @@ export default function MainMenu({
 }
 
 const MM_CSS = `
-.mm-root{position:fixed;inset:0;overflow:hidden;background:#000;font-family:'EB Garamond',Georgia,serif;color:#e4ddce;z-index:0;}
+.mm-root{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#000;font-family:'EB Garamond',Georgia,serif;color:#e4ddce;z-index:0;}
 .mm-game{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
 .mm-grain{position:fixed;inset:0;width:100%;height:100%;z-index:2;opacity:.05;mix-blend-mode:overlay;pointer-events:none;}
 .mm-scrim{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(closest-side 46vw 44vh at 50% 46%, rgba(4,3,3,.82), rgba(4,3,3,.5) 55%, rgba(4,3,3,0) 100%);}
 .mm-vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(130% 120% at 50% 50%, transparent 42%, rgba(40,8,8,.5) 82%, rgba(20,3,3,.85) 100%);box-shadow:inset 0 0 260px 120px #000;animation:mm-beat 3.4s ease-in-out infinite;}
 @keyframes mm-beat{0%,100%{box-shadow:inset 0 0 260px 120px #000;}50%{box-shadow:inset 0 0 300px 140px #000;}}
-.mm-wrap{position:relative;z-index:5;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px 20px 150px;}
+.mm-wrap{position:relative;z-index:5;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px 48px;}
 .mm-title{font-family:'Cinzel',serif;font-weight:800;font-size:clamp(52px,9vw,116px);letter-spacing:.2em;color:#efe7d6;text-shadow:0 0 30px rgba(0,0,0,.9),0 0 40px rgba(209,26,26,.35),0 0 80px rgba(139,13,13,.3);opacity:0;animation:mm-titleIn 1s ease-out .15s forwards, mm-flicker 7s 1.2s infinite steps(1);}
 .mm-title .mm-o{display:inline-block;color:#fff;text-shadow:0 0 14px #ffd27a,0 0 32px #ff8a3a,0 0 58px #d11a1a;animation:mm-flame .12s infinite alternate;}
 @keyframes mm-titleIn{from{opacity:0;letter-spacing:.5em;filter:blur(10px);}to{opacity:1;letter-spacing:.2em;filter:blur(0);}}
@@ -465,15 +577,21 @@ const MM_CSS = `
 .mm-schip:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.4);}
 .mm-sicon{font-size:15px;line-height:1;}
 .mm-note{color:#6f695d;letter-spacing:.05em;}
-.mm-lore{position:fixed;bottom:82px;left:50%;transform:translateX(-50%);z-index:4;pointer-events:none;width:min(620px,86vw);text-align:center;font-style:italic;font-size:15px;line-height:1.75;color:#8f8776;letter-spacing:.03em;text-shadow:0 0 14px #000,0 0 30px rgba(139,13,13,.25);opacity:0;animation:mm-loreIn 1.6s ease-out 2s forwards, mm-lorePulse 6s 3.6s ease-in-out infinite;}
+.mm-lore{position:relative;z-index:5;margin-top:30px;pointer-events:none;width:min(620px,86vw);text-align:center;font-style:italic;font-size:15px;line-height:1.75;color:#8f8776;letter-spacing:.03em;text-shadow:0 0 14px #000,0 0 30px rgba(139,13,13,.25);opacity:0;animation:mm-loreIn 1.6s ease-out 2s forwards, mm-lorePulse 6s 3.6s ease-in-out infinite;}
 .mm-lore::before,.mm-lore::after{content:"";display:block;width:44px;height:1px;margin:0 auto;background:linear-gradient(90deg,transparent,rgba(209,26,26,.5),transparent);}
 .mm-lore::before{margin-bottom:14px;}.mm-lore::after{margin-top:14px;}
 .mm-lore .mm-r{color:#c86b4a;}
 @keyframes mm-loreIn{to{opacity:.9;}}
 @keyframes mm-lorePulse{0%,100%{opacity:.62;}50%{opacity:.92;}}
-.mm-foot{position:fixed;bottom:30px;left:0;right:0;z-index:5;display:flex;justify-content:center;gap:34px;opacity:0;animation:mm-fade 1s ease-out 1.6s forwards;}
-.mm-foot button{background:none;border:none;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.24em;color:#6f695d;cursor:pointer;text-transform:uppercase;transition:color .25s;text-shadow:0 0 10px #000;}
-.mm-foot button:hover{color:#e0a24a;}
+.mm-foot{position:relative;z-index:5;margin-top:34px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap;opacity:0;animation:mm-fade 1s ease-out 1.6s forwards;}
+.mm-foot button{background:rgba(255,255,255,.02);border:1px solid rgba(200,180,150,.16);border-radius:6px;padding:10px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.24em;color:#8a8474;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 0 10px #000;}
+.mm-foot button:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.42);}
+/* Mobilde buton çerçeveleri daha belirgin + hafif dolgu (göze net görünsün) */
+@media (max-width:640px){
+  .mm-item{border-color:rgba(206,186,156,.28);background:rgba(255,255,255,.035);}
+  .mm-schip{border-color:rgba(206,186,156,.32);background:rgba(255,255,255,.035);}
+  .mm-foot button{border-color:rgba(206,186,156,.32);background:rgba(255,255,255,.035);}
+}
 @keyframes mm-fade{to{opacity:1;transform:none;}}
 .mm-modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.74);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .35s;}
 .mm-modal.open{opacity:1;pointer-events:auto;}
@@ -494,6 +612,18 @@ const MM_CSS = `
 .mm-brides li{font-size:14.5px;line-height:1.55;}
 .mm-brides li::before{content:"✦";color:#c86b4a;}
 .mm-brides li b{color:#efc987;}
+/* Nasıl Oynanır — konu grid + detay */
+.mm-help-lead{font-size:13.5px;color:#8f8776;font-style:italic;margin:0 0 16px;text-align:center;}
+.mm-help-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
+.mm-help-topic{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;color:#c9bfa8;background:rgba(255,255,255,.025);border:1px solid rgba(206,186,156,.2);border-radius:7px;padding:13px 12px;cursor:pointer;text-align:center;line-height:1.3;transition:color .2s,background .2s,border-color .2s;}
+.mm-help-topic:hover{color:#efc987;background:rgba(224,162,74,.08);border-color:rgba(224,162,74,.45);}
+.mm-help-back{align-self:flex-start;background:none;border:none;color:#8a8474;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:0 0 12px;transition:color .2s;}
+.mm-help-back:hover{color:#e0a24a;}
+.mm-help-detail{list-style:none;display:grid;gap:12px;margin:0;padding:0;}
+.mm-help-detail li{font-size:14.5px;color:#a9a294;line-height:1.55;padding-left:16px;position:relative;}
+.mm-help-detail li::before{content:"›";position:absolute;left:0;color:#d11a1a;font-weight:700;}
+.mm-help-detail li b{color:#efc987;font-weight:600;}
+@media (max-width:420px){.mm-help-grid{grid-template-columns:1fr;}}
 .mm-card kbd{font-family:'Cinzel',serif;font-size:11px;color:#e4ddce;background:linear-gradient(180deg,#2a211d,#171210);border:1px solid rgba(150,130,110,.3);border-bottom-width:2px;border-radius:4px;padding:2px 8px;margin:0 1px;display:inline-block;}
 .mm-close{position:absolute;top:16px;right:20px;font-family:'Cinzel',serif;font-size:20px;color:#6f695d;cursor:pointer;transition:color .2s;line-height:1;}
 .mm-close:hover{color:#d11a1a;}

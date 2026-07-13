@@ -1,7 +1,7 @@
 :root {
   --bg: #05060a;
   --ink: #e8ecf3;
-  --muted: #8b93a7;
+  --muted: #a7aec0;
   --accent: #6ee7ff;
   --danger: #ff4d4d;
   --hp: #46d17a;
@@ -226,6 +226,34 @@ button {
   z-index: 20;
 }
 
+/* Alt ekranlarda küçük, sabit "← Menü" butonu (sol üst) — aşağı inmeye gerek kalmasın */
+.topback {
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 40;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(20, 15, 13, 0.86);
+  border: 1px solid rgba(206, 186, 156, 0.28);
+  border-radius: 7px;
+  color: #cabfa8;
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.topback:hover {
+  color: #e0a24a;
+  border-color: rgba(224, 162, 74, 0.5);
+  background: rgba(30, 22, 18, 0.92);
+}
+
 /* --- Oyun sahnesi --- */
 .stage {
   position: fixed;
@@ -292,7 +320,7 @@ button {
   border-color: rgba(110, 231, 255, 0.5);
 }
 
-/* Dokunmatik cihazlarda HUD butonları daha büyük/kolay basılır */
+/* Dokunmatik cihazlarda HUD butonları daha büyük/kolay basılır + yazılar daha okunaklı */
 @media (pointer: coarse) {
   .hud {
     gap: 10px;
@@ -305,6 +333,13 @@ button {
   }
   .mutebtn .val {
     font-size: 18px;
+  }
+  /* Mobilde HUD etiketleri soluk kalıp göz yormasın diye belirginleştir */
+  .chip .lbl {
+    color: #c3c9d6;
+  }
+  .chip .val {
+    color: #ffffff;
   }
 }
 

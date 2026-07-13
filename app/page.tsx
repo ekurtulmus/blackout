@@ -372,6 +372,7 @@ export default function Page() {
   if (screen === "achievements") {
     return (
       <div className="menuscreen">
+        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e0a24a" }}>🏆 Başarımlar</div>
           <div className="subtitle">{achList.length}/{ACHIEVEMENTS.length} açıldı</div>
@@ -387,9 +388,6 @@ export default function Page() {
               );
             })}
           </div>
-          <div style={{ textAlign: "center", marginTop: 20 }}>
-            <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
-          </div>
         </div>
       </div>
     );
@@ -398,6 +396,7 @@ export default function Page() {
   if (screen === "journal") {
     return (
       <div className="menuscreen">
+        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e9e0c4" }}>📖 Günlük</div>
           <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
@@ -416,9 +415,6 @@ export default function Page() {
               );
             })}
           </div>
-          <div style={{ textAlign: "center", marginTop: 20 }}>
-            <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
-          </div>
         </div>
       </div>
     );
@@ -429,6 +425,7 @@ export default function Page() {
     const sel = openSecret != null ? SECRETS[openSecret] : null;
     return (
       <div className="screen">
+        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
           SIRLAR
         </div>
@@ -510,10 +507,6 @@ export default function Page() {
             ))}
           </div>
         )}
-
-        <button className="btn btn-primary" onClick={() => setScreen("menu")}>
-          ← Menü
-        </button>
 
         {/* Sır popup'ı: fotoğraf + altında metin */}
         {sel && (
@@ -659,6 +652,7 @@ export default function Page() {
   if (screen === "missions") {
     return (
       <div className="screen">
+        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
           KARANLIK GÖREVLER
         </div>
@@ -701,9 +695,6 @@ export default function Page() {
             );
           })}
         </div>
-        <button className="btn" onClick={() => setScreen("menu")} style={{ opacity: 0.7 }}>
-          ← Menü
-        </button>
       </div>
     );
   }

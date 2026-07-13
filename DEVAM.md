@@ -11,6 +11,29 @@
 > local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
 > için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
 
+## BÜYÜK REVİZE PAKETİ (2026-07-13) — 10 FAZ, sırayla
+Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence** (hesapsız); yeni **Arena** =
+**dalga hayatta kalma**; emoji→line-icon geçişi **en sona** (aşamalı). İlerleme:
+- ✅ **Faz 1 — Menü & mobil UX**: mobil menü dikey kaydırma (`.mm-root` overflow-y:auto, `.mm-wrap` min-height:100dvh);
+  lore yazısı Nasıl Oynanır+Ayarlar butonlarının ALTINA taşındı (in-flow); footer butonları çerçeveli chip;
+  mobilde buton çerçeveleri belirgin (`@media(max-width:640px)`); mobilde HUD yazıları açıldı (`--muted` #8b93a7→#a7aec0,
+  `pointer:coarse`'da `.chip .lbl` #c3c9d6); alt ekranlarda **`.topback`** (sol üst küçük "← Menü", globals.css) —
+  başarım/günlük/sırlar/görevler/dükkân/ayarlar; alttaki büyük "← Menü/Geri" butonları kaldırıldı.
+- ✅ **Faz 2 — Nasıl Oynanır yeniden**: `MainMenu.tsx` konu-bazlı (10 konu: Kontroller/Amaç/Gelinler/Can-Ölüm/
+  Mermi/Dükkân/Envanter/Duvak/Fırsatlar/Ölüm Koşusu), tıkla→detay, **platform-duyarlı** kontroller
+  (`matchMedia('(pointer:coarse)')` → mobilde joystick, PC'de tuşlar), "bir düğün gecesi" giriş paragrafı silindi.
+- ⏳ **Faz 3 — Oyun-içi ferahlat (tüm modlar)**: HUD'dan gelin sayısı+tema kaldır, skoru kompakt; PC'de envanteri
+  sağ-orta; kehanet/uyarı 3sn; **envanter "slot" mekaniği** (eşyaya tıkla→ateş'in solundaki kutuya kuşan, sonra kullan).
+- ⏳ **Faz 4 — İçerik**: Sırlar 8→12 (bağlı, ters köşeli hikaye), Günlük 7→14 (oyuncu ağzından), Görevler 9→12.
+- ⏳ **Faz 5 — Ekonomi & başarım**: başarıma zorluğa göre altın + "Ödülü Al" butonu; dükkânda "Altın Satın Al"
+  (sembolik, 500 altın=12₺, ödeme almadan ver).
+- ⏳ **Faz 6 — Modlar & Arena**: menüde "Modlar" ekranı + yeni **Arena (dalga hayatta kalma)** modu.
+- ⏳ **Faz 7 — Online**: oda kurma 200 altın; 2 kişiden az kalınca oda kapanır. (global erişim zaten var)
+- ⏳ **Faz 8 — Kayıt & sıfırla**: Ayarlar'a "Oyunu Sıfırla" (onaylı); ilerleme/satın alma geçmişi.
+- ⏳ **Faz 9 — Line icon geçişi**: menü+oyun tüm emoji → temaya uygun özel SVG line-icon.
+- ⏳ **Faz 10 — Arkadaş sistemi**: arkadaş kodu + presence; menü & oda-kurmada "Arkadaşlarım" + oyun daveti.
+Zaten yapılmış: eşya tüm modlarda ortak/kalıcı ✅, ilerleme kaydı ✅, online global ✅.
+
 ## ONLINE DÜKKÂN + AYRILMA HATASI DÜZELTMESİ (2026-07-13)
 - ✅ **Online dükkân (market)** (`components/OnlineGame.tsx`): HUD'da 🛒 düğmesi + bölüm-sonu
   ekranında "🛒 Dükkâna Uğra" → mevcut `Shop` bileşeni tam-ekran overlay olarak açılır (kazandığın

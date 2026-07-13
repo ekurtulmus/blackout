@@ -50,6 +50,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
 
   return (
     <div className="menuscreen">
+      <button className="topback" onClick={onBack}>← Geri</button>
       <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div className="big" style={{ color: "#ffd75a" }}>🛒 {title}</div>
@@ -108,9 +109,6 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
           })}
         </div>
 
-        <div style={{ textAlign: "center", marginTop: 20 }}>
-          <button className="btn" onClick={onBack}>← Geri</button>
-        </div>
       </div>
     </div>
   );
