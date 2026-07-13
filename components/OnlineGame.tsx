@@ -1567,8 +1567,8 @@ export default function OnlineGame({
 
       {alone && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="big" style={{ color: "#ff9a3c" }}>Diğer oyuncular ayrıldı</div>
-          <div className="subtitle">Yarışacak kimse kalmadı.</div>
+          <div className="big" style={{ color: "#ff9a3c" }}>Oda kapandı</div>
+          <div className="subtitle">Odada 2 kişiden az kaldı — yarış sona erdi.</div>
           <button className="btn btn-primary" onClick={quit}>← Menü</button>
         </div>
       )}

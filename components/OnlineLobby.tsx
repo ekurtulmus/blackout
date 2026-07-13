@@ -19,8 +19,11 @@ import {
 } from "@/lib/online";
 import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
+import { getCoins, addCoins } from "@/lib/coins";
 
 type Mode = "choose" | "host" | "join";
+
+const ROOM_COST = 200; // global oda kurma maliyeti (altın)
 
 const DIFFS: { key: RaceDiff; label: string; desc: string }[] = [
   { key: "kolay", label: "Kolay", desc: "az/yavaş gelin" },
@@ -43,6 +46,8 @@ export default function OnlineLobby({
   const [status, setStatus] = useState<NetStatus>("idle");
   const [players, setPlayers] = useState<NetPlayer[]>([]);
   const [diff, setDiff] = useState<RaceDiff>("orta");
+  const [coins, setCoins] = useState(0);
+  const [notice, setNotice] = useState("");
   const roomRef = useRef<NetRoom | null>(null);
   const handedOff = useRef(false); // oda OnlineGame'e devredildi mi
   const online = isOnlineAvailable();
@@ -55,6 +60,7 @@ export default function OnlineLobby({
     } catch {
       /* geç */
     }
+    setCoins(getCoins());
   }, []);
 
   // Ayrılırken kanalı kapat — AMA devredildiyse dokunma (OnlineGame kullanıyor)
@@ -103,6 +109,14 @@ export default function OnlineLobby({
   }
 
   function host() {
+    // Global oda kurmak 200 altın. Yetersizse kurulmaz.
+    if (getCoins() < ROOM_COST) {
+      setNotice(`Oda kurmak için ${ROOM_COST} altın gerekli (elinde ${getCoins()}). Oynayıp altın kazan veya dükkândan al.`);
+      window.setTimeout(() => setNotice(""), 4000);
+      return;
+    }
+    const left = addCoins(-ROOM_COST);
+    setCoins(left);
     const c = generateRoomCode(4);
     setCode(c);
     setMode("host");
@@ -187,9 +201,21 @@ export default function OnlineLobby({
           </div>
           <div className="subtitle" style={{ marginBottom: 2 }}>Oyuncu adın:</div>
           {nameInput}
+          <div className="subtitle" style={{ margin: "2px 0", fontSize: 15 }}>
+            Cüzdan: <b style={{ color: "#ffd75a" }}>🪙 {coins}</b> · Oda kurmak <b style={{ color: "#ffd75a" }}>{ROOM_COST}🪙</b>
+          </div>
+          {notice && (
+            <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, maxWidth: 420 }}>{notice}</div>
+          )}
           <div style={{ display: "flex", gap: 14, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={host}>
-              🏠 Oda Kur
+            <button
+              className="btn btn-primary"
+              onClick={host}
+              disabled={coins < ROOM_COST}
+              style={{ opacity: coins < ROOM_COST ? 0.5 : 1 }}
+              title={coins < ROOM_COST ? `${ROOM_COST} altın gerekli` : "Oda kur"}
+            >
+              🏠 Oda Kur ({ROOM_COST}🪙)
             </button>
             <button className="btn" onClick={() => setMode("join")}>
               🔑 Odaya Katıl
