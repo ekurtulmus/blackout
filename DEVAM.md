@@ -35,8 +35,11 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   bijection; SECRET_ENDING twist'e göre. **Görevler 9→12** (`missions.ts`: Gelin Alayı/Kör Sessizlik/Kal-finale).
   **Günlük 6→14** (`journal.ts`) oyuncunun ağzından, twist arkı. `engine.ts` günlük seçimi TOPLANMAMIŞ sayfadan
   (10 bölümde 14 sayfa toplanabilsin — eski `(level-1)%len` 10-13'ü hiç göstermezdi). Canlı: 12 görev/12 sır/14 günlük.
-- ⏳ **Faz 5 — Ekonomi & başarım**: başarıma zorluğa göre altın + "Ödülü Al" butonu; dükkânda "Altın Satın Al"
-  (sembolik, 500 altın=12₺, ödeme almadan ver).
+- ✅ **Faz 5 — Ekonomi & başarım**: `achievements.ts`'e zorluğa göre **`reward`** altını (10-100) + `claimReward`/
+  `getClaimed`/`pendingRewardCount` (bir kez, `blackout_ach_claimed`). Başarım ekranında (page.tsx) her açık+alınmamış
+  başarımda **"🪙 Ödülü Al (+n)"** butonu → alınca cüzdan artar + "✓ Ödül alındı". Dükkânda ilk ürün **"🪙 ALTIN SATIN
+  AL"** (`Shop.tsx` GOLD_PACKS: 500/12₺, 1200/25₺, 3000/55₺) — **DENEME: ödeme yok**, tıklayınca altın bedava eklenir.
+  Canlı: 0→500 altın, başarım +10 → 510, "Ödül alındı" doğrulandı.
 - ⏳ **Faz 6 — Modlar & Arena**: menüde "Modlar" ekranı + yeni **Arena (dalga hayatta kalma)** modu.
 - ⏳ **Faz 7 — Online**: oda kurma 200 altın; 2 kişiden az kalınca oda kapanır. (global erişim zaten var)
 - ⏳ **Faz 8 — Kayıt & sıfırla**: Ayarlar'a "Oyunu Sıfırla" (onaylı); ilerleme/satın alma geçmişi.

@@ -9,7 +9,7 @@ import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import { getInventory } from "@/lib/inventory";
 import { getCoins } from "@/lib/coins";
-import { ACHIEVEMENTS, getUnlocked, unlock, achievementById } from "@/lib/achievements";
+import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
@@ -58,6 +58,7 @@ export default function Page() {
   const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
+  const [achClaimed, setAchClaimed] = useState<string[]>([]); // ödülü alınan başarımlar
   const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
   const [menuCoins, setMenuCoins] = useState(0); // ana menüde gösterilen cüzdan
   const [runId, setRunId] = useState(0);
@@ -96,6 +97,7 @@ export default function Page() {
       const sd = localStorage.getItem("blackout_sp_diff");
       if (sd === "kolay" || sd === "orta" || sd === "zor") setSpDiff(sd);
       setAchList(getUnlocked()); // Faz F
+      setAchClaimed(getClaimed());
       setJournalGot(getCollected());
       setMenuCoins(getCoins());
     } catch {
@@ -108,6 +110,7 @@ export default function Page() {
     if (screen === "menu") {
       setMenuCoins(getCoins());
       setAchList(getUnlocked());
+      setAchClaimed(getClaimed());
       setJournalGot(getCollected());
     }
   }, [screen]);
@@ -375,15 +378,37 @@ export default function Page() {
         <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e0a24a" }}>🏆 Başarımlar</div>
-          <div className="subtitle">{achList.length}/{ACHIEVEMENTS.length} açıldı</div>
+          <div className="subtitle">
+            {achList.length}/{ACHIEVEMENTS.length} açıldı · Cüzdan: <b style={{ color: "#ffd75a" }}>🪙 {menuCoins}</b>
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
             {ACHIEVEMENTS.map((a) => {
               const got = achList.includes(a.id);
+              const claimed = achClaimed.includes(a.id);
               return (
-                <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5 }}>
+                <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5, display: "flex", flexDirection: "column", gap: 6 }}>
                   <div style={{ fontSize: 26 }}>{got ? a.icon : "🔒"}</div>
                   <div style={{ fontWeight: 800 }}>{a.title}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4 }}>{a.desc}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{a.desc}</div>
+                  <div style={{ fontSize: 12, color: "#ffd75a" }}>Ödül: 🪙 {a.reward}</div>
+                  {got && !claimed && (
+                    <button
+                      className="btn btn-primary"
+                      style={{ padding: "7px 10px", fontSize: 13 }}
+                      onClick={() => {
+                        const r = claimReward(a.id);
+                        if (r.ok) {
+                          setMenuCoins(r.coins);
+                          setAchClaimed(getClaimed());
+                        }
+                      }}
+                    >
+                      🪙 Ödülü Al (+{a.reward})
+                    </button>
+                  )}
+                  {got && claimed && (
+                    <div style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700 }}>✓ Ödül alındı</div>
+                  )}
                 </div>
               );
             })}
