@@ -22,8 +22,14 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
 - ✅ **Faz 2 — Nasıl Oynanır yeniden**: `MainMenu.tsx` konu-bazlı (10 konu: Kontroller/Amaç/Gelinler/Can-Ölüm/
   Mermi/Dükkân/Envanter/Duvak/Fırsatlar/Ölüm Koşusu), tıkla→detay, **platform-duyarlı** kontroller
   (`matchMedia('(pointer:coarse)')` → mobilde joystick, PC'de tuşlar), "bir düğün gecesi" giriş paragrafı silindi.
-- ⏳ **Faz 3 — Oyun-içi ferahlat (tüm modlar)**: HUD'dan gelin sayısı+tema kaldır, skoru kompakt; PC'de envanteri
-  sağ-orta; kehanet/uyarı 3sn; **envanter "slot" mekaniği** (eşyaya tıkla→ateş'in solundaki kutuya kuşan, sonra kullan).
+- ✅ **Faz 3 — Oyun-içi ferahlat (tüm modlar)**: SP HUD'dan **Tema/Gelin/Skor** kaldırıldı (Süre yalnız görevde);
+  online HUD'dan **Tema** kaldırıldı (skor=yarış, kaldı). **Kehanet 20sn→3sn** (`engine.mqHintUntil`). **Envanter
+  slot mekaniği**: panelde eşyaya tıkla → KUŞAN (`equipped` state), ateşin solundaki **`.slotbtn`** ile kullan
+  (mobilde ateşin solu, PC'de sağ-alt; online BARİYER'le çakışmasın diye `.slotbtn-mp` daha sola). Panel artık
+  `.invbackdrop/.invcard` (masaüstünde **sağ-orta**, saydam zemin — harita açık kalır; mobilde ortalı modal).
+  SP mobil ayrı Tuzak butonu kaldırıldı (slot kapsıyor). SP+online uygulandı; canlı doğrulandı (kuşan→slot "🛡️2").
+- ✅ **Ek istekler (2026-07-13)**: alt ekranlarda "← Menü" HER ZAMAN sol üstte (`.topback` intro + online lobiye de
+  eklendi); Nasıl Oynanır konu detayında belirgin **"← Geri"** çip butonu (`.mm-help-back`).
 - ⏳ **Faz 4 — İçerik**: Sırlar 8→12 (bağlı, ters köşeli hikaye), Günlük 7→14 (oyuncu ağzından), Görevler 9→12.
 - ⏳ **Faz 5 — Ekonomi & başarım**: başarıma zorluğa göre altın + "Ödülü Al" butonu; dükkânda "Altın Satın Al"
   (sembolik, 500 altın=12₺, ödeme almadan ver).

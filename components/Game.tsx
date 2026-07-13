@@ -98,6 +98,7 @@ export default function Game({
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
   const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0 }); // kullanılabilir eşyalar
+  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | null>(null); // kuşanılan eşya (slot)
   const [stamina, setStamina] = useState(100); // koşma barı (HUD)
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
@@ -1221,6 +1222,22 @@ export default function Game({
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
     }
   };
+  // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç)
+  const SLOT_ICON = { shield: "🛡️", radar: "📻", trap: "🕸️" } as const;
+  const equippedCount =
+    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "trap" ? invCounts.traps : 0;
+  const useEquipped = () => {
+    if (!equipped || equippedCount <= 0) { setInvOpen(true); return; }
+    if (equipped === "shield") useShield();
+    else if (equipped === "radar") useRadar();
+    else if (equipped === "trap") usePlaceTrap();
+  };
+  // Envanterden bir eşyayı KUŞAN (slot'a koy) — direkt kullanma
+  const equip = (kind: "shield" | "radar" | "trap") => {
+    setEquipped(kind);
+    setInvOpen(false);
+  };
+
   // ? butonu: hazırlık/yardım ekranını aç (oyunu duraklatır); Devam ile kapat
   const openHelp = () => {
     briefRef.current = true;
@@ -1257,30 +1274,20 @@ export default function Game({
             <span className="val">{hud.level}</span>
           </div>
         )}
-        <div className="chip">
-          <span className="lbl">Tema</span>
-          <span className="val">{theme.name}</span>
-        </div>
         {!mission?.noFire && (
           <div className="chip">
             <span className="lbl">Mermi</span>
             <span className="val">{hud.ammo}</span>
           </div>
         )}
-        <div className="chip">
-          <span className="lbl">Gelin</span>
-          <span className="val">{hud.zombies}</span>
-        </div>
-        <div className="chip">
-          <span className="lbl">Skor</span>
-          <span className="val">{hud.score}</span>
-        </div>
-        <div className="chip">
-          <span className="lbl">Süre</span>
-          <span className="val">
-            {mm}:{ss}
-          </span>
-        </div>
+        {mission && (
+          <div className="chip">
+            <span className="lbl">Süre</span>
+            <span className="val">
+              {mm}:{ss}
+            </span>
+          </div>
+        )}
         <div className="chip">
           <span className="lbl">Can</span>
           <div className={"hpbar" + (hpBlink ? " blink" : "")}>
@@ -1414,68 +1421,44 @@ export default function Game({
         </button>
       </div>
 
-      {/* Oyun-içi envanter (Faz B) — ortalanmış modal, mobil dostu */}
+      {/* Oyun-içi envanter — masaüstünde sağ-orta, mobilde ortalanmış. Tıkla=KUŞAN */}
       {invOpen && !mission && (
         <div
+          className="invbackdrop"
           onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.55)",
-          }}
         >
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 12,
-            background: "linear-gradient(180deg, rgba(20,15,13,0.98), rgba(10,8,7,0.98))",
-            border: "1px solid rgba(120,110,95,0.3)",
-            borderTop: "2px solid #d11a1a",
-            borderRadius: 10,
-            padding: 18,
-            minWidth: "min(300px, 88vw)",
-            boxShadow: "0 30px 90px rgba(0,0,0,0.7)",
-          }}
-        >
-          <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
-          <button
-            className="btn"
-            disabled={invCounts.shields <= 0}
-            onClick={useShield}
-            style={{ opacity: invCounts.shields > 0 ? 1 : 0.4 }}
-          >
-            🛡️ Kalkan ({invCounts.shields}) — 3 sn dokunulmazlık
-          </button>
-          <button
-            className="btn"
-            disabled={invCounts.radars <= 0}
-            onClick={useRadar}
-            style={{ opacity: invCounts.radars > 0 ? 1 : 0.4 }}
-          >
-            📻 Radar ({invCounts.radars}) — çıkış yönünü göster
-          </button>
-          <button
-            className="btn"
-            disabled={invCounts.traps <= 0}
-            onClick={usePlaceTrap}
-            style={{ opacity: invCounts.traps > 0 ? 1 : 0.4 }}
-          >
-            🕸️ Tuzak ({invCounts.traps}) — buraya koy (E)
-          </button>
-          {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && (
-            <div style={{ fontSize: 12, color: "var(--muted)" }}>
-              Boş — dükkândan alabilirsin.
-            </div>
-          )}
-          <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
-            Kapat
-          </button>
-        </div>
+          <div className="invcard">
+            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
+            {([
+              { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
+              { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
+              { kind: "trap", icon: "🕸️", name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
+            ] as const).map((it) => (
+              <button
+                key={it.kind}
+                className="btn"
+                disabled={it.n <= 0}
+                onClick={() => equip(it.kind)}
+                style={{
+                  opacity: it.n > 0 ? 1 : 0.4,
+                  borderColor: equipped === it.kind ? "rgba(224,162,74,0.8)" : undefined,
+                  textAlign: "left",
+                }}
+              >
+                {it.icon} {it.name} ({it.n}) — {it.desc}
+                {equipped === it.kind ? "  ✓ kuşanıldı" : ""}
+              </button>
+            ))}
+            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && (
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                Boş — dükkândan alabilirsin.
+              </div>
+            )}
+            <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
+              Kapat
+            </button>
+          </div>
         </div>
       )}
 
@@ -1611,17 +1594,26 @@ export default function Game({
         >
           KOŞ
         </button>
-        {/* Tuzak koy (dokun) — mobil, yalnız normal mod */}
-        {!mission && (
-          <button
-            className="barrierbtn"
-            style={{ right: 130, bottom: 50, opacity: invCounts.traps > 0 ? 1 : 0.4 }}
-            onPointerDown={(e) => { e.preventDefault(); usePlaceTrap(); }}
-          >
-            🕸️{invCounts.traps}
-          </button>
-        )}
       </div>
+
+      {/* Kuşanılan eşya slotu (ateşin solunda; masaüstünde sağ-altta). Tıkla=kullan */}
+      {!mission && (
+        <button
+          className="slotbtn"
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={useEquipped}
+          title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
+        >
+          {equipped ? (
+            <>
+              <span className="si">{SLOT_ICON[equipped]}</span>
+              <span className="sc">{equippedCount}</span>
+            </>
+          ) : (
+            <span className="si" style={{ opacity: 0.5 }}>▫</span>
+          )}
+        </button>
+      )}
     </div>
   );
 }

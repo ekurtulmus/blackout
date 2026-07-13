@@ -83,6 +83,7 @@ export default function OnlineGame({
   const [coins, setCoins] = useState(0);
   const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 });
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
+  const [equipped, setEquipped] = useState<"shield" | "radar" | null>(null); // kuşanılan eşya (slot)
   const [shopOpen, setShopOpen] = useState(false); // oyun-içi dükkân (market) açık mı
   const uiOpen = useRef(false); // dükkân açıkken oyun tuşlarını kilitle (hareket etmesin)
   const radarUntil = useRef(0); // radar oku bitişi (ms, performance.now)
@@ -1387,6 +1388,14 @@ export default function OnlineGame({
     sound.play("secret");
     setInvCounts({ shields: inv.shields, radars: inv.radars });
   }
+  // Slot: kuşanılan eşyayı kullan (boşsa envanteri aç)
+  const SLOT_ICON_ON = { shield: "🛡️", radar: "📻" } as const;
+  const equippedCountOn = equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : 0;
+  function useEquippedOnline() {
+    if (!equipped || equippedCountOn <= 0) { setInvOpen(true); return; }
+    if (equipped === "shield") activateShieldOnline();
+    else if (equipped === "radar") activateRadarOnline();
+  }
 
   // Dükkânı aç — hareket tuşlarını temizle (dükkânda kayıp gitmeyesin)
   function openShop() {
@@ -1420,7 +1429,6 @@ export default function OnlineGame({
       <div className="hud">
         <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış {info.diff}</span></div>
         <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
-        <div className="chip"><span className="lbl">Tema</span><span className="val">{hud.themeName}</span></div>
         <div className="chip">
           <span className="lbl">Can</span>
           <div className="hpbar">
@@ -1497,49 +1505,28 @@ export default function OnlineGame({
 
       {/* Oyun-içi envanter (online) — ortalanmış modal, mobil dostu */}
       {invOpen && (
-        <div
-          onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
-          style={{
-            position: "fixed",
-            inset: 0,
-            zIndex: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(0,0,0,0.55)",
-          }}
-        >
-          <div
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              gap: 12,
-              background: "linear-gradient(180deg, rgba(20,15,13,0.98), rgba(10,8,7,0.98))",
-              border: "1px solid rgba(120,110,95,0.3)",
-              borderTop: "2px solid #d11a1a",
-              borderRadius: 10,
-              padding: 18,
-              minWidth: "min(300px, 88vw)",
-              boxShadow: "0 30px 90px rgba(0,0,0,0.7)",
-            }}
-          >
+        <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}>
+          <div className="invcard">
             <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
-            <button
-              className="btn"
-              disabled={invCounts.shields <= 0}
-              onClick={() => { activateShieldOnline(); }}
-              style={{ opacity: invCounts.shields > 0 ? 1 : 0.4 }}
-            >
-              🛡️ Kalkan ({invCounts.shields}) — 3 sn dokunulmazlık
-            </button>
-            <button
-              className="btn"
-              disabled={invCounts.radars <= 0}
-              onClick={() => { activateRadarOnline(); setInvOpen(false); }}
-              style={{ opacity: invCounts.radars > 0 ? 1 : 0.4 }}
-            >
-              📻 Radar ({invCounts.radars}) — çıkış yönünü göster
-            </button>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
+            {([
+              { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
+              { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
+            ] as const).map((it) => (
+              <button
+                key={it.kind}
+                className="btn"
+                disabled={it.n <= 0}
+                onClick={() => { setEquipped(it.kind); setInvOpen(false); }}
+                style={{
+                  opacity: it.n > 0 ? 1 : 0.4,
+                  borderColor: equipped === it.kind ? "rgba(224,162,74,0.8)" : undefined,
+                  textAlign: "left",
+                }}
+              >
+                {it.icon} {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? "  ✓ kuşanıldı" : ""}
+              </button>
+            ))}
             {invCounts.shields <= 0 && invCounts.radars <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Boş — menüdeki dükkândan alabilirsin.
@@ -1652,6 +1639,23 @@ export default function OnlineGame({
           ATEŞ
         </button>
       </div>
+
+      {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}
+      <button
+        className="slotbtn slotbtn-mp"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={useEquippedOnline}
+        title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
+      >
+        {equipped ? (
+          <>
+            <span className="si">{SLOT_ICON_ON[equipped]}</span>
+            <span className="sc">{equippedCountOn}</span>
+          </>
+        ) : (
+          <span className="si" style={{ opacity: 0.5 }}>▫</span>
+        )}
+      </button>
     </div>
   );
 }

@@ -148,15 +148,13 @@ export default function OnlineLobby({
   if (!online) {
     return (
       <div className="screen">
+        <button className="topback" onClick={onBack}>← Menü</button>
         <div className="big" style={{ color: "#ff6b6b" }}>
           Online kullanılamıyor
         </div>
         <div className="subtitle">
           Supabase ayarları eksik (.env.local). Tek kişilik oynayabilirsin.
         </div>
-        <button className="btn btn-primary" onClick={onBack}>
-          ← Menü
-        </button>
       </div>
     );
   }
@@ -175,6 +173,7 @@ export default function OnlineLobby({
 
   return (
     <div className="screen">
+      <button className="topback" onClick={onBack}>← Menü</button>
       <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
         ÖLÜM KOŞUSU
       </div>
@@ -196,9 +195,6 @@ export default function OnlineLobby({
               🔑 Odaya Katıl
             </button>
           </div>
-          <button className="btn" onClick={onBack} style={{ opacity: 0.7 }}>
-            ← Menü
-          </button>
         </>
       )}
 

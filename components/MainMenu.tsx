@@ -523,7 +523,7 @@ export default function MainMenu({
           <span className="mm-close" onClick={() => setModal(false)}>✕</span>
           {openTopic ? (
             <>
-              <button className="mm-help-back" onClick={() => setTopic(null)}>‹ Konular</button>
+              <button className="mm-help-back" onClick={() => setTopic(null)}>← Geri</button>
               <h2>{openTopic.title}</h2>
               <ul className="mm-help-detail">
                 {openTopic.items.map((it, i) => (
@@ -617,8 +617,8 @@ const MM_CSS = `
 .mm-help-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;}
 .mm-help-topic{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.06em;color:#c9bfa8;background:rgba(255,255,255,.025);border:1px solid rgba(206,186,156,.2);border-radius:7px;padding:13px 12px;cursor:pointer;text-align:center;line-height:1.3;transition:color .2s,background .2s,border-color .2s;}
 .mm-help-topic:hover{color:#efc987;background:rgba(224,162,74,.08);border-color:rgba(224,162,74,.45);}
-.mm-help-back{align-self:flex-start;background:none;border:none;color:#8a8474;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:0 0 12px;transition:color .2s;}
-.mm-help-back:hover{color:#e0a24a;}
+.mm-help-back{display:inline-flex;align-items:center;align-self:flex-start;background:rgba(255,255,255,.03);border:1px solid rgba(206,186,156,.28);border-radius:7px;color:#cabfa8;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;padding:8px 14px;margin-bottom:16px;transition:color .2s,border-color .2s,background .2s;}
+.mm-help-back:hover{color:#e0a24a;border-color:rgba(224,162,74,.5);background:rgba(224,162,74,.08);}
 .mm-help-detail{list-style:none;display:grid;gap:12px;margin:0;padding:0;}
 .mm-help-detail li{font-size:14.5px;color:#a9a294;line-height:1.55;padding-left:16px;position:relative;}
 .mm-help-detail li::before{content:"›";position:absolute;left:0;color:#d11a1a;font-weight:700;}

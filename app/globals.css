@@ -254,6 +254,82 @@ button {
   background: rgba(30, 22, 18, 0.92);
 }
 
+/* Kuşanılan eşya slotu (ateşin solunda / masaüstünde sağ-altta) */
+.slotbtn {
+  position: fixed;
+  z-index: 13;
+  right: 26px;
+  bottom: 44px;
+  width: 76px;
+  height: 76px;
+  border-radius: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  cursor: pointer;
+  color: #f0d9a8;
+  font-weight: 800;
+  background: radial-gradient(circle at 40% 35%, #4a4436, #241f18);
+  border: 1px solid rgba(224, 162, 74, 0.5);
+  box-shadow: 0 0 16px rgba(224, 162, 74, 0.22);
+}
+.slotbtn .si {
+  font-size: 24px;
+  line-height: 1;
+}
+.slotbtn .sc {
+  font-size: 12px;
+  opacity: 0.9;
+}
+@media (pointer: coarse) {
+  .slotbtn {
+    right: 134px;
+    bottom: 52px;
+  }
+  /* Online'da BARİYER/tuzak düğmeleriyle çakışmasın diye slotu daha sola al */
+  .slotbtn.slotbtn-mp {
+    right: 214px;
+    bottom: 44px;
+  }
+}
+
+/* Oyun-içi envanter paneli: mobilde ortalanmış modal, masaüstünde sağ-orta (harita açık kalır) */
+.invbackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 16;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.55);
+}
+.invcard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: linear-gradient(180deg, rgba(20, 15, 13, 0.98), rgba(10, 8, 7, 0.98));
+  border: 1px solid rgba(120, 110, 95, 0.3);
+  border-top: 2px solid #d11a1a;
+  border-radius: 10px;
+  padding: 18px;
+  min-width: min(320px, 88vw);
+  max-width: min(380px, 92vw);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7);
+}
+@media (pointer: fine) {
+  .invbackdrop {
+    justify-content: flex-end;
+    padding-right: 22px;
+    background: transparent;
+    pointer-events: none;
+  }
+  .invcard {
+    pointer-events: auto;
+  }
+}
+
 /* --- Oyun sahnesi --- */
 .stage {
   position: fixed;

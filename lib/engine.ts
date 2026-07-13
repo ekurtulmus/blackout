@@ -1091,7 +1091,7 @@ export class GameEngine {
           this.mqMirrorNear += dt;
           if (this.mqMirrorNear >= 5) {
             this.mqHintDir = this.computeExitDir();
-            this.mqHintUntil = this.time + 20; // yön 20 sn HUD'da kalır
+            this.mqHintUntil = this.time + 3; // yön HUD'da 3 sn kalır (ekranı meşgul etmesin)
             this.grantMQReward();
           }
         } else {

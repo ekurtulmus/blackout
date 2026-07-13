@@ -737,6 +737,7 @@ export default function Page() {
 
       {screen === "intro" && (
         <>
+          <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
           <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
             {INTRO_TITLE}
           </div>
@@ -770,9 +771,6 @@ export default function Page() {
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn btn-primary" onClick={() => play(1, 0, 3 + getInventory().extraLives)}>
               Karanlığa Gir →
-            </button>
-            <button className="btn" onClick={() => setScreen("menu")} style={{ opacity: 0.7 }}>
-              ← Menü
             </button>
           </div>
         </>
