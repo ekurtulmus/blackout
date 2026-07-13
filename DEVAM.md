@@ -261,7 +261,24 @@ ses (ateş/toplama/hasar/kapı/ağlama).
 - **Mermi:** kişisel/yerel düzen; toplanan mermi **10 sn** sonra haritada geri doğar.
 - **Çıkış:** herkes kendi çıkışını açar (≥1 gelin öldür).
 
+## Sinematik menü + ses + online eğlence (2026-07-13, son oturum)
+- ✅ **Sinematik ana menü** (`components/MainMenu.tsx`): kullanıcının tasarımı — Cinzel başlık, tepeden-bakış
+  labirent animasyonu, kanlı vinyet, "Nasıl Oynanır" modal. Tüm modlar + ikincil (Sırlar/Dükkân/Başarım/Günlük
+  ikonlu) + foot. Menüden girilen ekranlar aynı temada (`.screen`/`.menuscreen`/`.card-parch`, Cinzel/EB Garamond).
+  Tıklama: büyük saydam-çerçeveli kutular; lore `pointer-events:none`.
+- ✅ **Müzik**: `sirlar.mp3` (Sırlar), `envanter.mp3` (Dükkân), `islik.mp3` (oyunda ara sıra). `audio.ts`
+  playScreenMusic/startWhistles (yumuşak fade); `page.tsx` ekrana göre parça değiştirir.
+- ✅ **Kozmetik sahiplik**: bir kez alınan fener rengi/görünüm tekrar para vermeden kuşanılır (ownedFlash/ownedSkin).
+- ✅ **Radar oku**: metin yerine 1.5 sn ekranda çıkışa dönük parlak ok.
+- ✅ **Mobil**: HUD butonları büyük (44px), envanter ortalanmış modal (ateş butonunu kapatmaz).
+- ✅ **ONLINE Dilim B**: gelin çeşitleri online'a (host-otoriter) — çağıran/bölünen/duvar-tırmanan/kraliçe
+  (boss, büyük+taç+aura, tek-vuruş) + **tuzak** (T/mobil, host slowCells ile yavaşlatır). BKind 7 türe genişledi.
+- ⚠️ **OneDrive tuzağı**: bu oturumda Turbopack ara-düzenlemeyi cache'ledi (Game.tsx hayalet parse hatası).
+  Çözüm işe yaradı: sunucu durdur + `.next` & `node_modules/.cache` sil + dosyayı zorla yeniden yaz + restart.
+
 ## 10) Son commitler (git log)
+- `e43f9e3` Dilim B: gelin çeşitleri + tuzak online'a (host-otoriter)
+- `00db9a8` Müzik + kozmetik sahiplik + radar oku + MP ikonu + mobil
 - `c56095e` Faz F: Başarımlar + Günlük
 - `6e30ac7` Faz E: Kaçış bölümü + Rehin kurtarma
 - `91a6272` Faz D: Yeni gelin türleri (çağıran/bölünen/tırmanan/kraliçe)
