@@ -52,4 +52,8 @@ export const TUNING = {
 
   // --- Madde 8: gelin duvağı (görünmezlik) ---
   veilSec: 5, // toplayınca kaç saniye görünmez kalınır
+
+  // --- Madde 10: rastgele korku olayları (HASAR VERMEZ, sadece atmosfer) ---
+  scareMinSec: 16, // korku olayları arası min süre (seyrek; art arda spam yok)
+  scareMaxSec: 34, // korku olayları arası max süre
 };

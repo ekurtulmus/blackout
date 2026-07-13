@@ -29,6 +29,7 @@ import {
   type MQDef,
   type MQPlan,
 } from "./miniquests";
+import { ScareDirector, type ScareKind } from "./scares";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -73,6 +74,9 @@ export type SoundEvent =
   | "veil"
   | "hurt"
   | "dooropen"
+  | "whisper" // Madde 10: rastgele korku — ani fısıltı
+  | "doorslam" // Madde 10: uzak kapı çarpması
+  | "heartbeat" // Madde 10: kısa kalp atışı yükselişi
   | "warn"
   | "levelclear"
   | "gameover"
@@ -104,6 +108,7 @@ export class GameEngine {
   private floors: Vec[] = [];
   private nextEscalate = Infinity; // endless: sıradaki ekstra gelin zamanı
   flashlight!: Flashlight; // dinamik görüş + kararma (Madde 4,5)
+  scares = new ScareDirector(0); // Madde 10: rastgele korku olayları (atmosfer, hasarsız)
 
   // --- Mini-görev (Faz 4): normal bölümlere serpiştirilen opsiyonel hedef ---
   miniQuest: MQPlan | null = null;
@@ -384,6 +389,7 @@ export class GameEngine {
     this.updateZombies(dt);
     this.processRespawns();
     this.computeTension();
+    this.updateScares();
     // Dinamik görüş: menzilde gelin var mı? (Madde 4,5)
     const brideInRange = this.zombies.some(
       (z) => dist(z.pos, this.player.pos) <= this.flashlight.base
@@ -522,6 +528,15 @@ export class GameEngine {
       }
     }
     this.bullets = this.bullets.filter((b) => b.life > 0);
+  }
+
+  // Madde 10: rastgele korku olayları. HASAR VERMEZ. Ses olayları events'e,
+  // görsel efekt (gölge/flashjump) scares.fx'te (render okur).
+  private updateScares() {
+    const sk: ScareKind | null = this.scares.update(this.time, 1 + this.tension * 0.5);
+    if (!sk) return;
+    if (sk === "whisper" || sk === "doorslam" || sk === "heartbeat") this.events.push(sk);
+    else if (sk === "flashjump") this.events.push("flicker"); // hafif elektrik cızırtısı
   }
 
   private computeTension() {

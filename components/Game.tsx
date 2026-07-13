@@ -626,6 +626,57 @@ export default function Game({
         ctx!.fillStyle = rv;
         ctx!.fillRect(0, 0, cssW, cssH);
       }
+
+      // --- Madde 10: rastgele korku efektleri (görsel, HASARSIZ) ---
+      drawScareFx(engine.scares.fx, engine.time, cssW, cssH);
+    }
+
+    // Ekran kenarından geçen gölge / fenerin anlık sıçraması (atmosfer)
+    function drawScareFx(
+      fx: import("@/lib/scares").ScareFx | null,
+      time: number,
+      cssW: number,
+      cssH: number
+    ) {
+      if (!fx) return;
+      const age = Math.min(1, (time - fx.born) / fx.dur); // 0..1
+      if (fx.kind === "shadow") {
+        const a = Math.sin(age * Math.PI) * 0.6; // gir → çık
+        const band = Math.min(cssW, cssH) * 0.3;
+        let x = 0,
+          y = 0,
+          w = cssW,
+          h = cssH;
+        if (fx.side === 0) {
+          w = band;
+          x = -band + age * band * 1.6;
+        } else if (fx.side === 1) {
+          w = band;
+          x = cssW - age * band * 1.6;
+        } else if (fx.side === 2) {
+          h = band;
+          y = -band + age * band * 1.6;
+        } else {
+          h = band;
+          y = cssH - age * band * 1.6;
+        }
+        const horiz = fx.side < 2;
+        const g = horiz
+          ? ctx!.createLinearGradient(x, 0, x + w, 0)
+          : ctx!.createLinearGradient(0, y, 0, y + h);
+        const edgeFirst = fx.side === 0 || fx.side === 2;
+        g.addColorStop(0, edgeFirst ? `rgba(0,0,0,${a})` : "rgba(0,0,0,0)");
+        g.addColorStop(1, edgeFirst ? "rgba(0,0,0,0)" : `rgba(0,0,0,${a})`);
+        ctx!.fillStyle = g;
+        ctx!.fillRect(x, y, w, h);
+      } else {
+        // flashjump: kısa beyaz-mavi parlama (fener sıçraması), hızla söner
+        const a = (1 - age) * 0.14;
+        if (a > 0) {
+          ctx!.fillStyle = `rgba(190,210,255,${a})`;
+          ctx!.fillRect(0, 0, cssW, cssH);
+        }
+      }
     }
 
     function drawExit(

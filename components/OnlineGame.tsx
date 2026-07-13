@@ -34,6 +34,7 @@ import {
 import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
 import { MQ_DEFS, MQ_KINDS_ONLINE, mulberry32, planMiniQuest, type MQPlan } from "@/lib/miniquests";
+import { ScareDirector, type ScareFx } from "@/lib/scares";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
@@ -108,6 +109,8 @@ export default function OnlineGame({
   // mermi ödülü, gelin AI'sına dokunmaz. Deterministik → herkes aynı planı üretir.
   const miniQuest = useRef<MQPlan | null>(null);
   const mqDone = useRef(false);
+  // Madde 10: rastgele korku olayları (yerel/atmosfer, hasarsız)
+  const scares = useRef(new ScareDirector(0));
   const bullets = useRef<Bullet[]>([]);
   const fireCd = useRef(0);
   const kills = useRef(0);
@@ -164,6 +167,7 @@ export default function OnlineGame({
       miniQuest.current = planMiniQuest(rng, floors, { x: 1, y: 1 }, lvl.exit, MQ_KINDS_ONLINE);
       mqDone.current = false;
     }
+    scares.current.reset(performance.now() / 1000); // Madde 10: korku zamanlayıcısını sıfırla
     veilUntil.current = 0;
     veiledUntil.current = {};
     ammoCount.current = 0;
@@ -757,6 +761,11 @@ export default function OnlineGame({
         const vr = lvl.visionRadius;
         sound.setTension(nd < vr ? Math.min(1, (vr - nd) / vr) : 0);
       }
+
+      // Madde 10: rastgele korku olayları (yerel, atmosfer, HASARSIZ)
+      const sk = scares.current.update(now / 1000, 1 + sound.tension * 0.5);
+      if (sk === "whisper" || sk === "doorslam" || sk === "heartbeat") sound.play(sk);
+      else if (sk === "flashjump") sound.play("flicker");
     }
 
     function render() {
@@ -1027,6 +1036,32 @@ export default function OnlineGame({
       if (hurt.current > 0) {
         ctx!.fillStyle = `rgba(200,20,20,${Math.min(0.5, hurt.current * 1.6)})`;
         ctx!.fillRect(0, 0, cssW, cssH);
+      }
+
+      // Madde 10: görsel korku efektleri (gölge / fener sıçraması) — hasarsız
+      drawScareFx(scares.current.fx, T, cssW, cssH);
+    }
+
+    function drawScareFx(fx: ScareFx | null, time: number, cssW: number, cssH: number) {
+      if (!fx) return;
+      const age = Math.min(1, (time - fx.born) / fx.dur);
+      if (fx.kind === "shadow") {
+        const a = Math.sin(age * Math.PI) * 0.6;
+        const band = Math.min(cssW, cssH) * 0.3;
+        let x = 0, y = 0, w = cssW, h = cssH;
+        if (fx.side === 0) { w = band; x = -band + age * band * 1.6; }
+        else if (fx.side === 1) { w = band; x = cssW - age * band * 1.6; }
+        else if (fx.side === 2) { h = band; y = -band + age * band * 1.6; }
+        else { h = band; y = cssH - age * band * 1.6; }
+        const horiz = fx.side < 2;
+        const g = horiz ? ctx!.createLinearGradient(x, 0, x + w, 0) : ctx!.createLinearGradient(0, y, 0, y + h);
+        const edgeFirst = fx.side === 0 || fx.side === 2;
+        g.addColorStop(0, edgeFirst ? `rgba(0,0,0,${a})` : "rgba(0,0,0,0)");
+        g.addColorStop(1, edgeFirst ? "rgba(0,0,0,0)" : `rgba(0,0,0,${a})`);
+        ctx!.fillStyle = g; ctx!.fillRect(x, y, w, h);
+      } else {
+        const a = (1 - age) * 0.14;
+        if (a > 0) { ctx!.fillStyle = `rgba(190,210,255,${a})`; ctx!.fillRect(0, 0, cssW, cssH); }
       }
     }
 

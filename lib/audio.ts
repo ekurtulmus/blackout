@@ -464,6 +464,29 @@ class SoundEngine {
         this.tone(t + 0.1, 240, 150, 0.9, 0.14, "triangle", 0.5);
         break;
       }
+      case "whisper": {
+        // Madde 10: ani yakın fısıltı — panlanmış, süzülmüş gürültü + hafif ıslık
+        const pan = Math.random() * 1.4 - 0.7;
+        this.noise(t, 0.7, 0.16, 1500, "bandpass", 0.6, pan, 2);
+        this.noise(t + 0.08, 0.5, 0.1, 2400, "bandpass", 0.5, pan, 3);
+        this.tone(t, 220, 180, 0.6, 0.05, "sine", 0.7, pan);
+        break;
+      }
+      case "doorslam": {
+        // Madde 10: uzak kapı çarpması — alçak darbe + tahta çatırtısı + bol reverb
+        this.tone(t, 90, 40, 0.4, 0.34, "sine", 0.7);
+        this.noise(t, 0.25, 0.3, 500, "lowpass", 0.7, Math.random() * 1.2 - 0.6);
+        this.noise(t + 0.02, 0.08, 0.16, 1800, "bandpass", 0.4, 0, 3);
+        break;
+      }
+      case "heartbeat": {
+        // Madde 10: kısa kalp atışı yükselişi — iki güçlü thump
+        this.thump(t, 0.4);
+        this.thump(t + 0.19, 0.3);
+        this.thump(t + 0.5, 0.34);
+        this.thump(t + 0.68, 0.24);
+        break;
+      }
       case "warn": {
         // Dissonant alçak vızıltı (küçük ikili)
         this.tone(t, 150, 150, 0.5, 0.3, "sawtooth", 0.3);
