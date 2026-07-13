@@ -1,11 +1,12 @@
 // Gelin (düşman) yapay zekâsı — tek kişilik ve online paylaşır.
 // ÇOKLU OYUNCU: her gelin EN YAKIN oyuncuyu hedefler. Asla vazgeçmez;
 // seviyeyle zekileşir (güncel konumu bilir, daha sık yol hesaplar).
-import type { Vec, Zombie } from "./types";
+import type { BrideKind, Vec, Zombie } from "./types";
 import type { Maze } from "./maze";
 import { findPath } from "./pathfind";
 import { hasLineOfSight } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
+import { TUNING } from "./config";
 
 export const BRIDE_RADIUS = 0.34;
 
@@ -14,6 +15,15 @@ export type BrideConfig = {
   visionRadius: number;
   zombieSpeed: number;
 };
+
+// Bölümdeki gelin index'ine göre arketip: az sayıda dark/mucus, gerisi normal.
+export function assignBrideKind(index: number, total: number): BrideKind {
+  const darkN = Math.min(TUNING.darkBrideMax, total >= 5 ? 2 : 1);
+  const mucusN = Math.min(TUNING.mucusBrideMax, total >= 5 ? 2 : 1);
+  if (index < darkN) return "dark";
+  if (index < darkN + mucusN) return "mucus";
+  return "normal";
+}
 
 const DIRS = [
   { x: 0, y: -1 },
@@ -34,16 +44,19 @@ export function moveBrides(
   config: BrideConfig,
   players: Vec[],
   dt: number,
-  maxHunters = Infinity
+  maxHunters = Infinity,
+  veiled?: boolean[] // Madde 8: bu oyuncular görünmez (duvak) → hiç hedeflenmez
 ) {
   if (players.length === 0) return;
   const smart = config.intelligence;
   const hunterCount = new Array(players.length).fill(0); // oyuncu başına aktif avcı
+  const targetable = (i: number) => !veiled || !veiled[i];
   for (const z of brides) {
-    // en yakın oyuncu (index)
-    let nIdx = 0;
-    let nd = dist(z.pos, players[0]);
-    for (let i = 1; i < players.length; i++) {
+    // en yakın HEDEFLENEBİLİR (görünmez olmayan) oyuncu
+    let nIdx = -1;
+    let nd = Infinity;
+    for (let i = 0; i < players.length; i++) {
+      if (!targetable(i)) continue;
       const d = dist(z.pos, players[i]);
       if (d < nd) {
         nd = d;
@@ -51,6 +64,16 @@ export function moveBrides(
       }
     }
     const zcell = cellOf(z.pos);
+    // Hedeflenebilir kimse yoksa (herkes görünmez) → aylak dolaş
+    if (nIdx === -1) {
+      z.aware = false;
+      const spd0 =
+        z.kind === "dark"
+          ? Math.min(TUNING.brideSpeedCap, config.zombieSpeed * TUNING.darkBrideDarkMul)
+          : config.zombieSpeed;
+      wander(z, maze, dt, spd0);
+      continue;
+    }
     const nearestCell = cellOf(players[nIdx]);
     const detect = config.visionRadius + 0.5 + smart * 2.5;
     const canSee = nd <= detect && hasLineOfSight(maze, zcell, nearestCell);
@@ -63,6 +86,18 @@ export function moveBrides(
       z.seenTimer += dt;
     }
 
+    // Madde 6: karanlıkta hızlanan gelin — oyuncunun ışık yarıçapı içindeyken
+    // (lit) çok yavaşlar, karanlıkta hızlanır (yine %92 tavan). "lit": en yakın
+    // oyuncunun görüş yarıçapında + görüş hattı açık.
+    let spd = config.zombieSpeed;
+    if (z.kind === "dark") {
+      const lit = nd <= config.visionRadius && canSee;
+      spd = Math.min(
+        TUNING.brideSpeedCap,
+        config.zombieSpeed * (lit ? TUNING.darkBrideLightMul : TUNING.darkBrideDarkMul)
+      );
+    }
+
     if (z.aware) {
       // Hedef oyuncu: en yakın; doluysa (avcı sayısı >= cap) cap altı en yakın;
       // hiçbiri uygun değilse aylak dolaş (baskı tek oyuncuda yığılmaz).
@@ -71,7 +106,7 @@ export function moveBrides(
         ti = -1;
         let bd = Infinity;
         for (let i = 0; i < players.length; i++) {
-          if (hunterCount[i] >= maxHunters) continue;
+          if (!targetable(i) || hunterCount[i] >= maxHunters) continue;
           const d = dist(z.pos, players[i]);
           if (d < bd) {
             bd = d;
@@ -80,16 +115,16 @@ export function moveBrides(
         }
       }
       if (ti === -1) {
-        wander(z, maze, dt, config.zombieSpeed);
+        wander(z, maze, dt, spd);
         continue;
       }
       hunterCount[ti]++;
       const pcell = cellOf(players[ti]);
       const seeTarget = ti === nIdx && canSee;
       const target = seeTarget || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
-      chase(z, maze, zcell, dt, target, seeTarget, smart, pcell, config.zombieSpeed);
+      chase(z, maze, zcell, dt, target, seeTarget, smart, pcell, spd);
     } else {
-      wander(z, maze, dt, config.zombieSpeed);
+      wander(z, maze, dt, spd);
     }
   }
   separate(brides, maze);

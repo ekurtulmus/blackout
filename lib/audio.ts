@@ -427,6 +427,13 @@ class SoundEngine {
         this.noise(t, 0.06, 0.1, 3200, "highpass", 0.2, 0, 2);
         break;
       }
+      case "veil": {
+        // Gelin duvağı: hayaletimsi görünmezlik hışırtısı (yükselen süzülme + bol reverb)
+        this.noise(t, 0.5, 0.16, 1400, "bandpass", 0.7, 0, 1.2);
+        this.tone(t, 300, 620, 0.5, 0.12, "sine", 0.8);
+        this.tone(t + 0.05, 450, 900, 0.45, 0.08, "triangle", 0.8);
+        break;
+      }
       case "flicker": {
         // Fener kısılması ipucu: kısa elektrik cızırtısı + alçalan ton (tekinsiz)
         this.noise(t, 0.12, 0.14, 2600, "bandpass", 0.2, 0, 4);

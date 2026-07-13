@@ -73,7 +73,10 @@ Merkezi ayar: **`lib/config.ts`** (`TUNING`) — tüm denge sayıları burada.
   `lib/flashlight.ts` (LERP yumuşak; gelin görmezsen görüş %65'e daralır, gelin çıkınca genişler;
   8-12sn'de bir 0.5sn uyarı + kısa dip + `flicker` sesi). Hem engine hem OnlineGame (yerel, her istemci
   kendi görüşü). Test: 6 Flashlight + regresyon geçti.
-- ⏳ Faz 3: karanlıkta hızlanan gelin + mukus gelin + görünmezlik duvağı.
+- ✅ **Faz 3**: Madde 6 **karanlıkta hızlanan gelin** (ışıkta yavaş/karanlıkta hızlı, kırmızı gözler karanlıkta
+  görünür) + Madde 7 **mukus gelini** (ölünce 10sn hasar lekesi, ~8dps, parlak yeşil) + Madde 8 **gelin duvağı**
+  (5sn görünmez, ateş=iptal, temas hasarı yok). `types.BrideKind` + `brides.assignBrideKind`; online host-otoriter
+  (kind stream'e eklendi, mukus kill mesajıyla, duvak seat bazlı `{t:veil,on}` ile). Test: 13 Faz-3 + regresyon.
 - ⏳ Faz 4: mini-görevler (online-adil). ⏳ Faz 5: korku olayları + Mezarlık teması.
 
 ## 3) Nasıl çalıştırılır (yerel)

@@ -37,6 +37,7 @@ type Hud = {
   lives: number;
   exitOpen: boolean;
   warn: boolean;
+  veil: number; // görünmezlik kalan saniye (0 = kapalı)
 };
 
 export default function Game({
@@ -91,6 +92,7 @@ export default function Game({
     lives,
     exitOpen: false,
     warn: false,
+    veil: 0,
   });
 
   useEffect(() => {
@@ -296,6 +298,23 @@ export default function Game({
         ctx!.restore();
       }
 
+      // --- Mukus lekeleri (Madde 7): parlak yeşil, karanlıkta bile hafif ışır ---
+      for (const m of engine.mucus) {
+        if (!engine.seen[m.y] || !engine.seen[m.y][m.x]) continue;
+        const litM = vis.get(m.y * cols + m.x) !== undefined;
+        const sx = m.x * TS - camX + TS / 2;
+        const sy = m.y * TS - camY + TS / 2;
+        ctx!.save();
+        ctx!.globalAlpha = litM ? 0.85 : 0.5;
+        ctx!.shadowColor = "rgba(120,255,120,0.7)";
+        ctx!.shadowBlur = litM ? 12 : 7;
+        ctx!.fillStyle = litM ? "rgb(120,205,95)" : "rgb(72,130,62)";
+        ctx!.beginPath();
+        ctx!.ellipse(sx, sy, TS * 0.4, TS * 0.32, 0, 0, Math.PI * 2);
+        ctx!.fill();
+        ctx!.restore();
+      }
+
       // --- Çıkış kapısı ---
       drawExit(camX, camY, vis, cols);
 
@@ -337,6 +356,25 @@ export default function Game({
         ctx!.fillStyle = "#d23a34"; // kırmızı haç
         ctx!.fillRect(sx - w / 2, sy - s, w, s * 2);
         ctx!.fillRect(sx - s, sy - w / 2, s * 2, w);
+        ctx!.restore();
+      }
+
+      // --- Madde 8: gelin duvağı eşyası (soluk beyaz, salınan hayaletimsi tül) ---
+      for (const v of engine.veilItems) {
+        if (v.taken) continue;
+        if (vis.get(v.cell.y * cols + v.cell.x) === undefined) continue;
+        const sx = v.cell.x * TS + TS / 2 - camX;
+        const sy = v.cell.y * TS + TS / 2 - camY + Math.sin(engine.time * 2) * 2;
+        ctx!.save();
+        ctx!.shadowColor = "rgba(210,225,255,0.8)";
+        ctx!.shadowBlur = 12;
+        ctx!.globalAlpha = 0.8;
+        ctx!.fillStyle = "#e9edf7";
+        ctx!.beginPath();
+        ctx!.moveTo(sx, sy - TS * 0.16);
+        ctx!.quadraticCurveTo(sx + TS * 0.18, sy, sx, sy + TS * 0.18);
+        ctx!.quadraticCurveTo(sx - TS * 0.18, sy, sx, sy - TS * 0.16);
+        ctx!.fill();
         ctx!.restore();
       }
 
@@ -389,6 +427,25 @@ export default function Game({
         drawBride(ctx!, TS, s.sx, s.sy, engine.time, z.id, z.aware, lean);
       }
 
+      // --- Madde 6: karanlıkta hızlanan gelinlerin KIRMIZI GÖZLERİ ---
+      // Karanlıkta bile görünür (nerede olduğunu bil, ama dokunma).
+      for (const z of engine.zombies) {
+        if (z.kind !== "dark") continue;
+        const sx = z.pos.x * TS - camX;
+        const sy = z.pos.y * TS - camY;
+        if (sx < -TS || sy < -TS || sx > cssW + TS || sy > cssH + TS) continue;
+        const flick = 0.7 + 0.3 * Math.sin(engine.time * 7 + z.id);
+        ctx!.save();
+        ctx!.shadowColor = "rgba(255,30,30,0.95)";
+        ctx!.shadowBlur = 12;
+        ctx!.fillStyle = `rgba(255,45,45,${flick})`;
+        const r = Math.max(1.6, TS * 0.055);
+        const off = TS * 0.1;
+        ctx!.beginPath(); ctx!.arc(sx - off, sy - TS * 0.06, r, 0, Math.PI * 2); ctx!.fill();
+        ctx!.beginPath(); ctx!.arc(sx + off, sy - TS * 0.06, r, 0, Math.PI * 2); ctx!.fill();
+        ctx!.restore();
+      }
+
       // --- Mermi (uçan) ---
       for (const b of engine.bullets) {
         const s = worldToScreen(b.pos.x, b.pos.y, camX, camY);
@@ -405,6 +462,17 @@ export default function Game({
       // --- Oyuncu + el feneri konisi (dinamik efektif yarıçap) ---
       const vEff = engine.flashlight.eff;
       drawPlayer(ctx!, TS, cssW / 2, cssH / 2, p.dir, engine.time, engine.playerMoving, flicker, vEff);
+      // Madde 8: görünmezken (duvak) titreşen tül halkası
+      if (engine.veiled) {
+        ctx!.save();
+        ctx!.globalAlpha = 0.3 + 0.18 * Math.sin(engine.time * 5);
+        ctx!.strokeStyle = "rgba(215,228,255,0.85)";
+        ctx!.lineWidth = 2;
+        ctx!.beginPath();
+        ctx!.arc(cssW / 2, cssH / 2, TS * 0.5, 0, Math.PI * 2);
+        ctx!.stroke();
+        ctx!.restore();
+      }
 
       // --- Vinyet (ağır, boğucu kenar kararması) — dinamik görüşe göre ---
       const grad = ctx!.createRadialGradient(
@@ -532,6 +600,7 @@ export default function Game({
         lives: engine.lives,
         exitOpen: engine.exitOpen,
         warn: engine.warnTimer > 0,
+        veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
       if (mission) setObjective(engine.objectiveText());
       // gizli fotoğraf parçası toplandıysa bir kez bildir
@@ -641,6 +710,12 @@ export default function Game({
             {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
           </span>
         </div>
+        {hud.veil > 0 && (
+          <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
+            <span className="lbl">Görünmez</span>
+            <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
+          </div>
+        )}
         <button
           className="chip mutebtn"
           onClick={() => {

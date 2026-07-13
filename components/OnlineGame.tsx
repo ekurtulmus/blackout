@@ -12,7 +12,7 @@ import {
   FIRE_COOLDOWN,
   HEAL_AMOUNT,
 } from "@/lib/engine";
-import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
+import { BRIDE_RADIUS, assignBrideKind, moveBrides, randomDir } from "@/lib/brides";
 import { TUNING } from "@/lib/config";
 import { Flashlight } from "@/lib/flashlight";
 import { cellOf, tryMove } from "@/lib/physics";
@@ -43,8 +43,11 @@ const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayıl�
 const SEAT_COLORS = ["#6ee7ff", "#ff9a3c", "#7dffb0", "#c98cff", "#ffd166", "#ff6b9d"];
 
 type Phase = "playing" | "left";
-type RBride = { id: number; pos: Vec; target: Vec; aware: boolean };
+type BKind = "normal" | "dark" | "mucus";
+type RBride = { id: number; pos: Vec; target: Vec; aware: boolean; kind: BKind };
 type Bullet = { pos: Vec; vel: Vec; life: number };
+const KIND_CODE: Record<BKind, number> = { normal: 0, dark: 1, mucus: 2 };
+const CODE_KIND: BKind[] = ["normal", "dark", "mucus"];
 type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean };
 
 export default function OnlineGame({
@@ -59,7 +62,7 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false });
   const [phase, setPhase] = useState<Phase>("playing");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "" });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0 });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
   const [alone, setAlone] = useState(false); // diğerleri gitti → tek kaldın
 
@@ -81,6 +84,7 @@ export default function OnlineGame({
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
   const flashlight = useRef<Flashlight | null>(null); // dinamik görüş + kararma (Madde 4,5)
+  const mucus = useRef<{ x: number; y: number; until: number }[]>([]); // Madde 7: mukus lekeleri
   // Host otoritesi: en küçük koltuk numaralı hayatta-kalan host olur (host göçü)
   const amHost = useRef(info.seat === 0);
 
@@ -93,6 +97,9 @@ export default function OnlineGame({
   // Mermi / ateş
   const ammo = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]);
   const health = useRef<{ x: number; y: number; taken: boolean }[]>([]); // can paketleri (respawn yok)
+  const veilItems = useRef<{ x: number; y: number; taken: boolean }[]>([]); // Madde 8: duvak eşyaları
+  const veilUntil = useRef(0); // kendi görünmezlik bitişi (ms, performance.now)
+  const veiledUntil = useRef<Record<number, number>>({}); // seat -> görünmezlik bitişi (host AI için)
   const ammoCount = useRef(0);
   const bullets = useRef<Bullet[]>([]);
   const fireCd = useRef(0);
@@ -139,6 +146,9 @@ export default function OnlineGame({
     seen.current = Array.from({ length: lvl.rows }, () => Array.from({ length: lvl.cols }, () => false));
     ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
     health.current = lvl.health.map((c) => ({ x: c.x, y: c.y, taken: false }));
+    veilItems.current = lvl.veils.map((c) => ({ x: c.x, y: c.y, taken: false }));
+    veilUntil.current = 0;
+    veiledUntil.current = {};
     ammoCount.current = 0;
     bullets.current = [];
     kills.current = 0;
@@ -147,11 +157,13 @@ export default function OnlineGame({
     barrierStock.current = 3;
     breakTimer.current = 0;
     bloodStains.current = [];
+    mucus.current = [];
     deadBrides.current.clear();
     guestBrides.current.clear();
     hp.current = PLAYER_MAX_HP;
     invulnUntil.current = performance.now() + 1500;
     if (amHost.current) {
+      const total = lvl.brideSpawns.length;
       hostBrides.current = lvl.brideSpawns.map((c, i) => ({
         id: i + 1,
         pos: { x: c.x + 0.5, y: c.y + 0.5 },
@@ -163,8 +175,9 @@ export default function OnlineGame({
         wanderTimer: 0,
         path: null,
         repathTimer: 0,
+        kind: assignBrideKind(i, total), // Madde 6/7 arketip
       }));
-      brideIdCounter.current = lvl.brideSpawns.length;
+      brideIdCounter.current = total;
     } else {
       hostBrides.current = [];
     }
@@ -289,11 +302,15 @@ export default function OnlineGame({
     }
 
     // Bir gelin öldü — herkeste görsel + ses. local=true ise benim vuruşum.
-    function applyKill(id: number, x: number, y: number, local: boolean) {
+    function applyKill(id: number, x: number, y: number, kind: BKind, local: boolean) {
       if (!deadBrides.current.has(id)) {
         deadBrides.current.add(id);
         bloodStains.current.push({ x, y, r: 0.5 + Math.random() * 0.35, seed: Math.floor(Math.random() * 1000) });
         sound.play("kill"); // ölen gelinin ağlaması
+        // Madde 7: mukus gelini öldüğü hücreye 10 sn hasar lekesi bırakır (herkeste)
+        if (kind === "mucus") {
+          mucus.current.push({ x: Math.floor(x), y: Math.floor(y), until: performance.now() + TUNING.mucusSec * 1000 });
+        }
       }
       if (amHost.current) {
         hostBrides.current = hostBrides.current.filter((z) => z.id !== id);
@@ -305,7 +322,7 @@ export default function OnlineGame({
           exitOpen.current = true;
           sound.play("dooropen");
         }
-        room.send({ t: "kill", id, x, y });
+        room.send({ t: "kill", id, x, y, k: KIND_CODE[kind] });
       }
     }
 
@@ -326,24 +343,26 @@ export default function OnlineGame({
         o.seenAt = performance.now();
         o.everSeen = true;
       } else if (m.t === "brides" && !amHost.current) {
-        const arr = m.b as [number, number, number, number][];
+        const arr = m.b as [number, number, number, number, number][];
         const map = guestBrides.current;
         const live = new Set<number>();
-        for (const [id, xi, yi, aw] of arr) {
+        for (const [id, xi, yi, aw, kc] of arr) {
           if (deadBrides.current.has(id)) continue; // ölmüşü diriltme
           live.add(id);
           const target = { x: xi / 100, y: yi / 100 };
+          const kind = CODE_KIND[kc] ?? "normal";
           const ex = map.get(id);
           if (ex) {
             ex.target = target;
             ex.aware = aw === 1;
+            ex.kind = kind;
           } else {
-            map.set(id, { id, pos: { ...target }, target, aware: aw === 1 });
+            map.set(id, { id, pos: { ...target }, target, aware: aw === 1, kind });
           }
         }
         for (const id of map.keys()) if (!live.has(id)) map.delete(id);
       } else if (m.t === "kill") {
-        applyKill(m.id as number, m.x as number, m.y as number, false);
+        applyKill(m.id as number, m.x as number, m.y as number, CODE_KIND[(m.k as number) ?? 0] ?? "normal", false);
       } else if (m.t === "reachexit") {
         if (amHost.current) handleReach(fromId);
       } else if (m.t === "result") {
@@ -360,6 +379,10 @@ export default function OnlineGame({
         barriers.current.delete(m.id as string);
       } else if (m.t === "left") {
         onPlayerLeft(fromId);
+      } else if (m.t === "veil") {
+        // Madde 8: bir oyuncu görünmez oldu/bozuldu → host AI hedeflemesi için sakla
+        const seat = m.seat as number;
+        veiledUntil.current[seat] = m.on ? performance.now() + TUNING.veilSec * 1000 : 0;
       }
     };
     room.onStatus = () => {}; // ayrılma tespiti pos akışıyla (aşağıda) yapılıyor
@@ -418,7 +441,7 @@ export default function OnlineGame({
 
     function renderBrides(): RBride[] {
       if (amHost.current) {
-        return hostBrides.current.map((z) => ({ id: z.id, pos: z.pos, target: z.pos, aware: z.aware }));
+        return hostBrides.current.map((z) => ({ id: z.id, pos: z.pos, target: z.pos, aware: z.aware, kind: (z.kind ?? "normal") as BKind }));
       }
       return Array.from(guestBrides.current.values());
     }
@@ -484,6 +507,12 @@ export default function OnlineGame({
       if (i.fire && fireCd.current <= 0 && ammoCount.current > 0) {
         ammoCount.current--;
         fireCd.current = FIRE_COOLDOWN;
+        // Madde 8: ateş edersen görünmezlik bozulur
+        if (veilUntil.current > now) {
+          veilUntil.current = 0;
+          veiledUntil.current[mySeat] = 0;
+          room.send({ t: "veil", seat: mySeat, on: false });
+        }
         bullets.current.push({
           pos: { ...selfPos.current },
           vel: { x: selfDir.current.x * BULLET_SPEED, y: selfDir.current.y * BULLET_SPEED },
@@ -495,9 +524,13 @@ export default function OnlineGame({
       // host: gelin simülasyonu (tüm oyuncuları hedefler)
       if (amHost.current) {
         const targets: Vec[] = [selfPos.current];
-        for (const o of others.current.values()) targets.push(o.pos);
-        // Madde 0: online'da bir oyuncunun peşinde en fazla N gelin
-        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt, TUNING.maxHuntersPerPlayer);
+        const veiledArr: boolean[] = [(veiledUntil.current[mySeat] ?? 0) > now]; // Madde 8
+        for (const o of others.current.values()) {
+          targets.push(o.pos);
+          veiledArr.push((veiledUntil.current[o.seat] ?? 0) > now);
+        }
+        // Madde 0: kişi başı en fazla N gelin · Madde 8: görünmez oyuncular hedeflenmez
+        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt, TUNING.maxHuntersPerPlayer, veiledArr);
         // ölen gelinleri 20 sn sonra uzakta yeniden doğur
         const q = brideRespawnQueue.current;
         if (q.length) {
@@ -548,7 +581,7 @@ export default function OnlineGame({
           for (const z of brides) {
             if (Math.hypot(b.pos.x - z.pos.x, b.pos.y - z.pos.y) < BRIDE_RADIUS + 0.08) {
               b.life = 0; hit = true;
-              applyKill(z.id, z.pos.x, z.pos.y, true);
+              applyKill(z.id, z.pos.x, z.pos.y, z.kind, true);
               break;
             }
           }
@@ -581,8 +614,19 @@ export default function OnlineGame({
         }
       }
 
-      // hasar (dokunulmazlık bittiyse): gelin teması can barını düşürür
-      if (now > invulnUntil.current) {
+      // Madde 8: duvak topla → 5 sn görünmez (host'a bildir)
+      for (const v of veilItems.current) {
+        if (!v.taken && v.x === pc.x && v.y === pc.y) {
+          v.taken = true;
+          veilUntil.current = now + TUNING.veilSec * 1000;
+          veiledUntil.current[mySeat] = veilUntil.current;
+          sound.play("veil");
+          room.send({ t: "veil", seat: mySeat, on: true });
+        }
+      }
+
+      // hasar (dokunulmazlık bittiyse VE görünmez değilken): gelin teması can barını düşürür
+      if (now > invulnUntil.current && veilUntil.current <= now) {
         let touched = false;
         for (const z of brides) {
           if (Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y) < PLAYER_RADIUS + BRIDE_RADIUS) {
@@ -601,6 +645,28 @@ export default function OnlineGame({
             invulnUntil.current = now + 2000;
             hurt.current = 0.5;
             bullets.current = [];
+          }
+        }
+      }
+
+      // Madde 7: mukus lekeleri — süresi dolanı at + üzerindeysen az hasar
+      if (mucus.current.length) {
+        mucus.current = mucus.current.filter((m) => now < m.until);
+        if (now > invulnUntil.current) {
+          const mc = cellOf(selfPos.current);
+          for (const m of mucus.current) {
+            if (m.x === mc.x && m.y === mc.y) {
+              hp.current -= TUNING.mucusDps * dt;
+              hurt.current = Math.max(hurt.current, 0.15);
+              if (hp.current <= 0) {
+                hp.current = PLAYER_MAX_HP;
+                selfPos.current = { ...mySpawn.current };
+                ammoCount.current = Math.max(ammoCount.current, 1);
+                invulnUntil.current = now + 2000;
+                hurt.current = 0.5;
+              }
+              break;
+            }
           }
         }
       }
@@ -717,6 +783,19 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
+      // Madde 7: mukus lekeleri (parlak yeşil, karanlıkta bile hafif ışır)
+      for (const m of mucus.current) {
+        if (!seen.current[m.y] || !seen.current[m.y][m.x]) continue;
+        const litM = vis.get(m.y * cols + m.x) !== undefined;
+        const sx = m.x * TS - camX + TS / 2, sy = m.y * TS - camY + TS / 2;
+        ctx!.save();
+        ctx!.globalAlpha = litM ? 0.85 : 0.5;
+        ctx!.shadowColor = "rgba(120,255,120,0.7)"; ctx!.shadowBlur = litM ? 12 : 7;
+        ctx!.fillStyle = litM ? "rgb(120,205,95)" : "rgb(72,130,62)";
+        ctx!.beginPath(); ctx!.ellipse(sx, sy, TS * 0.4, TS * 0.32, 0, 0, Math.PI * 2); ctx!.fill();
+        ctx!.restore();
+      }
+
       // çıkış
       const e = lvl.exit;
       if (seen.current[e.y][e.x]) {
@@ -756,6 +835,21 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
+      // Madde 8: gelin duvağı eşyası (soluk beyaz, salınan tül)
+      for (const v of veilItems.current) {
+        if (v.taken || vis.get(v.y * cols + v.x) === undefined) continue;
+        const sx = v.x * TS + TS / 2 - camX, sy = v.y * TS + TS / 2 - camY + Math.sin(T * 2) * 2;
+        ctx!.save();
+        ctx!.shadowColor = "rgba(210,225,255,0.8)"; ctx!.shadowBlur = 12;
+        ctx!.globalAlpha = 0.8; ctx!.fillStyle = "#e9edf7";
+        ctx!.beginPath();
+        ctx!.moveTo(sx, sy - TS * 0.16);
+        ctx!.quadraticCurveTo(sx + TS * 0.18, sy, sx, sy + TS * 0.18);
+        ctx!.quadraticCurveTo(sx - TS * 0.18, sy, sx, sy - TS * 0.16);
+        ctx!.fill();
+        ctx!.restore();
+      }
+
       // bariyerler (görüşte)
       const nowB = performance.now();
       for (const b of barriers.current.values()) {
@@ -787,11 +881,27 @@ export default function OnlineGame({
       }
 
       // gelinler (görüşte)
-      for (const z of renderBrides()) {
+      const rbrides = renderBrides();
+      for (const z of rbrides) {
         const zc = cellOf(z.pos);
         if (vis.get(zc.y * cols + zc.x) === undefined) continue;
         const lean = p.x < z.pos.x ? -1 : 1;
         drawBride(ctx!, TS, z.pos.x * TS - camX, z.pos.y * TS - camY, T, z.id, z.aware, lean);
+      }
+
+      // Madde 6: karanlıkta hızlanan gelinlerin kırmızı gözleri (karanlıkta bile görünür)
+      for (const z of rbrides) {
+        if (z.kind !== "dark") continue;
+        const sx = z.pos.x * TS - camX, sy = z.pos.y * TS - camY;
+        if (sx < -TS || sy < -TS || sx > cssW + TS || sy > cssH + TS) continue;
+        const flk = 0.7 + 0.3 * Math.sin(T * 7 + z.id);
+        ctx!.save();
+        ctx!.shadowColor = "rgba(255,30,30,0.95)"; ctx!.shadowBlur = 12;
+        ctx!.fillStyle = `rgba(255,45,45,${flk})`;
+        const r = Math.max(1.6, TS * 0.055), off = TS * 0.1;
+        ctx!.beginPath(); ctx!.arc(sx - off, sy - TS * 0.06, r, 0, Math.PI * 2); ctx!.fill();
+        ctx!.beginPath(); ctx!.arc(sx + off, sy - TS * 0.06, r, 0, Math.PI * 2); ctx!.fill();
+        ctx!.restore();
       }
 
       // uçan mermiler
@@ -822,8 +932,17 @@ export default function OnlineGame({
 
       // kendi (dokunulmazlıkta camgöbeği halka)
       const cx = cssW / 2, cy = cssH / 2;
-      const invuln = performance.now() < invulnUntil.current;
+      const nowSelf = performance.now();
+      const invuln = nowSelf < invulnUntil.current;
       drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, vEff, invuln ? { ring: "#6ee7ff" } : undefined);
+      // Madde 8: görünmezken titreşen tül halkası
+      if (veilUntil.current > nowSelf) {
+        ctx!.save();
+        ctx!.globalAlpha = 0.3 + 0.18 * Math.sin(T * 5);
+        ctx!.strokeStyle = "rgba(215,228,255,0.85)"; ctx!.lineWidth = 2;
+        ctx!.beginPath(); ctx!.arc(cx, cy, TS * 0.5, 0, Math.PI * 2); ctx!.stroke();
+        ctx!.restore();
+      }
 
       // vinyet (ağır)
       const g = ctx!.createRadialGradient(cx, cy, vEff * TS * 0.28, cx, cy, vEff * TS);
@@ -866,7 +985,7 @@ export default function OnlineGame({
               brideAcc = 0;
               room.send({
                 t: "brides",
-                b: hostBrides.current.map((z) => [z.id, Math.round(z.pos.x * 100), Math.round(z.pos.y * 100), z.aware ? 1 : 0]),
+                b: hostBrides.current.map((z) => [z.id, Math.round(z.pos.x * 100), Math.round(z.pos.y * 100), z.aware ? 1 : 0, KIND_CODE[(z.kind ?? "normal") as BKind]]),
               });
             }
           }
@@ -874,7 +993,7 @@ export default function OnlineGame({
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "" });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0 });
         }
         render();
       }
@@ -933,6 +1052,12 @@ export default function OnlineGame({
             {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
           </span>
         </div>
+        {hud.veil > 0 && (
+          <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
+            <span className="lbl">Görünmez</span>
+            <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
+          </div>
+        )}
         <div className="chip"><span className="lbl">Skor</span>
           <span className="val">
             {hud.scores.map((s, seat) => (

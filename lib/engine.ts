@@ -17,10 +17,11 @@ import {
 } from "./maze";
 import { computeVisible, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
-import { BRIDE_RADIUS, moveBrides } from "./brides";
+import { BRIDE_RADIUS, assignBrideKind, moveBrides } from "./brides";
 import { TUNING } from "./config";
 import { Flashlight } from "./flashlight";
 import type { Mission } from "./missions";
+import type { Mucus } from "./types";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -62,6 +63,7 @@ export type SoundEvent =
   | "heal"
   | "secret"
   | "flicker"
+  | "veil"
   | "hurt"
   | "dooropen"
   | "warn"
@@ -83,6 +85,9 @@ export class GameEngine {
   ammoItems: Ammo[] = [];
   healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
   collectItems: Ammo[] = []; // görev: toplanacak parçalar (Ammo şeklini paylaşır)
+  mucus: Mucus[] = []; // Madde 7: ölen mukus gelinlerinin bıraktığı hasar lekeleri
+  veilItems: Ammo[] = []; // Madde 8: gelin duvağı (görünmezlik) eşyası
+  veilUntil = 0; // (saniye) bu ana kadar görünmez
   photoItem: Ammo | null = null; // gizli: düğün fotoğrafı parçası (tek kişilik)
   photoTaken = false; // bu bölümün parçası toplandı mı
   bullets: Bullet[] = [];
@@ -218,6 +223,7 @@ export class GameEngine {
         wanderTimer: 0,
         path: null,
         repathTimer: 0,
+        kind: assignBrideKind(i, this.config.zombies), // Madde 6/7 arketip
       });
     }
 
@@ -257,6 +263,23 @@ export class GameEngine {
         cell: { x: c.x, y: c.y },
         taken: false,
       });
+    }
+
+    // Madde 8: gelin duvağı (seyrek — bölüm başına 1), diğer her şeyden uzak
+    if (!mission) {
+      const hSet = new Set(this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x));
+      const veilCells = this.shuffle(
+        floors.filter(
+          (c) =>
+            !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+            !(c.x === exit.x && c.y === exit.y) &&
+            !ammoSet.has(c.y * this.maze.cols + c.x) &&
+            !hSet.has(c.y * this.maze.cols + c.x)
+        )
+      );
+      if (veilCells[0]) {
+        this.veilItems.push({ id: this.nextId++, cell: { x: veilCells[0].x, y: veilCells[0].y }, taken: false });
+      }
     }
 
     // Görev: toplanacak parçalar (başlangıç/çıkış ve diğer eşyalardan uzak)
@@ -345,6 +368,8 @@ export class GameEngine {
     this.pickupHealth();
     this.pickupCollect();
     this.pickupPhoto();
+    this.pickupVeil();
+    this.updateMucus(dt);
     this.computeVision();
     this.checkExit();
     this.checkMission();
@@ -429,6 +454,7 @@ export class GameEngine {
     if (input.fire && !this.noFire && this.fireCd <= 0 && this.ammoCount > 0) {
       this.ammoCount--;
       this.fireCd = FIRE_COOLDOWN;
+      if (this.veilUntil > this.time) this.veilUntil = 0; // Madde 8: ateş = duvak bozulur
       this.events.push("shot");
       this.bullets.push({
         id: this.nextId++,
@@ -491,6 +517,10 @@ export class GameEngine {
     this.zombiesKilled++;
     this.score += 100;
     this.events.push("kill");
+    // Madde 7: mukus gelini öldüğü hücreye 10 sn kalan hasar lekesi bırakır
+    if (z.kind === "mucus") {
+      this.mucus.push({ x: Math.floor(z.pos.x), y: Math.floor(z.pos.y), until: this.time + TUNING.mucusSec });
+    }
     // 20 sn sonra yeniden doğsun (tüm modlarda)
     this.respawnQueue.push(this.time + BRIDE_RESPAWN_SEC);
     // kan izi bırak (kalıcı, hafızada kalır)
@@ -550,11 +580,12 @@ export class GameEngine {
 
   private updateZombies(dt: number) {
     // Gelin hareketi — ortak AI (en yakın oyuncuyu hedefler; tek kişilikte tek oyuncu)
-    moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt);
+    // Madde 8: duvak açıkken oyuncu AI'ya görünmez
+    moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt, Infinity, [this.veiled]);
 
-    // Oyuncuya temas: hasar + geri itme
+    // Oyuncuya temas: hasar + geri itme (duvak açıkken temas hasarı yok — görünmez)
     for (const z of this.zombies) {
-      if (dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
+      if (!this.veiled && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
         if (this.hurtFlash <= 0) this.events.push("hurt");
         this.player.hp -= CONTACT_DPS * dt;
         this.hurtFlash = 0.25;
@@ -599,6 +630,35 @@ export class GameEngine {
         h.taken = true;
         this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + HEAL_AMOUNT);
         this.events.push("heal");
+      }
+    }
+  }
+
+  get veiled(): boolean {
+    return this.veilUntil > this.time;
+  }
+
+  private pickupVeil() {
+    const pc = cellOf(this.player.pos);
+    for (const v of this.veilItems) {
+      if (v.taken) continue;
+      if (v.cell.x === pc.x && v.cell.y === pc.y) {
+        v.taken = true;
+        this.veilUntil = this.time + TUNING.veilSec; // görünmez ol
+        this.events.push("veil");
+      }
+    }
+  }
+
+  private updateMucus(dt: number) {
+    if (this.mucus.length === 0) return;
+    this.mucus = this.mucus.filter((m) => this.time < m.until);
+    const pc = cellOf(this.player.pos);
+    for (const m of this.mucus) {
+      if (m.x === pc.x && m.y === pc.y) {
+        this.player.hp -= TUNING.mucusDps * dt;
+        this.hurtFlash = Math.max(this.hurtFlash, 0.18);
+        break;
       }
     }
   }

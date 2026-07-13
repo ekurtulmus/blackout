@@ -5,6 +5,9 @@ export type Vec = { x: number; y: number };
 // Hücre görüş durumu: hiç görülmedi / hafızada (soluk) / şu an aydınlık
 export type CellVisibility = 0 | 1 | 2; // 0 = unseen, 1 = memory, 2 = visible
 
+// Gelin arketipleri: normal / karanlıkta hızlanan (dark) / mukus bırakan (mucus)
+export type BrideKind = "normal" | "dark" | "mucus";
+
 export type Zombie = {
   id: number;
   pos: Vec; // hücre biriminde (float)
@@ -16,7 +19,11 @@ export type Zombie = {
   wanderTimer: number;
   path: Vec[] | null; // hedefe giden yol (hücre listesi)
   repathTimer: number;
+  kind?: BrideKind; // arketip (yok = normal)
 };
+
+// Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi
+export type Mucus = { x: number; y: number; until: number };
 
 export type Ammo = {
   id: number;

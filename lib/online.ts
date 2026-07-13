@@ -61,6 +61,7 @@ export type RaceLevel = {
   visionRadius: number;
   ammo: Vec[]; // her oyuncu için (yerel/kişisel), aynı düzen
   health: Vec[]; // yerdeki can paketleri (yerel/kişisel)
+  veils: Vec[]; // Madde 8: gelin duvağı (görünmezlik) eşyaları
   theme: number; // görsel tema indeksi (host seed'inden, herkes aynı)
   brideSpawns: Vec[]; // gelin başlangıçları — SADECE host kullanır (üretir/simüle eder)
 };
@@ -138,6 +139,13 @@ export function generateRaceLevel(
   const healthCount = Math.min(TUNING.healthMax, Math.max(2, Math.round(TUNING.healthBase * density)));
   const health = healthCells.slice(0, healthCount);
 
+  // Madde 8: gelin duvağı (seyrek) — diğer eşyalardan uzak
+  const healthSet = new Set(health.map((h) => h.y * maze.cols + h.x));
+  const veilCells = shuffle(
+    reach.filter((c) => !onSpawn(c) && !ammoSet.has(c.y * maze.cols + c.x) && !healthSet.has(c.y * maze.cols + c.x))
+  );
+  const veils = veilCells.slice(0, Math.max(1, Math.floor(pc / 3)));
+
   return {
     level,
     cols: maze.cols,
@@ -148,6 +156,7 @@ export function generateRaceLevel(
     visionRadius: cfg.visionRadius,
     ammo,
     health,
+    veils,
     theme: themeIndexFor(level, themeSeed),
     brideSpawns,
   };
@@ -220,6 +229,7 @@ export type SerializedLevel = {
   vr: number;
   ammo: [number, number][];
   health: [number, number][];
+  veils: [number, number][];
   theme: number;
 };
 
@@ -234,6 +244,7 @@ export function serializeLevel(l: RaceLevel): SerializedLevel {
     vr: l.visionRadius,
     ammo: l.ammo.map((a) => [a.x, a.y]),
     health: l.health.map((h) => [h.x, h.y]),
+    veils: l.veils.map((v) => [v.x, v.y]),
     theme: l.theme,
   };
 }
@@ -249,6 +260,7 @@ export function deserializeLevel(m: SerializedLevel): RaceLevel {
     visionRadius: m.vr,
     ammo: m.ammo.map(([x, y]) => ({ x, y })),
     health: (m.health ?? []).map(([x, y]) => ({ x, y })),
+    veils: (m.veils ?? []).map(([x, y]) => ({ x, y })),
     theme: m.theme ?? 0,
     brideSpawns: [], // misafir gelin üretmez (host'tan akışla gelir)
   };
