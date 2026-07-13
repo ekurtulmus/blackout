@@ -35,6 +35,12 @@ function randomDir(): Vec {
   return DIRS[Math.floor(Math.random() * DIRS.length)];
 }
 
+// Hız çarpanı uygula (mini-görev delirme); gelin hız tavanı asla aşılmaz.
+function applyMul(spd: number, mul?: number): number {
+  if (!mul || mul === 1) return spd;
+  return Math.min(TUNING.brideSpeedCap, spd * mul);
+}
+
 // Tüm gelinleri güncelle (en yakın oyuncuyu hedefleyerek).
 // maxHunters: bir oyuncunun peşinde AYNI ANDA kaç gelin olabileceği (Madde 0).
 // Online'da host bunu 4 verir; tek kişilikte Infinity (etkisiz).
@@ -71,7 +77,7 @@ export function moveBrides(
         z.kind === "dark"
           ? Math.min(TUNING.brideSpeedCap, config.zombieSpeed * TUNING.darkBrideDarkMul)
           : config.zombieSpeed;
-      wander(z, maze, dt, spd0);
+      wander(z, maze, dt, applyMul(spd0, z.speedMul));
       continue;
     }
     const nearestCell = cellOf(players[nIdx]);
@@ -97,6 +103,8 @@ export function moveBrides(
         config.zombieSpeed * (lit ? TUNING.darkBrideLightMul : TUNING.darkBrideDarkMul)
       );
     }
+    // Mini-görev "yüzük": delirmiş gelin hızlanır (tavan yine geçerli)
+    spd = applyMul(spd, z.speedMul);
 
     if (z.aware) {
       // Hedef oyuncu: en yakın; doluysa (avcı sayısı >= cap) cap altı en yakın;

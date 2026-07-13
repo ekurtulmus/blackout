@@ -33,6 +33,7 @@ import {
 } from "@/lib/online";
 import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
+import { MQ_DEFS, MQ_KINDS_ONLINE, mulberry32, planMiniQuest, type MQPlan } from "@/lib/miniquests";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
@@ -64,6 +65,8 @@ export default function OnlineGame({
   const [phase, setPhase] = useState<Phase>("playing");
   const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0 });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
+  const [mqHud, setMqHud] = useState(""); // aktif mini-görev etiketi (Faz 4)
+  const [mqToast, setMqToast] = useState(""); // mini-görev ödül bildirimi
   const [alone, setAlone] = useState(false); // diğerleri gitti → tek kaldın
 
   const mySeat = info.seat;
@@ -101,6 +104,10 @@ export default function OnlineGame({
   const veilUntil = useRef(0); // kendi görünmezlik bitişi (ms, performance.now)
   const veiledUntil = useRef<Record<number, number>>({}); // seat -> görünmezlik bitişi (host AI için)
   const ammoCount = useRef(0);
+  // Mini-görev (Faz 4, online): yalnız güvenli KISA görev (kanı takip et), kişisel
+  // mermi ödülü, gelin AI'sına dokunmaz. Deterministik → herkes aynı planı üretir.
+  const miniQuest = useRef<MQPlan | null>(null);
+  const mqDone = useRef(false);
   const bullets = useRef<Bullet[]>([]);
   const fireCd = useRef(0);
   const kills = useRef(0);
@@ -147,6 +154,16 @@ export default function OnlineGame({
     ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
     health.current = lvl.health.map((c) => ({ x: c.x, y: c.y, taken: false }));
     veilItems.current = lvl.veils.map((c) => ({ x: c.x, y: c.y, taken: false }));
+    // Mini-görev (online, deterministik): herkes aynı seviyeden aynı planı bağımsızca
+    // üretir → adil. Sabit referans (spawn 1,1 + exit) kullanılır; kişi başı yerel ödül.
+    {
+      const floors: Vec[] = [];
+      for (let y = 0; y < lvl.rows; y++)
+        for (let x = 0; x < lvl.cols; x++) if (!lvl.walls[y][x]) floors.push({ x, y });
+      const rng = mulberry32((lvl.level * 2654435761) >>> 0);
+      miniQuest.current = planMiniQuest(rng, floors, { x: 1, y: 1 }, lvl.exit, MQ_KINDS_ONLINE);
+      mqDone.current = false;
+    }
     veilUntil.current = 0;
     veiledUntil.current = {};
     ammoCount.current = 0;
@@ -603,6 +620,28 @@ export default function OnlineGame({
         }
       }
 
+      // Mini-görev (bloodtrail): gerçek marker'a bas → tamamla → kişisel mermi ödülü.
+      // Yerel; gelin AI'sını değiştirmez, çıkışı geciktirmez (yarış korunur).
+      const mqp = miniQuest.current;
+      if (mqp && !mqDone.current) {
+        let all = true;
+        for (const m of mqp.markers) {
+          if (!m.done && m.x === pc.x && m.y === pc.y) {
+            m.done = true;
+            sound.play("pickup");
+          }
+          if (!m.done) all = false;
+        }
+        if (all && mqp.markers.length > 0) {
+          mqDone.current = true;
+          const def = MQ_DEFS[mqp.kind];
+          if (def.reward.ammo) ammoCount.current += def.reward.ammo;
+          sound.play("secret");
+          setMqToast(`${def.title} — +${def.reward.ammo ?? 0} mermi`);
+          window.setTimeout(() => setMqToast(""), 3000);
+        }
+      }
+
       // can paketi topla (canın tamsa dokunma)
       if (hp.current < PLAYER_MAX_HP) {
         for (const h of health.current) {
@@ -820,6 +859,29 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
+      // Mini-görev (bloodtrail): sahte damlalar + gerçek kan izi (Faz 4, online)
+      const mqR = miniQuest.current;
+      if (mqR && !mqDone.current) {
+        for (const m of mqR.decoys) {
+          if (vis.get(m.y * cols + m.x) === undefined) continue;
+          const sx = m.x * TS + TS / 2 - camX, sy = m.y * TS + TS / 2 - camY;
+          ctx!.save();
+          ctx!.globalAlpha = 0.5;
+          ctx!.fillStyle = "#5a1414";
+          ctx!.beginPath(); ctx!.arc(sx, sy, TS * 0.1, 0, Math.PI * 2); ctx!.fill();
+          ctx!.restore();
+        }
+        for (const m of mqR.markers) {
+          if (m.done || vis.get(m.y * cols + m.x) === undefined) continue;
+          const sx = m.x * TS + TS / 2 - camX, sy = m.y * TS + TS / 2 - camY;
+          ctx!.save();
+          ctx!.shadowColor = "rgba(200,30,30,0.9)"; ctx!.shadowBlur = 12;
+          ctx!.fillStyle = "#a11414";
+          ctx!.beginPath(); ctx!.arc(sx, sy, TS * 0.15, 0, Math.PI * 2); ctx!.fill();
+          ctx!.restore();
+        }
+      }
+
       // can paketleri (kırmızı haç)
       for (const h of health.current) {
         if (h.taken || vis.get(h.y * cols + h.x) === undefined) continue;
@@ -994,6 +1056,7 @@ export default function OnlineGame({
         if (hudAcc >= 0.15) {
           hudAcc = 0;
           setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0 });
+          setMqHud(miniQuest.current && !mqDone.current ? `${MQ_DEFS[miniQuest.current.kind].icon} ${MQ_DEFS[miniQuest.current.kind].hud}` : "");
         }
         render();
       }
@@ -1058,6 +1121,12 @@ export default function OnlineGame({
             <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
           </div>
         )}
+        {mqHud && (
+          <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
+            <span className="lbl">Fırsat</span>
+            <span className="val" style={{ color: "#ffd75a" }}>{mqHud}</span>
+          </div>
+        )}
         <div className="chip"><span className="lbl">Skor</span>
           <span className="val">
             {hud.scores.map((s, seat) => (
@@ -1090,6 +1159,15 @@ export default function OnlineGame({
           style={{ top: 70, background: "rgba(20,10,10,0.85)", color: "#ffd0d0", borderColor: "rgba(255,120,120,0.4)" }}
         >
           🚪 {toast}
+        </div>
+      )}
+
+      {mqToast && (
+        <div
+          className="warn"
+          style={{ top: toast ? 122 : 70, background: "rgba(70,55,15,0.92)", color: "#ffe9a8", borderColor: "rgba(255,215,90,0.6)" }}
+        >
+          ✦ {mqToast}
         </div>
       )}
 

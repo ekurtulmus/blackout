@@ -67,6 +67,9 @@ export default function Game({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
   const [muted, setMuted] = useState(sound.muted);
+  const [mq, setMq] = useState(""); // aktif mini-görev HUD metni (Faz 4)
+  const [mqToast, setMqToast] = useState(""); // mini-görev tamamlanınca ödül bildirimi
+  const mqReportedRef = useRef(false);
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
@@ -417,6 +420,112 @@ export default function Game({
         ctx!.restore();
       }
 
+      // --- Mini-görev marker'ları (Faz 4) ---
+      if (engine.miniQuest && !engine.mqDone) {
+        const q = engine.miniQuest;
+        const t = engine.time;
+        const cellVisible = (cx: number, cy: number) => vis.get(cy * cols + cx) !== undefined;
+        const scr = (cx: number, cy: number) => ({
+          sx: cx * TS + TS / 2 - camX,
+          sy: cy * TS + TS / 2 - camY,
+        });
+        // markedkill: işaretli bölge halkası
+        if (q.kind === "markedkill" && q.zone) {
+          const { sx, sy } = scr(q.zone.x, q.zone.y);
+          if (cellVisible(q.zone.x, q.zone.y)) {
+            ctx!.save();
+            ctx!.strokeStyle = `rgba(255,80,80,${0.5 + 0.25 * Math.sin(t * 3)})`;
+            ctx!.lineWidth = 2;
+            ctx!.setLineDash([6, 5]);
+            ctx!.beginPath();
+            ctx!.arc(sx, sy, q.zone.r * TS, 0, Math.PI * 2);
+            ctx!.stroke();
+            ctx!.restore();
+          }
+        }
+        // sahte kan izleri (bloodtrail decoy) — soluk, parıltısız
+        for (const m of q.decoys) {
+          if (!cellVisible(m.x, m.y)) continue;
+          const { sx, sy } = scr(m.x, m.y);
+          ctx!.save();
+          ctx!.globalAlpha = 0.5;
+          ctx!.fillStyle = "#5a1414";
+          ctx!.beginPath();
+          ctx!.arc(sx, sy, TS * 0.1, 0, Math.PI * 2);
+          ctx!.fill();
+          ctx!.restore();
+        }
+        // gerçek marker'lar
+        for (const m of q.markers) {
+          if (!cellVisible(m.x, m.y)) continue;
+          const { sx, sy } = scr(m.x, m.y);
+          ctx!.save();
+          if (q.kind === "candles") {
+            // mum: gövde + alev (yanmışsa soluk)
+            const lit = m.done;
+            ctx!.shadowColor = lit ? "rgba(120,120,140,0.4)" : "rgba(255,180,60,0.9)";
+            ctx!.shadowBlur = lit ? 3 : 12;
+            ctx!.fillStyle = "#e6dcc0";
+            ctx!.fillRect(sx - TS * 0.05, sy - TS * 0.02, TS * 0.1, TS * 0.22);
+            if (!lit) {
+              const fl = 0.7 + 0.3 * Math.sin(t * 9 + m.x);
+              ctx!.fillStyle = `rgba(255,${160 + Math.floor(60 * fl)},70,${fl})`;
+              ctx!.beginPath();
+              ctx!.ellipse(sx, sy - TS * 0.08, TS * 0.04, TS * 0.09, 0, 0, Math.PI * 2);
+              ctx!.fill();
+            }
+          } else if (q.kind === "ring") {
+            ctx!.shadowColor = "rgba(255,215,90,0.9)";
+            ctx!.shadowBlur = 12;
+            ctx!.strokeStyle = "#ffd75a";
+            ctx!.lineWidth = TS * 0.06;
+            ctx!.beginPath();
+            ctx!.arc(sx, sy, TS * 0.14, 0, Math.PI * 2);
+            ctx!.stroke();
+          } else if (q.kind === "bell") {
+            ctx!.shadowColor = "rgba(210,170,90,0.9)";
+            ctx!.shadowBlur = 10;
+            ctx!.fillStyle = "#c9a34e";
+            ctx!.beginPath();
+            ctx!.moveTo(sx, sy - TS * 0.16);
+            ctx!.quadraticCurveTo(sx + TS * 0.16, sy, sx + TS * 0.13, sy + TS * 0.12);
+            ctx!.lineTo(sx - TS * 0.13, sy + TS * 0.12);
+            ctx!.quadraticCurveTo(sx - TS * 0.16, sy, sx, sy - TS * 0.16);
+            ctx!.fill();
+            ctx!.fillRect(sx - TS * 0.02, sy + TS * 0.12, TS * 0.04, TS * 0.05);
+          } else if (q.kind === "bloodtrail") {
+            ctx!.shadowColor = "rgba(200,30,30,0.9)";
+            ctx!.shadowBlur = 12;
+            ctx!.fillStyle = "#a11414";
+            ctx!.beginPath();
+            ctx!.arc(sx, sy, TS * 0.15 + Math.sin(t * 3) * 1.5, 0, Math.PI * 2);
+            ctx!.fill();
+          } else if (q.kind === "darkhall") {
+            ctx!.shadowColor = "rgba(90,120,255,0.7)";
+            ctx!.shadowBlur = 14;
+            ctx!.fillStyle = "#0a0a14";
+            ctx!.beginPath();
+            ctx!.arc(sx, sy, TS * 0.17, 0, Math.PI * 2);
+            ctx!.fill();
+            ctx!.strokeStyle = "rgba(140,160,255,0.7)";
+            ctx!.lineWidth = 2;
+            ctx!.stroke();
+          } else if (q.kind === "mirror") {
+            const armed = engine.miniQuestText().includes("Uzaklaş");
+            ctx!.shadowColor = armed ? "rgba(255,60,60,0.9)" : "rgba(180,220,255,0.8)";
+            ctx!.shadowBlur = armed ? 16 : 10;
+            ctx!.fillStyle = armed ? "#3a2230" : "#b9d6ea";
+            ctx!.beginPath();
+            ctx!.ellipse(sx, sy, TS * 0.12, TS * 0.2, 0, 0, Math.PI * 2);
+            ctx!.fill();
+            ctx!.strokeStyle = "#7a6a52";
+            ctx!.lineWidth = 2;
+            ctx!.stroke();
+          }
+          ctx!.restore();
+        }
+      }
+
       // --- Kanlı Gelinler (4 çeşit karışık, hep oyuncuya dönük) ---
       for (const z of engine.zombies) {
         const zc = { x: Math.floor(z.pos.x), y: Math.floor(z.pos.y) };
@@ -603,6 +712,18 @@ export default function Game({
         veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
       if (mission) setObjective(engine.objectiveText());
+      // Mini-görev (Faz 4): aktif hedef metni + tamamlanınca ödül toast'ı
+      setMq(engine.miniQuestText());
+      if (engine.mqRewardMsg && !mqReportedRef.current) {
+        mqReportedRef.current = true;
+        const d = engine.mqDef;
+        const bits: string[] = [];
+        if (d?.reward.ammo) bits.push(`+${d.reward.ammo} mermi`);
+        if (d?.reward.health) bits.push(`+${d.reward.health} can`);
+        if (d?.reward.score) bits.push(`+${d.reward.score} puan`);
+        setMqToast(`${engine.mqRewardMsg} — ${bits.join(", ")}`);
+        window.setTimeout(() => setMqToast(""), 3500);
+      }
       // gizli fotoğraf parçası toplandıysa bir kez bildir
       if (engine.photoTaken && !fragmentReported) {
         fragmentReported = true;
@@ -716,6 +837,12 @@ export default function Game({
             <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
           </div>
         )}
+        {mq && !mission && (
+          <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
+            <span className="lbl">Fırsat</span>
+            <span className="val" style={{ color: "#ffd75a" }}>{mq}</span>
+          </div>
+        )}
         <button
           className="chip mutebtn"
           onClick={() => {
@@ -738,6 +865,21 @@ export default function Game({
 
       {hud.warn && (
         <div className="warn">Çıkış kilitli — önce en az 1 gelini yok et!</div>
+      )}
+
+      {mqToast && (
+        <div
+          className="warn"
+          style={{
+            top: hud.warn ? 116 : 64,
+            background: "rgba(70,55,15,0.92)",
+            border: "1px solid rgba(255,215,90,0.6)",
+            color: "#ffe9a8",
+            boxShadow: "0 0 30px rgba(255,200,80,0.3)",
+          }}
+        >
+          ✦ {mqToast}
+        </div>
       )}
 
       {brief && mission && (

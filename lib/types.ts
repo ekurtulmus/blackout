@@ -20,6 +20,7 @@ export type Zombie = {
   path: Vec[] | null; // hedefe giden yol (hücre listesi)
   repathTimer: number;
   kind?: BrideKind; // arketip (yok = normal)
+  speedMul?: number; // hız çarpanı (mini-görev "yüzük" → bir gelin delirir/hızlanır); tavan yine geçerli
 };
 
 // Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi

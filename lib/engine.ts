@@ -22,6 +22,13 @@ import { TUNING } from "./config";
 import { Flashlight } from "./flashlight";
 import type { Mission } from "./missions";
 import type { Mucus } from "./types";
+import {
+  MQ_DEFS,
+  MQ_KINDS_SP,
+  planMiniQuest,
+  type MQDef,
+  type MQPlan,
+} from "./miniquests";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -97,6 +104,14 @@ export class GameEngine {
   private floors: Vec[] = [];
   private nextEscalate = Infinity; // endless: sıradaki ekstra gelin zamanı
   flashlight!: Flashlight; // dinamik görüş + kararma (Madde 4,5)
+
+  // --- Mini-görev (Faz 4): normal bölümlere serpiştirilen opsiyonel hedef ---
+  miniQuest: MQPlan | null = null;
+  mqDef: MQDef | null = null;
+  mqDone = false;
+  mqRewardMsg = ""; // tamamlanınca gösterilecek toast (Game okuyup temizler)
+  private mqArmed = false; // mirror: yakınlaşınca kurulur
+  private mqArmDeadline = 0; // mirror: bu ana kadar uzaklaşmalı (yoksa yeniden kurulur)
 
   // --- Görev modu ---
   mission: Mission | null = null;
@@ -320,6 +335,16 @@ export class GameEngine {
         this.photoItem = { id: this.nextId++, cell: { x: cells[0].x, y: cells[0].y }, taken: false };
       }
     }
+
+    // Mini-görev (Faz 4): yalnız NORMAL tek kişilik bölümlerde (görev modu değil).
+    // Bölüm başına 1 opsiyonel hedef; çıkışı geciktirmez, tamamlanınca küçük ödül.
+    if (!mission) {
+      const plan = planMiniQuest(Math.random, floors, spawnCell, this.exit, MQ_KINDS_SP);
+      if (plan) {
+        this.miniQuest = plan;
+        this.mqDef = MQ_DEFS[plan.kind];
+      }
+    }
   }
 
   get zombiesRemaining() {
@@ -370,6 +395,7 @@ export class GameEngine {
     this.pickupPhoto();
     this.pickupVeil();
     this.updateMucus(dt);
+    this.updateMiniQuest();
     this.computeVision();
     this.checkExit();
     this.checkMission();
@@ -517,6 +543,13 @@ export class GameEngine {
     this.zombiesKilled++;
     this.score += 100;
     this.events.push("kill");
+    // Mini-görev "işaretli bölge": gelin işaretli bölgede öldürüldüyse ödül
+    const mq = this.miniQuest;
+    if (mq?.kind === "markedkill" && mq.zone && !this.mqDone) {
+      const zn = mq.zone;
+      const inZone = Math.hypot(zn.x + 0.5 - z.pos.x, zn.y + 0.5 - z.pos.y) <= zn.r + 0.5;
+      if (inZone) this.grantMQReward();
+    }
     // Madde 7: mukus gelini öldüğü hücreye 10 sn kalan hasar lekesi bırakır
     if (z.kind === "mucus") {
       this.mucus.push({ x: Math.floor(z.pos.x), y: Math.floor(z.pos.y), until: this.time + TUNING.mucusSec });
@@ -660,6 +693,118 @@ export class GameEngine {
         this.hurtFlash = Math.max(this.hurtFlash, 0.18);
         break;
       }
+    }
+  }
+
+  // Mini-görev ilerlemesi (Faz 4). Tamamlanınca küçük ödül; çıkışı GECİKTİRMEZ.
+  private updateMiniQuest() {
+    const q = this.miniQuest;
+    const d = this.mqDef;
+    if (!q || !d || this.mqDone) return;
+    const pc = cellOf(this.player.pos);
+    switch (q.kind) {
+      case "candles":
+      case "bloodtrail": {
+        // gerçek marker'ların üzerinden geç → yak/topla; hepsi bitince ödül
+        let all = true;
+        for (const m of q.markers) {
+          if (!m.done && m.x === pc.x && m.y === pc.y) {
+            m.done = true;
+            this.events.push("pickup");
+          }
+          if (!m.done) all = false;
+        }
+        if (all && q.markers.length > 0) this.grantMQReward();
+        break;
+      }
+      case "ring": {
+        const m = q.markers[0];
+        if (m && !m.done && m.x === pc.x && m.y === pc.y) {
+          m.done = true;
+          // Yüzük laneti: bir gelin delirir ve hızlanır (risk/ödül)
+          const target = this.zombies.find((z) => (z.speedMul ?? 1) === 1) ?? this.zombies[0];
+          if (target) {
+            target.speedMul = 1.15;
+            target.aware = true;
+            target.lastSeen = { x: pc.x, y: pc.y };
+            target.seenTimer = 0;
+          }
+          this.grantMQReward();
+        }
+        break;
+      }
+      case "bell": {
+        const m = q.markers[0];
+        if (m && !m.done && m.x === pc.x && m.y === pc.y) {
+          m.done = true;
+          // Çan: TÜM gelinleri sana çeker (tehlikeli ama ödüllü)
+          for (const z of this.zombies) {
+            z.aware = true;
+            z.lastSeen = { x: pc.x, y: pc.y };
+            z.seenTimer = 0;
+            z.path = null;
+            z.repathTimer = 0;
+          }
+          this.grantMQReward();
+        }
+        break;
+      }
+      case "darkhall": {
+        const m = q.markers[0];
+        if (m && !m.done && m.x === pc.x && m.y === pc.y) {
+          m.done = true;
+          this.grantMQReward();
+        }
+        break;
+      }
+      case "mirror": {
+        const m = q.markers[0];
+        if (!m) break;
+        const dp = Math.hypot(m.x + 0.5 - this.player.pos.x, m.y + 0.5 - this.player.pos.y);
+        if (!this.mqArmed) {
+          // aynaya yaklaş → tetiklenir, kaçmalısın
+          if (dp <= 1.6) {
+            this.mqArmed = true;
+            this.mqArmDeadline = this.time + 5;
+            this.events.push("warn");
+          }
+        } else if (dp >= 6) {
+          this.grantMQReward(); // yeterince uzaklaştın
+        } else if (this.time > this.mqArmDeadline) {
+          this.mqArmed = false; // süre doldu → tekrar denenebilir (ceza yok)
+        }
+        break;
+      }
+    }
+  }
+
+  private grantMQReward() {
+    const d = this.mqDef;
+    if (!d || this.mqDone) return;
+    this.mqDone = true;
+    if (d.reward.ammo) this.ammoCount += d.reward.ammo;
+    if (d.reward.health) this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + d.reward.health);
+    if (d.reward.score) this.score += d.reward.score;
+    this.mqRewardMsg = d.title;
+    this.events.push("secret");
+  }
+
+  // HUD için mini-görev metni (aktifken)
+  miniQuestText(): string {
+    const q = this.miniQuest;
+    const d = this.mqDef;
+    if (!q || !d || this.mqDone) return "";
+    switch (q.kind) {
+      case "candles": {
+        const lit = q.markers.filter((m) => m.done).length;
+        return `${d.icon} ${d.hud} ${lit}/${q.markers.length}`;
+      }
+      case "mirror":
+        return this.mqArmed
+          ? `${d.icon} Uzaklaş! ${Math.max(0, Math.ceil(this.mqArmDeadline - this.time))}s`
+          : `${d.icon} ${d.hud}`;
+      default:
+        return `${d.icon} ${d.hud}`;
     }
   }
 
