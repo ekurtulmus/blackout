@@ -11,6 +11,18 @@
 > local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
 > için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
 
+## ONLINE DÜKKÂN + AYRILMA HATASI DÜZELTMESİ (2026-07-13)
+- ✅ **Online dükkân (market)** (`components/OnlineGame.tsx`): HUD'da 🛒 düğmesi + bölüm-sonu
+  ekranında "🛒 Dükkâna Uğra" → mevcut `Shop` bileşeni tam-ekran overlay olarak açılır (kazandığın
+  parayla eşya al). Açıkken oyun tuşları kilitli (`uiOpen` ref, keydown yok sayılır, giriş sıfırlanır);
+  kapanınca para + envanter (📦) tazelenir (`openShop`/`closeShop`). Shop z-index 20, HUD/touch üstünde.
+- ✅ **Yanlış "oyundan ayrıldı" hatası düzeltildi**: (1) `pos` kalp atışı artık **bölüm-sonu ekranında
+  (resultPending) BİLE** gönderiliyor — asıl susma penceresi buydu (2.6sn overlay boyunca pos kesiliyordu).
+  (2) `LEAVE_MS` 4sn→**10sn** (sekme arka plana alınınca rAF durur → pos kesilir; yüksek eşik tolere eder).
+  (3) **Geri-getirme**: yalnız Menü'ye basıp `{t:left}` yollayan `explicitLeftIds`'e girer ve kalıcı
+  çıkar; zaman aşımıyla düşürülen oyuncu pos yeniden gelince `reviveIfTimedOut` ile geri döner
+  ("yeniden bağlandı"). onMessage üst filtresi artık yalnız `explicitLeftIds`'i tümden yok sayar.
+
 ## MÜZİK & ONLINE EKONOMİ OTURUMU (2026-07-13)
 - ✅ **Online (Ölüm Koşusu) ekonomi + envanter** (`components/OnlineGame.tsx`): gelin başına **para**
   (`COIN_PER_KILL`, kişisel/kalıcı cüzdan `coins.ts`), tur kazanınca **+10 para** (`RACE_WIN_COINS`,

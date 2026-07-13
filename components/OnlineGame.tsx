@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Joystick } from "@/components/Game";
+import Shop from "@/components/Shop";
 import {
   PLAYER_SPEED,
   PLAYER_RADIUS,
@@ -43,7 +44,8 @@ import { ScareDirector, type ScareFx } from "@/lib/scares";
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
-const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır
+const LEAVE_MS = 10000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır (sekme
+// arka plana alındığında rAF durur → pos kesilir; yüksek eşik + geri-getirme yanlış atmayı önler)
 const RACE_WIN_COINS = 10; // bir bölümü (turu) kazanınca kişisel para ödülü
 
 // Koltuk (seat) renkleri — 0 host
@@ -81,6 +83,8 @@ export default function OnlineGame({
   const [coins, setCoins] = useState(0);
   const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 });
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
+  const [shopOpen, setShopOpen] = useState(false); // oyun-içi dükkân (market) açık mı
+  const uiOpen = useRef(false); // dükkân açıkken oyun tuşlarını kilitle (hareket etmesin)
   const radarUntil = useRef(0); // radar oku bitişi (ms, performance.now)
   const radarAngle = useRef(0); // radar oku yönü (radyan)
 
@@ -98,7 +102,8 @@ export default function OnlineGame({
   const selfDir = useRef<Vec>({ x: 0, y: -1 });
   const mySpawn = useRef<Vec>({ x: 1.5, y: 1.5 });
   const others = useRef<Map<string, Other>>(new Map()); // diğer oyuncular (id -> durum)
-  const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular
+  const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular (pos zaman aşımı veya elle)
+  const explicitLeftIds = useRef<Set<string>>(new Set()); // yalnız {t:left} yollayanlar — kalıcı çıkar
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
   const flashlight = useRef<Flashlight | null>(null); // dinamik görüş + kararma (Madde 4,5)
@@ -310,15 +315,27 @@ export default function OnlineGame({
       amHost.current = nowHost;
     }
 
-    // Bir oyuncu ayrıldı (pos akışı kesildi ya da {t:left} geldi)
-    function onPlayerLeft(id: string) {
+    // Bir oyuncu ayrıldı. explicit=true → {t:left} yolladı (kalıcı çıkar).
+    // explicit=false → yalnız pos zaman aşımı (geçici olabilir; pos gelince geri gelir).
+    function onPlayerLeft(id: string, explicit: boolean) {
       if (goneIds.current.has(id)) return;
       const o = others.current.get(id);
       goneIds.current.add(id);
+      if (explicit) explicitLeftIds.current.add(id);
       others.current.delete(id);
       flash(`${o ? o.name : "Bir oyuncu"} oyundan ayrıldı`);
       updateHost();
       if (others.current.size === 0) setAlone(true); // tek kaldın → menü
+    }
+
+    // pos yeniden gelince yanlışlıkla "ayrıldı" sayılan oyuncuyu geri getir
+    function reviveIfTimedOut(id: string) {
+      if (!goneIds.current.has(id) || explicitLeftIds.current.has(id)) return;
+      goneIds.current.delete(id);
+      setAlone(false);
+      const s = order.indexOf(id);
+      flash(`${nameOf(s)} yeniden bağlandı`);
+      updateHost();
     }
 
     // Bir oyuncu açık çıkışa ulaştı → host bu bölümün kazananını belirler
@@ -428,10 +445,13 @@ export default function OnlineGame({
     }
 
     room.onMessage = (m: NetMessage, fromId: string) => {
-      if (goneIds.current.has(fromId) && m.t !== "left") return;
+      // Yalnız GERÇEKTEN ayrılanları (Menü'ye basıp {t:left} yollayan) tümüyle yok say.
+      // Zaman aşımıyla düşürülenler pos gelince geri gelebilsin (aşağıda reviveIfTimedOut).
+      if (explicitLeftIds.current.has(fromId)) return;
       if (m.t === "map") {
         if (!ready.current) buildWorld(deserializeLevel(m.lvl as SerializedLevel));
       } else if (m.t === "pos") {
+        reviveIfTimedOut(fromId); // pos akıyorsa oyuncu hâlâ oyunda → yanlış "ayrıldı"yı geri al
         let o = others.current.get(fromId);
         if (!o) {
           const s = order.indexOf(fromId);
@@ -483,7 +503,7 @@ export default function OnlineGame({
         const tx = m.x as number, ty = m.y as number;
         onlineTraps.current.set(tx + "," + ty, { x: tx, y: ty, until: performance.now() + TUNING.trapSec * 1000 });
       } else if (m.t === "left") {
-        onPlayerLeft(fromId);
+        onPlayerLeft(fromId, true); // gerçekten ayrıldı (Menü'ye bastı)
       } else if (m.t === "veil") {
         // Madde 8: bir oyuncu görünmez oldu/bozuldu → host AI hedeflemesi için sakla
         const seat = m.seat as number;
@@ -497,6 +517,8 @@ export default function OnlineGame({
 
     // Girdi
     const onKey = (e: KeyboardEvent, d: boolean) => {
+      // Dükkân açıkken yeni tuş basımlarını yok say (keyup geçer → basılı tuş temizlenir)
+      if (uiOpen.current && d) return;
       switch (e.key) {
         case "ArrowUp": case "w": case "W": input.current.up = d; break;
         case "ArrowDown": case "s": case "S": input.current.down = d; break;
@@ -857,7 +879,7 @@ export default function OnlineGame({
       if (leaveAcc >= 0.5) {
         leaveAcc = 0;
         for (const [id, o] of others.current) {
-          if (now - o.seenAt > LEAVE_MS) onPlayerLeft(id);
+          if (now - o.seenAt > LEAVE_MS) onPlayerLeft(id, false); // yalnız zaman aşımı (geri gelebilir)
         }
       }
 
@@ -1278,11 +1300,6 @@ export default function OnlineGame({
       if (ready.current && mazeRef.current && levelRef.current) {
         if (!resultPending.current) {
           step(dt, now);
-          posAcc += dt;
-          if (posAcc >= 0.05) {
-            posAcc = 0;
-            room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y });
-          }
           if (amHost.current) {
             brideAcc += dt;
             if (brideAcc >= 0.05) {
@@ -1293,6 +1310,13 @@ export default function OnlineGame({
               });
             }
           }
+        }
+        // pos = kalp atışı: bölüm-sonu ekranında (resultPending) BİLE gönder ki
+        // diğer oyuncular seni yanlışlıkla "ayrıldı" saymasın.
+        posAcc += dt;
+        if (posAcc >= 0.05) {
+          posAcc = 0;
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y });
         }
         hudAcc += dt;
         if (hudAcc >= 0.15) {
@@ -1361,6 +1385,21 @@ export default function OnlineGame({
     radarAngle.current = bestAng;
     radarUntil.current = performance.now() + 1500;
     sound.play("secret");
+    setInvCounts({ shields: inv.shields, radars: inv.radars });
+  }
+
+  // Dükkânı aç — hareket tuşlarını temizle (dükkânda kayıp gitmeyesin)
+  function openShop() {
+    uiOpen.current = true;
+    input.current = { up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false, trap: false };
+    setShopOpen(true);
+  }
+  // Dükkânı kapat — para + envanter sayılarını tazele (aldıkların HUD'a yansısın)
+  function closeShop() {
+    uiOpen.current = false;
+    setShopOpen(false);
+    setCoins(getCoins());
+    const inv = getInventory();
     setInvCounts({ shields: inv.shields, radars: inv.radars });
   }
 
@@ -1447,6 +1486,9 @@ export default function OnlineGame({
           title="Envanter (kalkan / radar)"
         >
           <span className="val">📦 {invCounts.shields + invCounts.radars}</span>
+        </button>
+        <button className="chip mutebtn" onClick={openShop} title="Dükkân — parayla eşya al">
+          <span className="val">🛒</span>
         </button>
         <button className="chip mutebtn" onClick={quit} title="Menüye dön">
           <span className="val">⎋</span>
@@ -1564,7 +1606,15 @@ export default function OnlineGame({
             ))}
           </div>
           <div className="subtitle">Sonraki bölüm başlıyor…</div>
+          <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)" }}>
+            🛒 Dükkâna Uğra ({coins}🪙)
+          </button>
         </div>
+      )}
+
+      {/* Oyun-içi dükkân (market) — tam ekran overlay; alttaki oyun sürer */}
+      {shopOpen && (
+        <Shop title="ÖLÜM KOŞUSU DÜKKÂNI" onBack={closeShop} />
       )}
 
       <div className="hint">
