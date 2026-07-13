@@ -7,6 +7,8 @@ import OnlineGame from "@/components/OnlineGame";
 import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
+import Friends from "@/components/Friends";
+import { FriendPresence, getFriends } from "@/lib/friends";
 import { getInventory } from "@/lib/inventory";
 import { getCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed } from "@/lib/achievements";
@@ -43,6 +45,7 @@ type Screen =
   | "shop"
   | "achievements"
   | "journal"
+  | "friends"
   | "playing"
   | "dead"
   | "levelclear"
@@ -51,6 +54,7 @@ type Screen =
   | "lobby"
   | "onlinegame";
 
+// (arkadaş sistemi + davet bandı entegre edildi)
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [level, setLevel] = useState(1);
@@ -68,6 +72,11 @@ export default function Page() {
   const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
   const [startInfo, setStartInfo] = useState<StartInfo | null>(null);
+  // Arkadaş sistemi (global presence + davet)
+  const presenceRef = useRef<FriendPresence | null>(null);
+  const [friendsOnline, setFriendsOnline] = useState(0);
+  const [invite, setInvite] = useState<{ fromName: string; room: string } | null>(null);
+  const [pendingJoin, setPendingJoin] = useState<string | null>(null); // davet kabul → lobiye taşınan oda kodu
   // Görev modu
   const [missionIndex, setMissionIndex] = useState<number | null>(null);
   const [missionRunId, setMissionRunId] = useState(0);
@@ -146,6 +155,32 @@ export default function Page() {
     } catch {
       /* geç */
     }
+  }
+
+  // Arkadaş presence'ı: uygulama açıkken sürekli çalışır (çevrimiçi arkadaş + davet yakalar)
+  useEffect(() => {
+    const p = new FriendPresence();
+    presenceRef.current = p;
+    const refresh = () => {
+      const online = getFriends().filter((f) => p.isOnline(f.code)).length;
+      setFriendsOnline(online);
+    };
+    p.onPresence = refresh;
+    p.onInvite = (inv) => setInvite({ fromName: inv.fromName, room: inv.room });
+    p.start();
+    const iv = window.setInterval(refresh, 3000);
+    return () => {
+      window.clearInterval(iv);
+      p.stop();
+      presenceRef.current = null;
+    };
+  }, []);
+
+  function acceptInvite() {
+    if (!invite) return;
+    setPendingJoin(invite.room);
+    setInvite(null);
+    setScreen("lobby");
   }
 
   // Ses kilidi: ilk kullanıcı etkileşiminde (tarayıcı kuralı) sesi aç. BİR KEZ
@@ -385,8 +420,17 @@ export default function Page() {
 
   if (screen === "lobby") {
     return (
-      <OnlineLobby onBack={() => setScreen("menu")} onStarted={handleStarted} />
+      <OnlineLobby
+        onBack={() => { setPendingJoin(null); setScreen("menu"); }}
+        onStarted={handleStarted}
+        presence={presenceRef.current}
+        initialJoinCode={pendingJoin}
+      />
     );
+  }
+
+  if (screen === "friends") {
+    return <Friends presence={presenceRef.current} onBack={() => setScreen("menu")} />;
   }
 
   if (screen === "ayarlar") {
@@ -827,8 +871,29 @@ export default function Page() {
     );
   }
 
+  const inviteBanner = invite ? (
+    <div
+      style={{
+        position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 50,
+        display: "flex", alignItems: "center", gap: 12, maxWidth: "92vw",
+        background: "linear-gradient(180deg, rgba(20,40,25,0.97), rgba(10,20,12,0.97))",
+        border: "1px solid rgba(125,255,176,0.4)", borderRadius: 10, padding: "12px 16px",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.6)", color: "#e6f5ea",
+      }}
+    >
+      <span style={{ fontSize: 14 }}>
+        <b style={{ color: "#7dffb0" }}>{invite.fromName}</b> seni odaya davet etti
+        <span style={{ color: "var(--muted)" }}> ({invite.room})</span>
+      </span>
+      <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={acceptInvite}>Katıl</button>
+      <button className="btn" style={{ padding: "6px 10px", opacity: 0.7 }} onClick={() => setInvite(null)}>✕</button>
+    </div>
+  ) : null;
+
   if (screen === "menu") {
     return (
+      <>
+      {inviteBanner}
       <MainMenu
         onSolo={startNewGame}
         onRace={() => setScreen("lobby")}
@@ -839,6 +904,8 @@ export default function Page() {
         onAchievements={() => setScreen("achievements")}
         onJournal={() => setScreen("journal")}
         onSettings={() => setScreen("ayarlar")}
+        onFriends={() => setScreen("friends")}
+        friendsOnline={friendsOnline}
         secrets={unlockedSecrets.length}
         secretTotal={SECRET_COUNT}
         coins={menuCoins}
@@ -847,11 +914,13 @@ export default function Page() {
         journal={journalGot.length}
         journalTotal={JOURNAL.length}
       />
+      </>
     );
   }
 
   return (
     <div className="screen">
+      {inviteBanner}
 
       {screen === "intro" && (
         <>

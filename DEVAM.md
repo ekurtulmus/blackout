@@ -59,7 +59,16 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   ach_claimed/best skorlar) siler + reload; **ses tercihleri korunur**. Canlı: para/başarım/arena silindi, vol=0.5 kaldı.
   (İlerleme/satın alma kaydı zaten localStorage'da kalıcı ✅.)
 - ⏳ **Faz 9 — Line icon geçişi**: menü+oyun tüm emoji → temaya uygun özel SVG line-icon.
-- ⏳ **Faz 10 — Arkadaş sistemi**: arkadaş kodu + presence; menü & oda-kurmada "Arkadaşlarım" + oyun daveti.
+- ✅ **Faz 10 — Arkadaş sistemi** (`lib/friends.ts`, `components/Friends.tsx`): hesapsız **arkadaş kodu**
+  (kalıcı `blackout_uid`, 6 hane) + yerel arkadaş listesi (`blackout_friends` ekle/sil). Global **presence**
+  kanalı (`blackout:friends` broadcast, NetRoom deseni): "here" kalp atışıyla kim çevrimiçi + "invite" ile davet.
+  Menüde sağ-üst **kare arkadaş butonu** (çevrimiçi rozetli, `MainMenu.onFriends/friendsOnline`). Arkadaşlar ekranı:
+  kodunu paylaş/kopyala, ekle, çevrimiçi noktası. **Oda kurarken** (OnlineLobby host) çevrimiçi arkadaşları
+  "Davet Et" → `presence.invite(code, roomCode)`. Davet gelince page.tsx'te **yeşil davet bandı** ("X seni davet
+  etti · Katıl") → `pendingJoin` ile lobiye taşınıp o odaya otomatik katılır. Canlı UI doğrulandı (kod Y5ZG45,
+  arkadaş ekleme çalıştı); presence+davet **2 gerçek cihaz** gerektirir. NOT: stale Turbopack konsol hatası
+  (page.tsx:1059) — dosya doğru, son derleme ✓, app çalışıyor.
+- 🎉 **10 FAZ + 4 ek istek/bug TAMAM.** Kalan: Faz 9 (emoji→line ikon geçişi) + canlı deploy + 2-cihaz online testi.
 Zaten yapılmış: eşya tüm modlarda ortak/kalıcı ✅, ilerleme kaydı ✅, online global ✅.
 
 ## ONLINE DÜKKÂN + AYRILMA HATASI DÜZELTMESİ (2026-07-13)

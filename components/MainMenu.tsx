@@ -14,6 +14,8 @@ export default function MainMenu({
   onAchievements,
   onJournal,
   onSettings,
+  onFriends,
+  friendsOnline,
   secrets,
   secretTotal,
   coins,
@@ -31,6 +33,8 @@ export default function MainMenu({
   onAchievements: () => void;
   onJournal: () => void;
   onSettings: () => void;
+  onFriends: () => void;
+  friendsOnline: number;
   secrets: number;
   secretTotal: number;
   coins: number;
@@ -474,6 +478,17 @@ export default function MainMenu({
       <canvas ref={grainRef} className="mm-grain" />
       <div className="mm-vignette" />
 
+      {/* Sağ üstte küçük kare arkadaşlar butonu (çevrimiçi sayısı rozetli) */}
+      <button className="mm-friends" onClick={onFriends} title="Arkadaşlarım" aria-label="Arkadaşlarım">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="9" cy="8" r="3.2" />
+          <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+          <circle cx="17" cy="8.5" r="2.4" />
+          <path d="M15.5 14.2A4.6 4.6 0 0 1 20.5 18.5" />
+        </svg>
+        {friendsOnline > 0 && <span className="mm-friends-badge">{friendsOnline}</span>}
+      </button>
+
       <div className="mm-wrap">
         <h1 className="mm-title">
           BLACK<span className="mm-o">O</span>UT
@@ -586,6 +601,9 @@ const MM_CSS = `
 .mm-foot{position:relative;z-index:5;margin-top:34px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap;opacity:0;animation:mm-fade 1s ease-out 1.6s forwards;}
 .mm-foot button{background:rgba(255,255,255,.02);border:1px solid rgba(200,180,150,.16);border-radius:6px;padding:10px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.24em;color:#8a8474;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 0 10px #000;}
 .mm-foot button:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.42);}
+.mm-friends{position:fixed;top:14px;right:14px;z-index:8;width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(20,15,13,.7);border:1px solid rgba(206,186,156,.28);color:#c9bfa8;cursor:pointer;backdrop-filter:blur(3px);transition:color .2s,border-color .2s,background .2s;}
+.mm-friends:hover{color:#e0a24a;border-color:rgba(224,162,74,.5);background:rgba(30,22,18,.85);}
+.mm-friends-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#2e9e5b;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;box-shadow:0 0 0 2px #0a0807;}
 /* Mobilde buton çerçeveleri daha belirgin + hafif dolgu (göze net görünsün) */
 @media (max-width:640px){
   .mm-item{border-color:rgba(206,186,156,.28);background:rgba(255,255,255,.035);}

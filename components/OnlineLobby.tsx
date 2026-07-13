@@ -20,6 +20,7 @@ import {
 import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
 import { getCoins, addCoins } from "@/lib/coins";
+import { getFriends, type FriendPresence } from "@/lib/friends";
 
 type Mode = "choose" | "host" | "join";
 
@@ -36,9 +37,13 @@ const NAME_KEY = "blackout_name";
 export default function OnlineLobby({
   onBack,
   onStarted,
+  presence,
+  initialJoinCode,
 }: {
   onBack: () => void;
   onStarted: (room: NetRoom, info: StartInfo) => void;
+  presence?: FriendPresence | null;
+  initialJoinCode?: string | null;
 }) {
   const [mode, setMode] = useState<Mode>("choose");
   const [code, setCode] = useState("");
@@ -61,7 +66,27 @@ export default function OnlineLobby({
       /* geç */
     }
     setCoins(getCoins());
+    // Davet kabul edildiyse: doğrudan o odaya katıl
+    if (initialJoinCode) {
+      setCode(initialJoinCode.toUpperCase());
+      setMode("join");
+      startRoom(initialJoinCode.toUpperCase(), "guest");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Çevrimiçi arkadaş durumunu tazele (davet paneli için)
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const iv = window.setInterval(() => setTick((t) => t + 1), 2500);
+    return () => window.clearInterval(iv);
+  }, []);
+  const [invited, setInvited] = useState<Set<string>>(new Set());
+  function inviteFriend(code: string) {
+    presence?.invite(code, roomRef.current?.code || "");
+    setInvited((s) => new Set(s).add(code));
+    window.setTimeout(() => setInvited((s) => { const n = new Set(s); n.delete(code); return n; }), 4000);
+  }
 
   // Ayrılırken kanalı kapat — AMA devredildiyse dokunma (OnlineGame kullanıyor)
   useEffect(() => {
@@ -249,6 +274,38 @@ export default function OnlineLobby({
             ))}
             {count < 2 ? " — en az 2 oyuncu gerekli" : ""}
           </div>
+
+          {/* Çevrimiçi arkadaşları odaya davet et */}
+          {(() => {
+            const onlineFriends = getFriends().filter((f) => presence?.isOnline(f.code));
+            return (
+              <div className="how" style={{ maxWidth: 420, width: "100%", padding: 14 }}>
+                <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8 }}>👥 Arkadaşını çağır</div>
+                {onlineFriends.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--muted)" }}>
+                    Çevrimiçi arkadaşın yok. (Menüdeki 👥 ile arkadaş ekleyebilirsin.)
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {onlineFriends.map((f) => (
+                      <div key={f.code} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#2e9e5b", boxShadow: "0 0 6px #2e9e5b", flex: "none" }} />
+                        <span style={{ flex: 1, fontWeight: 700 }}>{f.name}</span>
+                        <button
+                          className={"btn" + (invited.has(f.code) ? "" : " btn-primary")}
+                          style={{ padding: "5px 12px" }}
+                          disabled={invited.has(f.code)}
+                          onClick={() => inviteFriend(f.code)}
+                        >
+                          {invited.has(f.code) ? "✓ Davet edildi" : "Davet Et"}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })()}
 
           <div style={{ margin: "6px 0" }}>
             <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk</div>
