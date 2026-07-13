@@ -40,9 +40,9 @@ export const TUNING = {
   dimFactor: 0.42, // kararma anında fener çarpanı (görüş bu kadar düşer)
   dimLerp: 8, // kararma yumuşama hızı
 
-  // --- Madde 6: karanlıkta hızlanan gelin ---
-  darkBrideLightMul: 0.28, // ışıkta çok yavaş (fenerini ona tut)
-  darkBrideDarkMul: 1.15, // karanlıkta hızlı (yine %92 tavanla sınırlı)
+  // --- Madde 6 (revize): karanlık gelini ---
+  darkBrideLightMul: 0.28, // (kullanılmıyor — artık görünce normal hızda gelir)
+  darkBrideDarkMul: 1.15, // seni GÖRMEZKEN karanlıkta hızlı (yine %92 tavanla sınırlı)
   darkBrideMax: 2, // bölüm başına en fazla
 
   // --- Madde 7: mukus bırakan gelin ---

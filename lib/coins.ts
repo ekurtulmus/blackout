@@ -1,0 +1,27 @@
+// BLACKOUT — para (coin) sistemi. KALICI (localStorage), koşular arası birikir.
+// İleride dükkân/harcama için temel. Şimdilik mini-görevlerden kazanılır
+// (yüzük = +2 para); başka kaynaklar sonra eklenecek.
+const KEY = "blackout_coins";
+let mem = 0; // localStorage yoksa (SSR/test) bellek yedeği
+
+export function getCoins(): number {
+  try {
+    const v = localStorage.getItem(KEY);
+    if (v !== null) return Math.max(0, parseInt(v, 10) || 0);
+  } catch {
+    /* geç */
+  }
+  return mem;
+}
+
+// n kadar ekle (negatif = harca), yeni toplamı döndür.
+export function addCoins(n: number): number {
+  const total = Math.max(0, getCoins() + n);
+  mem = total;
+  try {
+    localStorage.setItem(KEY, String(total));
+  } catch {
+    /* geç */
+  }
+  return total;
+}

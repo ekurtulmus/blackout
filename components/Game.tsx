@@ -15,7 +15,8 @@ import {
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
-import { drawDecor } from "@/lib/decor";
+import { drawDecor, drawWallDecor } from "@/lib/decor";
+import { getCoins, addCoins } from "@/lib/coins";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 
@@ -71,6 +72,13 @@ export default function Game({
   const [mq, setMq] = useState(""); // aktif mini-görev HUD metni (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev tamamlanınca ödül bildirimi
   const mqReportedRef = useRef(false);
+  const [coins, setCoins] = useState(0); // para (kalıcı; mount'ta yüklenir)
+  const [exitHint, setExitHint] = useState(""); // ayna kehaneti: çıkış yönü
+  const [mqNotice, setMqNotice] = useState(""); // bölüm başı uyarı (ör. çember görevi)
+  const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
+  const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
+  const prevHpRef = useRef(PLAYER_MAX_HP);
+  const engineRef = useRef<GameEngine | null>(null);
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
@@ -106,6 +114,15 @@ export default function Game({
     if (!ctx) return;
 
     const engine = new GameEngine(level, score, lives, mission, withPhoto, diff);
+    engineRef.current = engine;
+    setCoins(getCoins()); // kalıcı parayı yükle
+    // Çember görevi çıkışı kilitler → bölüm başında oyuncuyu uyar
+    if (!mission && engine.miniQuest?.kind === "markedkill") {
+      setMqNotice(
+        "Bu bölümde çıkış KİLİTLİ: işaretli ⊚ çemberin içinde bir gelin öldürmelisin."
+      );
+      window.setTimeout(() => setMqNotice(""), 7000);
+    }
     let fragmentReported = false;
     const input: Input = {
       up: false,
@@ -275,9 +292,11 @@ export default function Game({
             ctx!.fillStyle = `rgb(${v | 0},${(v * 0.9) | 0},${(v * 0.82) | 0})`;
           }
           ctx!.fillRect(Math.floor(sx), Math.floor(sy), TS + 1, TS + 1);
-          // Madde 11: tema süsü (mezar taşı / ağaç-çalı) — deterministik
+          // Madde 11: tema süsleri — deterministik (zemin süsü / duvar ağacı)
           if (!wall && theme.decor) {
             drawDecor(ctx!, theme, x, y, Math.floor(sx), Math.floor(sy), TS, intensity !== undefined);
+          } else if (wall && theme.wallStyle) {
+            drawWallDecor(ctx!, theme, x, y, Math.floor(sx), Math.floor(sy), TS, intensity !== undefined);
           }
         }
       }
@@ -466,17 +485,31 @@ export default function Game({
           const { sx, sy } = scr(m.x, m.y);
           ctx!.save();
           if (q.kind === "candles") {
-            // mum: gövde + alev (yanmışsa soluk)
-            const lit = m.done;
-            ctx!.shadowColor = lit ? "rgba(120,120,140,0.4)" : "rgba(255,180,60,0.9)";
-            ctx!.shadowBlur = lit ? 3 : 12;
-            ctx!.fillStyle = "#e6dcc0";
-            ctx!.fillRect(sx - TS * 0.05, sy - TS * 0.02, TS * 0.1, TS * 0.22);
-            if (!lit) {
-              const fl = 0.7 + 0.3 * Math.sin(t * 9 + m.x);
-              ctx!.fillStyle = `rgba(255,${160 + Math.floor(60 * fl)},70,${fl})`;
+            // Mum: koyu şamdan taban + krem gövde + (yanıksa) parlak alev.
+            // Mermiden (pirinç dikey çubuk) belirgin biçimde farklı.
+            const lit = !!(m.litUntil && m.litUntil > t);
+            ctx!.shadowColor = lit ? "rgba(255,170,50,0.95)" : "rgba(90,90,110,0.35)";
+            ctx!.shadowBlur = lit ? 16 : 3;
+            // şamdan taban (elips)
+            ctx!.fillStyle = "#3a3330";
+            ctx!.beginPath();
+            ctx!.ellipse(sx, sy + TS * 0.17, TS * 0.13, TS * 0.05, 0, 0, Math.PI * 2);
+            ctx!.fill();
+            // mum gövdesi (silindir; yanıkken daha parlak krem)
+            ctx!.fillStyle = lit ? "#f3ead0" : "#a89f8c";
+            ctx!.fillRect(sx - TS * 0.06, sy - TS * 0.12, TS * 0.12, TS * 0.29);
+            // fitil
+            ctx!.fillStyle = "#2a2620";
+            ctx!.fillRect(sx - TS * 0.012, sy - TS * 0.17, TS * 0.024, TS * 0.06);
+            if (lit) {
+              const fl = 0.7 + 0.3 * Math.sin(t * 10 + m.x);
+              const grd = ctx!.createRadialGradient(sx, sy - TS * 0.22, 0, sx, sy - TS * 0.22, TS * 0.13);
+              grd.addColorStop(0, `rgba(255,242,190,${fl})`);
+              grd.addColorStop(0.5, `rgba(255,150,40,${fl * 0.9})`);
+              grd.addColorStop(1, "rgba(255,80,0,0)");
+              ctx!.fillStyle = grd;
               ctx!.beginPath();
-              ctx!.ellipse(sx, sy - TS * 0.08, TS * 0.04, TS * 0.09, 0, 0, Math.PI * 2);
+              ctx!.ellipse(sx, sy - TS * 0.22, TS * 0.06, TS * 0.12, 0, 0, Math.PI * 2);
               ctx!.fill();
             }
           } else if (q.kind === "ring") {
@@ -768,16 +801,30 @@ export default function Game({
         veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
       if (mission) setObjective(engine.objectiveText());
-      // Mini-görev (Faz 4): aktif hedef metni + tamamlanınca ödül toast'ı
+      // Can azaldıysa can barını kısa süre yanıp söndür (fark edilsin)
+      const curHp = Math.max(0, engine.player.hp);
+      if (curHp < prevHpRef.current - 0.4) {
+        setHpBlink(true);
+        window.setTimeout(() => setHpBlink(false), 550);
+      }
+      prevHpRef.current = curHp;
+      // Mini-görev (Faz 4): aktif hedef metni + ayna kehaneti yönü
       setMq(engine.miniQuestText());
+      setExitHint(engine.exitHintText());
       if (engine.mqRewardMsg && !mqReportedRef.current) {
         mqReportedRef.current = true;
         const d = engine.mqDef;
         const bits: string[] = [];
+        if (d?.reward.coins) {
+          setCoins(addCoins(d.reward.coins)); // parayı kalıcı olarak ekle
+          bits.push(`+${d.reward.coins} para`);
+        }
         if (d?.reward.ammo) bits.push(`+${d.reward.ammo} mermi`);
         if (d?.reward.health) bits.push(`+${d.reward.health} can`);
         if (d?.reward.score) bits.push(`+${d.reward.score} puan`);
-        setMqToast(`${engine.mqRewardMsg} — ${bits.join(", ")}`);
+        // Ayna: maddi ödül yok; kehanet yönünü göster
+        const suffix = engine.miniQuest?.kind === "mirror" ? `Çıkış → ${engine.mqHintDir}` : bits.join(", ");
+        setMqToast(`${engine.mqRewardMsg}${suffix ? " — " + suffix : ""}`);
         window.setTimeout(() => setMqToast(""), 3500);
       }
       // gizli fotoğraf parçası toplandıysa bir kez bildir
@@ -859,13 +906,19 @@ export default function Game({
         </div>
         <div className="chip">
           <span className="lbl">Can</span>
-          <div className="hpbar">
+          <div className={"hpbar" + (hpBlink ? " blink" : "")}>
             <div
               className="hpfill"
               style={{ width: `${hpPct}%`, background: hpColor }}
             />
           </div>
         </div>
+        {!mission && (
+          <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
+            <span className="lbl">Para</span>
+            <span className="val" style={{ color: "#ffd75a" }}>🪙 {coins}</span>
+          </div>
+        )}
         <div className="chip">
           <div className="lives">
             {[0, 1, 2].map((i) => (
@@ -878,15 +931,32 @@ export default function Game({
             ))}
           </div>
         </div>
-        <div className="chip">
+        <button
+          className="chip"
+          style={{ cursor: "pointer", borderColor: hud.exitOpen ? undefined : "rgba(255,150,150,0.5)" }}
+          onClick={() => {
+            const r = engineRef.current?.exitLockReason() ?? "";
+            if (r) {
+              setExitMsg(r);
+              window.setTimeout(() => setExitMsg(""), 4000);
+            }
+          }}
+          title="Çıkış neden kilitli?"
+        >
           <span className="lbl">Çıkış</span>
           <span
             className="val"
             style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}
           >
-            {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
+            {hud.exitOpen ? "AÇIK" : "KİLİTLİ ⓘ"}
           </span>
-        </div>
+        </button>
+        {exitHint && (
+          <div className="chip" style={{ borderColor: "rgba(180,220,255,0.6)" }}>
+            <span className="lbl">Kehanet</span>
+            <span className="val" style={{ color: "#bfe0ff" }}>{exitHint}</span>
+          </div>
+        )}
         {hud.veil > 0 && (
           <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
             <span className="lbl">Görünmez</span>
@@ -919,15 +989,17 @@ export default function Game({
         </button>
       </div>
 
-      {hud.warn && (
-        <div className="warn">Çıkış kilitli — önce en az 1 gelini yok et!</div>
+      {(hud.warn || exitMsg) && (
+        <div className="warn">
+          {exitMsg || engineRef.current?.exitLockReason() || "Çıkış kilitli — önce en az 1 gelini yok et!"}
+        </div>
       )}
 
       {mqToast && (
         <div
           className="warn"
           style={{
-            top: hud.warn ? 116 : 64,
+            top: hud.warn || exitMsg ? 116 : 64,
             background: "rgba(70,55,15,0.92)",
             border: "1px solid rgba(255,215,90,0.6)",
             color: "#ffe9a8",
@@ -935,6 +1007,23 @@ export default function Game({
           }}
         >
           ✦ {mqToast}
+        </div>
+      )}
+
+      {mqNotice && (
+        <div
+          className="warn"
+          style={{
+            top: "38%",
+            maxWidth: 420,
+            textAlign: "center",
+            lineHeight: 1.5,
+            background: "rgba(60,20,20,0.94)",
+            border: "1px solid rgba(255,150,150,0.6)",
+            color: "#ffdede",
+          }}
+        >
+          {mqNotice}
         </div>
       )}
 

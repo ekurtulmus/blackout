@@ -115,8 +115,9 @@ export class GameEngine {
   mqDef: MQDef | null = null;
   mqDone = false;
   mqRewardMsg = ""; // tamamlanınca gösterilecek toast (Game okuyup temizler)
-  private mqArmed = false; // mirror: yakınlaşınca kurulur
-  private mqArmDeadline = 0; // mirror: bu ana kadar uzaklaşmalı (yoksa yeniden kurulur)
+  private mqMirrorNear = 0; // ayna: yanında kesintisiz geçirilen süre (sn)
+  mqHintDir = ""; // ayna kehaneti: çıkışa giden yön ("Sağ/Sol/Yukarı/Aşağı")
+  private mqHintUntil = 0; // yön ipucunun HUD'da kalacağı ana kadar (sn)
 
   // --- Görev modu ---
   mission: Mission | null = null;
@@ -401,7 +402,7 @@ export class GameEngine {
     this.pickupPhoto();
     this.pickupVeil();
     this.updateMucus(dt);
-    this.updateMiniQuest();
+    this.updateMiniQuest(dt);
     this.computeVision();
     this.checkExit();
     this.checkMission();
@@ -558,12 +559,16 @@ export class GameEngine {
     this.zombiesKilled++;
     this.score += 100;
     this.events.push("kill");
-    // Mini-görev "işaretli bölge": gelin işaretli bölgede öldürüldüyse ödül
+    // Mini-görev "çember" (markedkill): AKTİFKEN çıkış SADECE çemberde infazla açılır.
     const mq = this.miniQuest;
-    if (mq?.kind === "markedkill" && mq.zone && !this.mqDone) {
-      const zn = mq.zone;
+    const mkGate = mq?.kind === "markedkill" && !!mq.zone && !this.mqDone;
+    if (mkGate && mq!.zone) {
+      const zn = mq!.zone;
       const inZone = Math.hypot(zn.x + 0.5 - z.pos.x, zn.y + 0.5 - z.pos.y) <= zn.r + 0.5;
-      if (inZone) this.grantMQReward();
+      if (inZone) {
+        this.grantMQReward();
+        this.exitOpen = true; // çemberde infaz → çıkış açılır
+      }
     }
     // Madde 7: mukus gelini öldüğü hücreye 10 sn kalan hasar lekesi bırakır
     if (z.kind === "mucus") {
@@ -579,10 +584,11 @@ export class GameEngine {
       seed: Math.floor(Math.random() * 1000),
     });
     const wasOpen = this.exitOpen;
-    // Çıkış açılma kuralı: görevde killTarget kadar, normalde 1
+    // Çıkış açılma kuralı: görevde killTarget kadar, normalde 1.
+    // "Çember" görevi aktifken (mkGate) normal kural DEVRE DIŞI — çıkış yalnız
+    // çemberde infazla açılır (yukarıda).
     const killNeed = this.mission?.killTarget ?? 1;
-    // Toplama göreviyse öldürme çıkışı açmaz (parça toplamak gerekir)
-    if (!this.mission?.collectTarget && this.zombiesKilled >= killNeed) {
+    if (!this.mission?.collectTarget && !mkGate && this.zombiesKilled >= killNeed) {
       this.exitOpen = true;
     }
     if (!wasOpen && this.exitOpen) this.events.push("dooropen");
@@ -711,16 +717,28 @@ export class GameEngine {
     }
   }
 
-  // Mini-görev ilerlemesi (Faz 4). Tamamlanınca küçük ödül; çıkışı GECİKTİRMEZ.
-  private updateMiniQuest() {
+  // Mini-görev ilerlemesi (Faz 4, revize). Tamamlanınca küçük ödül. Yalnız "çember"
+  // (markedkill) çıkışı gerçekten kapatır (killZombie'de); diğerleri geciktirmez.
+  private updateMiniQuest(dt: number) {
     const q = this.miniQuest;
     const d = this.mqDef;
     if (!q || !d || this.mqDone) return;
     const pc = cellOf(this.player.pos);
     switch (q.kind) {
-      case "candles":
+      case "candles": {
+        // Mumlar sönük başlar; üstünden geçince 10 sn yanar. HEPSİ AYNI ANDA
+        // yanıkken tamamlanır (yananlar sönmeden hepsini yakmalısın → rota bulmacası).
+        for (const m of q.markers) {
+          if (m.x === pc.x && m.y === pc.y && !(m.litUntil && m.litUntil > this.time)) {
+            m.litUntil = this.time + 10;
+            this.events.push("pickup");
+          }
+        }
+        const allLit = q.markers.every((m) => m.litUntil && m.litUntil > this.time);
+        if (allLit && q.markers.length > 0) this.grantMQReward();
+        break;
+      }
       case "bloodtrail": {
-        // gerçek marker'ların üzerinden geç → yak/topla; hepsi bitince ödül
         let all = true;
         for (const m of q.markers) {
           if (!m.done && m.x === pc.x && m.y === pc.y) {
@@ -744,7 +762,7 @@ export class GameEngine {
             target.lastSeen = { x: pc.x, y: pc.y };
             target.seenTimer = 0;
           }
-          this.grantMQReward();
+          this.grantMQReward(); // ödül: +2 para
         }
         break;
       }
@@ -752,11 +770,12 @@ export class GameEngine {
         const m = q.markers[0];
         if (m && !m.done && m.x === pc.x && m.y === pc.y) {
           m.done = true;
-          // Çan: TÜM gelinleri sana çeker (tehlikeli ama ödüllü)
+          // Çanı çal → gelinler sesin geldiği yere (ÇANA) koşar, seni bırakır.
+          // 6 sn dikkat dağılır → sen kaçarsın (mantıklı bir tuzak).
           for (const z of this.zombies) {
-            z.aware = true;
-            z.lastSeen = { x: pc.x, y: pc.y };
-            z.seenTimer = 0;
+            z.distractTimer = 6;
+            z.distractTarget = { x: m.x, y: m.y };
+            z.aware = false;
             z.path = null;
             z.repathTimer = 0;
           }
@@ -776,21 +795,46 @@ export class GameEngine {
         const m = q.markers[0];
         if (!m) break;
         const dp = Math.hypot(m.x + 0.5 - this.player.pos.x, m.y + 0.5 - this.player.pos.y);
-        if (!this.mqArmed) {
-          // aynaya yaklaş → tetiklenir, kaçmalısın
-          if (dp <= 1.6) {
-            this.mqArmed = true;
-            this.mqArmDeadline = this.time + 5;
-            this.events.push("warn");
+        // Aynanın yanında KESİNTİSİZ 5 sn bekle → kehanet: çıkış yönü belirir.
+        if (dp <= 1.7) {
+          this.mqMirrorNear += dt;
+          if (this.mqMirrorNear >= 5) {
+            this.mqHintDir = this.computeExitDir();
+            this.mqHintUntil = this.time + 20; // yön 20 sn HUD'da kalır
+            this.grantMQReward();
           }
-        } else if (dp >= 6) {
-          this.grantMQReward(); // yeterince uzaklaştın
-        } else if (this.time > this.mqArmDeadline) {
-          this.mqArmed = false; // süre doldu → tekrar denenebilir (ceza yok)
+        } else {
+          this.mqMirrorNear = 0; // uzaklaşınca sayaç sıfırlanır (kesintisiz beklemeli)
         }
         break;
       }
     }
+  }
+
+  // Ayna kehaneti: oyuncunun bulunduğu hücreden çıkışa giden İLK adımın yönü
+  // (labirenti hesaba katar; en kısa yol yönü). "Sağ/Sol/Yukarı/Aşağı".
+  private computeExitDir(): string {
+    const distToExit = bfsDistances(this.maze, this.exit);
+    const pc = cellOf(this.player.pos);
+    const here = distToExit[pc.y]?.[pc.x] ?? -1;
+    const opts: { dx: number; dy: number; label: string }[] = [
+      { dx: 1, dy: 0, label: "Sağ" },
+      { dx: -1, dy: 0, label: "Sol" },
+      { dx: 0, dy: -1, label: "Yukarı" },
+      { dx: 0, dy: 1, label: "Aşağı" },
+    ];
+    let best = "";
+    let bestD = here >= 0 ? here : Infinity;
+    for (const o of opts) {
+      const nx = pc.x + o.dx;
+      const ny = pc.y + o.dy;
+      const d = distToExit[ny]?.[nx];
+      if (d !== undefined && d >= 0 && d < bestD) {
+        bestD = d;
+        best = o.label;
+      }
+    }
+    return best || "?";
   }
 
   private grantMQReward() {
@@ -800,6 +844,7 @@ export class GameEngine {
     if (d.reward.ammo) this.ammoCount += d.reward.ammo;
     if (d.reward.health) this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + d.reward.health);
     if (d.reward.score) this.score += d.reward.score;
+    // para ödülü Game katmanında localStorage'a işlenir (mqDef.reward.coins)
     this.mqRewardMsg = d.title;
     this.events.push("secret");
   }
@@ -811,16 +856,35 @@ export class GameEngine {
     if (!q || !d || this.mqDone) return "";
     switch (q.kind) {
       case "candles": {
-        const lit = q.markers.filter((m) => m.done).length;
+        const lit = q.markers.filter((m) => m.litUntil && m.litUntil > this.time).length;
         return `${d.icon} ${d.hud} ${lit}/${q.markers.length}`;
       }
       case "mirror":
-        return this.mqArmed
-          ? `${d.icon} Uzaklaş! ${Math.max(0, Math.ceil(this.mqArmDeadline - this.time))}s`
+        return this.mqMirrorNear > 0.2
+          ? `${d.icon} Bekle... ${Math.max(0, Math.ceil(5 - this.mqMirrorNear))}s`
           : `${d.icon} ${d.hud}`;
       default:
         return `${d.icon} ${d.hud}`;
     }
+  }
+
+  // Ayna kehaneti aktifse HUD'da gösterilecek yön metni ("" = yok)
+  exitHintText(): string {
+    if (this.mqHintDir && this.time < this.mqHintUntil) {
+      return `🪞 Çıkış: ${this.mqHintDir}`;
+    }
+    return "";
+  }
+
+  // Çıkış neden kilitli? (HUD'da çıkış yazısına tıklayınca gösterilir)
+  exitLockReason(): string {
+    if (this.exitOpen) return "";
+    if (this.miniQuest?.kind === "markedkill" && !this.mqDone && this.miniQuest.zone) {
+      return "Çıkış kilitli: işaretli ÇEMBERİN içinde bir gelin öldürmelisin.";
+    }
+    if (this.mission?.collectTarget) return `Çıkış kilitli: ${this.mission.collectTarget} parça topla.`;
+    const need = this.mission?.killTarget ?? 1;
+    return `Çıkış kilitli: önce ${need} gelini yok et.`;
   }
 
   private pickupPhoto() {

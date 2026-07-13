@@ -21,6 +21,8 @@ export type Zombie = {
   repathTimer: number;
   kind?: BrideKind; // arketip (yok = normal)
   speedMul?: number; // hız çarpanı (mini-görev "yüzük" → bir gelin delirir/hızlanır); tavan yine geçerli
+  distractTimer?: number; // mini-görev "çan": bu süre boyunca oyuncuyu bırakıp çana gider (sn)
+  distractTarget?: Vec; // çanın konumu (dikkat dağıtma hedefi)
 };
 
 // Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi

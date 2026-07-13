@@ -19,7 +19,7 @@ export type MQKind =
   | "mirror"; // Aynadan kaç — yaklaş, sonra hızla uzaklaş (kisa, tek)
 
 export type MQTag = "kisa" | "orta" | "uzun";
-export type MQReward = { ammo?: number; health?: number; score?: number };
+export type MQReward = { ammo?: number; health?: number; score?: number; coins?: number };
 
 export type MQDef = {
   kind: MQKind;
@@ -33,19 +33,20 @@ export type MQDef = {
 
 export const MQ_DEFS: Record<MQKind, MQDef> = {
   candles: { kind: "candles", title: "Üç Mumu Yak", hud: "Mumlar", icon: "🕯", tag: "uzun", online: false, reward: { ammo: 3, score: 150 } },
-  ring: { kind: "ring", title: "Yüzüğü Bul", hud: "Yüzüğü bul", icon: "💍", tag: "orta", online: false, reward: { ammo: 2, score: 120 } },
-  markedkill: { kind: "markedkill", title: "İşaretli İnfaz", hud: "İşaretli bölgede öldür", icon: "⊚", tag: "uzun", online: false, reward: { ammo: 2, health: 30, score: 160 } },
-  bell: { kind: "bell", title: "Çanı Çal", hud: "Çanı çal", icon: "🔔", tag: "orta", online: false, reward: { ammo: 4, score: 140 } },
+  ring: { kind: "ring", title: "Yüzüğü Bul", hud: "Yüzüğü bul", icon: "💍", tag: "orta", online: false, reward: { coins: 2, score: 60 } },
+  markedkill: { kind: "markedkill", title: "İşaretli İnfaz", hud: "Çemberde gelin öldür", icon: "⊚", tag: "uzun", online: false, reward: { ammo: 2, health: 30, score: 160 } },
+  bell: { kind: "bell", title: "Çanı Çal", hud: "Çanı çal (gelinleri oyala)", icon: "🔔", tag: "orta", online: false, reward: { ammo: 3, score: 120 } },
   bloodtrail: { kind: "bloodtrail", title: "Kanı Takip Et", hud: "Kanı takip et", icon: "🩸", tag: "kisa", online: true, reward: { ammo: 2, score: 90 } },
   darkhall: { kind: "darkhall", title: "Fenersiz Koridor", hud: "Koridorun sonuna ulaş", icon: "🕳", tag: "uzun", online: false, reward: { health: 45, score: 120 } },
-  mirror: { kind: "mirror", title: "Aynadan Kaç", hud: "Aynadan uzaklaş", icon: "🪞", tag: "kisa", online: false, reward: { ammo: 2, score: 100 } },
+  // Ayna: maddi ödül yok; yanında beklersen çıkış yönünü gösterir (hint aşağıda özel)
+  mirror: { kind: "mirror", title: "Ayna Kehaneti", hud: "Aynanın yanında bekle", icon: "🪞", tag: "kisa", online: false, reward: {} },
 };
 
 // Tek kişilik havuzu (hepsi) ve online havuzu (yalnız güvenli olanlar)
 export const MQ_KINDS_SP: MQKind[] = ["candles", "ring", "markedkill", "bell", "bloodtrail", "darkhall", "mirror"];
 export const MQ_KINDS_ONLINE: MQKind[] = MQ_KINDS_SP.filter((k) => MQ_DEFS[k].online);
 
-export type MQMarker = { x: number; y: number; done: boolean };
+export type MQMarker = { x: number; y: number; done: boolean; litUntil?: number };
 
 export type MQPlan = {
   kind: MQKind;

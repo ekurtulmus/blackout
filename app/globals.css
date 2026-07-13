@@ -240,6 +240,22 @@ button {
   transition: width 0.12s linear, background 0.2s linear;
 }
 
+/* Can azalınca bar kısa süre yanıp söner (fark edilsin) */
+.hpbar.blink {
+  animation: hpblink 0.26s ease-in-out infinite;
+  box-shadow: 0 0 8px rgba(255, 60, 60, 0.75);
+  border-color: rgba(255, 90, 90, 0.8);
+}
+@keyframes hpblink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
 .lives {
   display: flex;
   gap: 5px;

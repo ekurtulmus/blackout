@@ -58,6 +58,14 @@ export function moveBrides(
   const hunterCount = new Array(players.length).fill(0); // oyuncu başına aktif avcı
   const targetable = (i: number) => !veiled || !veiled[i];
   for (const z of brides) {
+    // Mini-görev "çan": oyuncuyu bırakıp çanın çaldığı yere gider (dikkat dağıldı).
+    if (z.distractTimer && z.distractTimer > 0 && z.distractTarget) {
+      z.distractTimer -= dt;
+      z.aware = false;
+      const zc0 = cellOf(z.pos);
+      chase(z, maze, zc0, dt, z.distractTarget, false, smart, z.distractTarget, config.zombieSpeed);
+      continue;
+    }
     // en yakın HEDEFLENEBİLİR (görünmez olmayan) oyuncu
     let nIdx = -1;
     let nd = Infinity;
@@ -92,16 +100,14 @@ export function moveBrides(
       z.seenTimer += dt;
     }
 
-    // Madde 6: karanlıkta hızlanan gelin — oyuncunun ışık yarıçapı içindeyken
-    // (lit) çok yavaşlar, karanlıkta hızlanır (yine %92 tavan). "lit": en yakın
-    // oyuncunun görüş yarıçapında + görüş hattı açık.
+    // Madde 6 (revize): karanlık gelini — SENİ GÖRMÜYORKEN karanlıkta hızlıdır
+    // (kırmızı gözlerle yaklaşır); SENİ GÖRÜNCE normal hızda üstüne koşar (artık
+    // ışıkta komik derecede yavaşlamaz). Yine %92 tavanla sınırlı.
     let spd = config.zombieSpeed;
     if (z.kind === "dark") {
-      const lit = nd <= config.visionRadius && canSee;
-      spd = Math.min(
-        TUNING.brideSpeedCap,
-        config.zombieSpeed * (lit ? TUNING.darkBrideLightMul : TUNING.darkBrideDarkMul)
-      );
+      spd = canSee
+        ? config.zombieSpeed // bizi görünce normal hızda gelir
+        : Math.min(TUNING.brideSpeedCap, config.zombieSpeed * TUNING.darkBrideDarkMul); // karanlıkta hızlı
     }
     // Mini-görev "yüzük": delirmiş gelin hızlanır (tavan yine geçerli)
     spd = applyMul(spd, z.speedMul);
