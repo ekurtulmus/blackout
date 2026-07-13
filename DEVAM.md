@@ -92,7 +92,9 @@
 ### KALAN — sonraki fazlar (kullanıcı seçimi, 2026-07-13)
 - ✅ **Faz C**: **Koşma/sprint** (#2, Shift/KOŞ + Nefes barı, stamina) + **Tuzak** (#4, dükkândan al, E/mobil
   ile koy, gelini %40'a yavaşlatır 8sn — DURDURMAZ). `config` sprint/trap sabitleri + `brides.slowCells`.
-- ⏳ **Faz D**: Yeni gelinler — Çağıran (#6), Bölünen (#7), Duvar-tırmanan (#10, gerçekçi), Kraliçe-boss (#9).
+- ✅ **Faz D**: Yeni gelinler (tek kişilik) — **Çağıran** (#6, yakındakileri uyandırır), **Bölünen** (#7, ölünce
+  2 hızlı yavru), **Duvar-tırmanan** (#10, duvarları aşarak yavaş süzülür), **Kraliçe-boss** (#9, her 4 bölümde
+  bir, queenHp isabet, taç+can pip). `assignSpecialKinds` yalnız normal tek kişilikte; online/görev korunur.
 - ⏳ **Faz E**: Kaçış bölümü (#11, +görev moduna) + Rehin kurtarma (#13).
 - ⏳ **Faz F**: Başarımlar (#17) + Günlük/not parçaları (#16).
 
