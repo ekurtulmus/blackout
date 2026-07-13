@@ -70,11 +70,18 @@
   Karanlık Görevler / Bitmeyen Gece; ekran başlıkları (SENİ BULDULAR, KARANLIK KAZANDI, GÜN AĞARDI) ve
   açıklamalar daha atmosferik. Lobi "ÖLÜM YARIŞI". (Sadece görünen metin; ekran anahtarları aynı.)
 - ✅ **Mini-görevler** (Madde 9): normal bölümlerde opsiyonel "Fırsat" hedefi (tek kişilik 7 çeşit; online
-  yalnız "kanı takip et"), tamamlanınca ödül. Çıkışı geciktirmez, yarışı bozmaz. `lib/miniquests.ts`.
+  yalnız "kanı takip et"), tamamlanınca ödül. Çıkışı geciktirmez (çember hariç), yarışı bozmaz. `lib/miniquests.ts`.
 - ✅ **Rastgele korku olayları** (Madde 10): seyrek, hasarsız atmosfer anları (fısıltı/gölge/fener sıçraması/
   kapı çarpması/kalp atışı). `lib/scares.ts` — yerel, tek kişilik + online.
-- ✅ **Mezarlık teması + Orman süsleri** (Madde 11): yeni tema, zemine deterministik mezar taşı/ağaç/çalı.
-  `lib/decor.ts` + `themes.ts` `decor` alanı.
+- ✅ **Temalar genişledi** (Madde 11+): Mezarlık + Buz Mağarası + Kanalizasyon + Cehennem (8 tema). Orman'da
+  **duvarlar ağaç** (koridor ortası boş), zeminde alçak ot. `lib/decor.ts` (`drawDecor`/`drawWallDecor`).
+- ✅ **Mini-görev revizyonu** (2026-07-13): Ayna = kehanet (5 sn bekle → çıkış yönü BFS ile), Yüzük = **+2 para**,
+  Mumlar = sönük başlar/10 sn pencere/görsel düzeltildi, **Çember = çıkışı kilitler** (yalnız çemberde infazla
+  açılır, uyarı + tıkla-sebep-gör), Çan = gelinleri çana yönlendirir (distract, mantıklı tuzak).
+- ✅ **Para sistemi** (`lib/coins.ts`): kalıcı (localStorage `blackout_coins`), HUD'da "Para". Yüzükten kazanılır;
+  ileride başka kaynaklar/dükkan gelecek.
+- ✅ **Gelin düzeltme**: karanlık gelini bizi GÖRÜNCE normal hızda koşar (eski 0.28x yavaşlama kaldırıldı).
+- ✅ **Can barı**: can azalınca kısa yanıp sönme (fark edilsin).
 
 ## RİTİM & ÇEŞİTLİLİK PAKETİ (devam ediyor)
 Amaç: tekdüzeliği kırmak, zorluğu artırmadan ritmi değiştirmek, online'da adaleti korumak.
@@ -172,6 +179,7 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 | `lib/decor.ts` | Madde 11: hash tabanlı deterministik zemin süsleri (mezar taşı/ağaç/çalı) — ortak |
 | `lib/miniquests.ts` | Madde 9: mini-görev tanımları + deterministik planlayıcı (online-adil) — ortak |
 | `lib/scares.ts` | Madde 10: rastgele korku olayları yönetici (ScareDirector, hasarsız/yerel) — ortak |
+| `lib/coins.ts` | Para sistemi (kalıcı, localStorage) — mini-görev ödülü + ileride dükkan |
 | `lib/story.ts` | Hikaye girişi + bölüm arası tekinsiz notlar |
 | `lib/maze.ts`, `lib/vision.ts`, `lib/pathfind.ts`, `lib/levels.ts`, `lib/types.ts` | Labirent, görüş/sis, yol bulma, bölüm ayarları, tipler |
 | `public/audio/menu.mp3`, `game.mp3` | Açılış + oyun-içi müzik |
@@ -231,6 +239,7 @@ ses (ateş/toplama/hasar/kapı/ağlama).
 - **Çıkış:** herkes kendi çıkışını açar (≥1 gelin öldür).
 
 ## 10) Son commitler (git log)
+- `9dd8b0f` Mini-görev revizyonu + para sistemi + tema/gelin/can-barı iyileştirmeleri
 - `16bdc93` Faz 5 (Madde 11): Mezarlık teması + Orman zenginleştirme
 - `4202802` Faz 5 (Madde 10): Rastgele korku olayları — atmosfer, hasarsız
 - `1ff58c7` Faz 4 (Madde 9): Mini-görevler — bölüm içi opsiyonel hedefler + ödül
