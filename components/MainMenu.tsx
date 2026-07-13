@@ -8,7 +8,7 @@ export default function MainMenu({
   onSolo,
   onRace,
   onMissions,
-  onEndless,
+  onModes,
   onSecrets,
   onShop,
   onAchievements,
@@ -25,7 +25,7 @@ export default function MainMenu({
   onSolo: () => void;
   onRace: () => void;
   onMissions: () => void;
-  onEndless: () => void;
+  onModes: () => void;
   onSecrets: () => void;
   onShop: () => void;
   onAchievements: () => void;
@@ -346,7 +346,7 @@ export default function MainMenu({
     { label: "Yalnız Kaçış", onClick: onSolo },
     { label: "Ölüm Koşusu", onClick: onRace, icon: mpIcon },
     { label: "Karanlık Görevler", onClick: onMissions },
-    { label: "Bitmeyen Gece", onClick: onEndless },
+    { label: "Modlar", onClick: onModes },
   ];
   const secondary: { icon: string; label: string; note?: string; onClick: () => void }[] = [
     { icon: "📷", label: "Sırlar", note: `${secrets}/${secretTotal}`, onClick: onSecrets },

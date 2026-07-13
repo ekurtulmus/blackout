@@ -18,6 +18,7 @@ export type Mission = {
   exitOpenAtStart?: boolean; // hedef yoksa çıkış baştan açık
   endless?: boolean; // Sonsuz Hayatta Kalma: çıkış yok, ölene kadar sür, skor=süre
   escalateEvery?: number; // endless: bu saniyede bir ekstra gelin doğar (zorluk artar)
+  arena?: boolean; // Arena: dalga hayatta kalma — her N öldürmede dalga artar, skor=dalga
   escape?: boolean; // Faz E: kaçış görevi — çıkış çöküyor, geri sayımla kaç
   escapeSeconds?: number; // kaçış için saniye
   escort?: boolean; // Askeri bul, zincirini çöz ve çıkışa birlikte götür
@@ -167,4 +168,19 @@ export const ENDLESS: Mission = {
   zombies: 10,
   endless: true,
   escalateEvery: 18, // her 18 sn bir ekstra gelin
+};
+
+// Ayrı mod: ARENA — dalga hayatta kalma. Her 6 öldürmede dalga artar, gelinler çoğalır.
+// Skor = geçilen dalga. Öldürdükçe para + dalga bonusu kazanılır. Tek can.
+export const ARENA: Mission = {
+  id: 101,
+  title: "Arena",
+  brief:
+    "Kapalı bir arena, kaçış yok. Gelinler dalgalar hâlinde üstüne gelir; her 6 gelini indirdiğinde dalga yükselir ve daha kalabalık, daha hızlı bir sürü doğar. Ne kadar dayanırsan o kadar dalga — ve o kadar altın.",
+  objectiveHint: "Dalgaları göğüsle · skor = dalga",
+  levelBase: 3,
+  lives: 1,
+  zombies: 8,
+  arena: true,
+  escalateEvery: 14,
 };

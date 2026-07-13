@@ -167,6 +167,7 @@ export class GameEngine {
   }
   ammoCount = 0;
   zombiesKilled = 0;
+  wave = 1; // Arena: geçilen dalga (skor)
   coinsEarned = 0; // bu bölümde kazanılan para (Game kalıcı cüzdana işler)
   levelClearBonus = 0; // bölüm bitince verilen para bonusu (ekranda göster)
   private riskMul = 1; // Madde 18: zorluğa göre para/puan çarpanı
@@ -216,7 +217,7 @@ export class GameEngine {
       this.lives = mission.lives;
       this.noFire = !!mission.noFire;
       this.exitOpen = !!mission.exitOpenAtStart;
-      if (mission.endless && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
+      if ((mission.endless || mission.arena) && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
       // Faz E: kaçış görevi — çıkış baştan açık + çökme geri sayımı
       if (mission.escape) {
         this.escape = true;
@@ -612,6 +613,25 @@ export class GameEngine {
   private checkMission() {
     const m = this.mission;
     if (!m || this.status !== "playing") return;
+    // Arena: dalga hayatta kalma — her 6 öldürmede bir dalga geçilir (burst + para bonusu)
+    if (m.arena) {
+      const KILLS_PER_WAVE = 6;
+      const targetWave = Math.floor(this.zombiesKilled / KILLS_PER_WAVE) + 1;
+      if (targetWave > this.wave) {
+        this.wave = targetWave;
+        const burst = 1 + Math.floor(this.wave / 2); // dalga büyüdükçe daha çok gelin
+        for (let i = 0; i < burst; i++) this.spawnBrideFar();
+        this.coinsEarned += 3 + this.wave; // dalga bonusu (para)
+        this.events.push("levelclear"); // dalga geçiş sesi
+      }
+      this.score = this.wave; // skor = geçilen dalga
+      // tıkanmayı önlemek için zamanla da hafif ekstra doğuş
+      if (this.time >= this.nextEscalate) {
+        this.spawnBrideFar();
+        this.nextEscalate += m.escalateEvery ?? 15;
+      }
+      return;
+    }
     // Sonsuz mod: kazanma yok, zamanla ekstra gelin doğar
     if (m.endless) {
       if (this.time >= this.nextEscalate) {
@@ -1345,8 +1365,8 @@ export class GameEngine {
   }
 
   private checkExit() {
-    // Hayatta kalma / sonsuz modda çıkış yok — sadece dayanılır
-    if (this.mission?.surviveTime || this.mission?.endless) return;
+    // Hayatta kalma / sonsuz / arena modunda çıkış yok — sadece dayanılır
+    if (this.mission?.surviveTime || this.mission?.endless || this.mission?.arena) return;
     const pcell = cellOf(this.player.pos);
     if (pcell.x === this.exit.x && pcell.y === this.exit.y) {
       if (this.exitOpen) {
@@ -1397,6 +1417,9 @@ export class GameEngine {
   objectiveText(): string {
     const m = this.mission;
     if (!m) return "";
+    if (m.arena) {
+      return `Dalga ${this.wave} · ${this.zombiesKilled % 6}/6`;
+    }
     if (m.endless) {
       return `Süre ${Math.floor(this.time)}s`;
     }

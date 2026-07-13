@@ -48,7 +48,11 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   başarımda **"🪙 Ödülü Al (+n)"** butonu → alınca cüzdan artar + "✓ Ödül alındı". Dükkânda ilk ürün **"🪙 ALTIN SATIN
   AL"** (`Shop.tsx` GOLD_PACKS: 500/12₺, 1200/25₺, 3000/55₺) — **DENEME: ödeme yok**, tıklayınca altın bedava eklenir.
   Canlı: 0→500 altın, başarım +10 → 510, "Ödül alındı" doğrulandı.
-- ⏳ **Faz 6 — Modlar & Arena**: menüde "Modlar" ekranı + yeni **Arena (dalga hayatta kalma)** modu.
+- ✅ **Faz 6 — Modlar & Arena**: MainMenu'de "Bitmeyen Gece" primary'si **"Modlar"** oldu (`onModes`); yeni
+  **Modlar ekranı** (page.tsx `modes`) Bitmeyen Gece + Arena'yı listeler (en iyi skorlarla). Yeni **Arena** modu
+  (`missions.ARENA`, `engine` `arena`+`wave`): kapalı arena, çıkış yok, tek can; her **6 öldürmede dalga** yükselir
+  → burst gelin + para bonusu; skor=dalga (`blackout_arena_best`). HUD "Dalga N · k/6". `arenaplay`/`arenaresult`
+  ekranları (endless mimarisi). Canlı: Modlar/Arena açılıyor, "MOD" brief, konsol temiz.
 - ⏳ **Faz 7 — Online**: oda kurma 200 altın; 2 kişiden az kalınca oda kapanır. (global erişim zaten var)
 - ⏳ **Faz 8 — Kayıt & sıfırla**: Ayarlar'a "Oyunu Sıfırla" (onaylı); ilerleme/satın alma geçmişi.
 - ⏳ **Faz 9 — Line icon geçişi**: menü+oyun tüm emoji → temaya uygun özel SVG line-icon.
