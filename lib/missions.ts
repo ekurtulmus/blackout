@@ -18,6 +18,8 @@ export type Mission = {
   exitOpenAtStart?: boolean; // hedef yoksa çıkış baştan açık
   endless?: boolean; // Sonsuz Hayatta Kalma: çıkış yok, ölene kadar sür, skor=süre
   escalateEvery?: number; // endless: bu saniyede bir ekstra gelin doğar (zorluk artar)
+  escape?: boolean; // Faz E: kaçış görevi — çıkış çöküyor, geri sayımla kaç
+  escapeSeconds?: number; // kaçış için saniye
 };
 
 export const MISSIONS: Mission[] = [
@@ -32,12 +34,13 @@ export const MISSIONS: Mission[] = [
   },
   {
     id: 2,
-    title: "Zamana Karşı",
-    brief: "Çıkış açık ama acele et — 90 saniyen var. Koridorlarda oyalanma.",
-    objectiveHint: "90 sn içinde çık",
+    title: "Yıkım",
+    brief: "Çıkış çöküyor! Tavan üstüne iniyor — 90 saniye içinde gizli kapıya ulaş yoksa altında kalırsın.",
+    objectiveHint: "Çıkış çöküyor · 90 sn içinde kaç",
     levelBase: 3,
     lives: 2,
-    timeLimit: 90,
+    escape: true,
+    escapeSeconds: 90,
     exitOpenAtStart: true,
   },
   {

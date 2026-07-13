@@ -81,6 +81,8 @@ export default function Game({
   const [exitHint, setExitHint] = useState(""); // ayna kehaneti: çıkış yönü
   const [mqNotice, setMqNotice] = useState(""); // bölüm başı uyarı (ör. çember görevi)
   const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
+  const [escapeSec, setEscapeSec] = useState(""); // Faz E: kaçış geri sayımı
+  const [hostageState, setHostageState] = useState<"none" | "rescue" | "escort">("none");
   const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
   const prevHpRef = useRef(PLAYER_MAX_HP);
   const engineRef = useRef<GameEngine | null>(null);
@@ -151,8 +153,14 @@ export default function Game({
       skinRingRef.current = SKIN_RINGS[inv.skin];
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
     }
-    // Çember görevi çıkışı kilitler → bölüm başında oyuncuyu uyar
-    if (!mission && engine.miniQuest?.kind === "markedkill") {
+    // Bölüm başı uyarıları (çember / kaçış / rehin)
+    if (engine.escape) {
+      setMqNotice("ÇIKIŞ ÇÖKÜYOR! Gizli kapıya koş — vaktin azalıyor!");
+      window.setTimeout(() => setMqNotice(""), 6000);
+    } else if (engine.hostage) {
+      setMqNotice("Karanlıkta bir tutsak var — onu kurtar, birlikte kaçın (ekstra ödül).");
+      window.setTimeout(() => setMqNotice(""), 6000);
+    } else if (!mission && engine.miniQuest?.kind === "markedkill") {
       setMqNotice(
         "Bu bölümde çıkış KİLİTLİ: işaretli ⊚ çemberin içinde bir gelin öldürmelisin."
       );
@@ -643,6 +651,38 @@ export default function Game({
         ctx!.restore();
       }
 
+      // --- Rehin (Faz E): kurtar → seni takip eder ---
+      if (engine.hostage) {
+        const h = engine.hostage;
+        const hc = { x: Math.floor(h.pos.x), y: Math.floor(h.pos.y) };
+        if (vis.get(hc.y * cols + hc.x) !== undefined) {
+          const s = worldToScreen(h.pos.x, h.pos.y, camX, camY);
+          const col = h.rescued ? "#7dffb0" : "#8be9ff";
+          ctx!.save();
+          ctx!.shadowColor = col;
+          ctx!.shadowBlur = h.rescued ? 8 : 14;
+          // huddled figure: baş + gövde
+          ctx!.fillStyle = "#2a2f36";
+          ctx!.beginPath();
+          ctx!.ellipse(s.sx, s.sy + TS * 0.06, TS * 0.22, TS * 0.26, 0, 0, Math.PI * 2);
+          ctx!.fill();
+          ctx!.fillStyle = h.rescued ? "#cfe9d6" : "#cfe0ee";
+          ctx!.beginPath();
+          ctx!.arc(s.sx, s.sy - TS * 0.16, TS * 0.12, 0, Math.PI * 2);
+          ctx!.fill();
+          if (!h.rescued) {
+            // kilit/parlama halkası (kurtar!)
+            ctx!.globalAlpha = 0.4 + 0.3 * Math.sin(engine.time * 4);
+            ctx!.strokeStyle = col;
+            ctx!.lineWidth = 2;
+            ctx!.beginPath();
+            ctx!.arc(s.sx, s.sy, TS * 0.4, 0, Math.PI * 2);
+            ctx!.stroke();
+          }
+          ctx!.restore();
+        }
+      }
+
       // --- Kanlı Gelinler (türlere göre) ---
       for (const z of engine.zombies) {
         const s = worldToScreen(z.pos.x, z.pos.y, camX, camY);
@@ -812,6 +852,20 @@ export default function Game({
 
       // --- Madde 10: rastgele korku efektleri (görsel, HASARSIZ) ---
       drawScareFx(engine.scares.fx, engine.time, cssW, cssH);
+
+      // --- Faz E: kaçış — süre azaldıkça kırmızı nabız (aciliyet) ---
+      if (engine.escape) {
+        const rem = engine.escapeTime - engine.time;
+        if (rem < 12) {
+          const it = Math.max(0, 1 - rem / 12);
+          const pulse = 0.12 + 0.28 * it * (0.5 + 0.5 * Math.sin(engine.time * (4 + it * 7)));
+          const g = ctx!.createRadialGradient(cssW / 2, cssH / 2, Math.min(cssW, cssH) * 0.28, cssW / 2, cssH / 2, Math.min(cssW, cssH) * 0.72);
+          g.addColorStop(0, "rgba(150,0,0,0)");
+          g.addColorStop(1, `rgba(150,0,0,${pulse})`);
+          ctx!.fillStyle = g;
+          ctx!.fillRect(0, 0, cssW, cssH);
+        }
+      }
     }
 
     // Ekran kenarından geçen gölge / fenerin anlık sıçraması (atmosfer)
@@ -970,6 +1024,9 @@ export default function Game({
       // Mini-görev (Faz 4): aktif hedef metni + ayna kehaneti yönü
       setMq(engine.miniQuestText());
       setExitHint(engine.exitHintText());
+      // Faz E: kaçış geri sayımı + rehin durumu
+      setEscapeSec(engine.escapeText());
+      setHostageState(engine.hostage ? (engine.hostage.rescued ? "escort" : "rescue") : "none");
       if (engine.mqRewardMsg && !mqReportedRef.current) {
         mqReportedRef.current = true;
         const d = engine.mqDef;
@@ -1158,6 +1215,20 @@ export default function Game({
           <div className="chip" style={{ borderColor: "rgba(180,220,255,0.6)" }}>
             <span className="lbl">Kehanet</span>
             <span className="val" style={{ color: "#bfe0ff" }}>{exitHint}</span>
+          </div>
+        )}
+        {escapeSec && (
+          <div className="chip" style={{ borderColor: "rgba(255,90,90,0.8)" }}>
+            <span className="lbl">🧨 Çöküyor</span>
+            <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
+          </div>
+        )}
+        {hostageState !== "none" && (
+          <div className="chip" style={{ borderColor: hostageState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
+            <span className="lbl">Rehin</span>
+            <span className="val" style={{ color: hostageState === "escort" ? "#7dffb0" : "#8be9ff" }}>
+              {hostageState === "escort" ? "çıkışa götür" : "kurtar"}
+            </span>
           </div>
         )}
         {hud.veil > 0 && (

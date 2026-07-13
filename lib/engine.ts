@@ -17,6 +17,7 @@ import {
 } from "./maze";
 import { computeVisible, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
+import { findPath } from "./pathfind";
 import { BRIDE_RADIUS, assignBrideKind, moveBrides } from "./brides";
 import { TUNING } from "./config";
 import { Flashlight } from "./flashlight";
@@ -137,6 +138,11 @@ export class GameEngine {
   missionFailReason: "" | "time" | "death" = ""; // başarısızlık nedeni (HUD/ekran)
   exit: Vec;
   exitOpen = false;
+  // Faz E: kaçış bölümü (çıkış çöküyor — geri sayımla kaç)
+  escape = false;
+  escapeTime = 0; // bu ana kadar çıkışa ulaşmalısın (sn)
+  // Faz E: rehin kurtarma (kilitli birini kurtar, seni takip eder, birlikte çık)
+  hostage: { pos: Vec; rescued: boolean; path?: Vec[] | null; repath?: number } | null = null;
   ammoCount = 0;
   zombiesKilled = 0;
   coinsEarned = 0; // bu bölümde kazanılan para (Game kalıcı cüzdana işler)
@@ -189,6 +195,12 @@ export class GameEngine {
       this.noFire = !!mission.noFire;
       this.exitOpen = !!mission.exitOpenAtStart;
       if (mission.endless && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
+      // Faz E: kaçış görevi — çıkış baştan açık + çökme geri sayımı
+      if (mission.escape) {
+        this.escape = true;
+        this.exitOpen = true;
+        this.escapeTime = mission.escapeSeconds ?? mission.timeLimit ?? 60;
+      }
     } else if (diff !== "orta") {
       // Tek kişilik zorluk: gelin sayısı/hız/görüş ölçekle
       const dm = DIFF_MULT[diff];
@@ -360,10 +372,36 @@ export class GameEngine {
     // Mini-görev (Faz 4): yalnız NORMAL tek kişilik bölümlerde (görev modu değil).
     // Bölüm başına 1 opsiyonel hedef; çıkışı geciktirmez, tamamlanınca küçük ödül.
     if (!mission) {
-      const plan = planMiniQuest(Math.random, floors, spawnCell, this.exit, MQ_KINDS_SP);
-      if (plan) {
-        this.miniQuest = plan;
-        this.mqDef = MQ_DEFS[plan.kind];
+      // Faz E: bölüm başına EN FAZLA bir özel durum — kaçış > rehin > mini-görev.
+      if (this.level >= 3 && Math.random() < 0.22) {
+        // Kaçış bölümü: çıkış baştan açık, çökme geri sayımı
+        this.escape = true;
+        this.exitOpen = true;
+        this.escapeTime = (best / PLAYER_SPEED) * 1.7 + 5;
+      } else if (this.level >= 2 && Math.random() < 0.25) {
+        // Rehin: çıkışa uzak, mermilerden farklı bir hücrede
+        const used = new Set([
+          ...this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+          ...this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+        ]);
+        const hCells = this.shuffle(
+          floors.filter(
+            (c) =>
+              distMap[c.y][c.x] >= 6 &&
+              !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+              !(c.x === exit.x && c.y === exit.y) &&
+              !used.has(c.y * this.maze.cols + c.x)
+          )
+        );
+        if (hCells[0]) {
+          this.hostage = { pos: { x: hCells[0].x + 0.5, y: hCells[0].y + 0.5 }, rescued: false };
+        }
+      } else {
+        const plan = planMiniQuest(Math.random, floors, spawnCell, this.exit, MQ_KINDS_SP);
+        if (plan) {
+          this.miniQuest = plan;
+          this.mqDef = MQ_DEFS[plan.kind];
+        }
       }
       // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)
       this.assignSpecialKinds();
@@ -472,9 +510,11 @@ export class GameEngine {
     this.pickupVeil();
     this.updateMucus(dt);
     this.updateMiniQuest(dt);
+    this.updateHostage(dt);
     this.computeVision();
     this.checkExit();
     this.checkMission();
+    this.checkEscape();
     this.checkDeath();
   }
 
@@ -1059,6 +1099,51 @@ export class GameEngine {
     return `Çıkış kilitli: önce ${need} gelini yok et.`;
   }
 
+  // Faz E: rehin — yakınına gelince kurtar; kurtulduysa oyuncuyu takip eder.
+  private updateHostage(dt: number) {
+    const h = this.hostage;
+    if (!h) return;
+    const d = dist(h.pos, this.player.pos);
+    if (!h.rescued) {
+      if (d < 0.8) {
+        h.rescued = true;
+        this.events.push("secret");
+      }
+      return;
+    }
+    // Kurtuldu → oyuncuyu ~1 hücre geriden, LABİRENTTE yol bularak takip et
+    if (d <= 1.1) return; // yeterince yakın, bekle
+    h.repath = (h.repath ?? 0) - dt;
+    if (!h.path || h.path.length === 0 || (h.repath ?? 0) <= 0) {
+      h.path = findPath(this.maze, cellOf(h.pos), cellOf(this.player.pos));
+      h.repath = 0.4;
+    }
+    if (h.path && h.path.length > 0) {
+      const next = h.path[0];
+      const tp = { x: next.x + 0.5, y: next.y + 0.5 };
+      const dx = tp.x - h.pos.x;
+      const dy = tp.y - h.pos.y;
+      const len = Math.hypot(dx, dy) || 1;
+      tryMove(this.maze, h.pos, PLAYER_RADIUS, (dx / len) * PLAYER_SPEED * 0.95 * dt, (dy / len) * PLAYER_SPEED * 0.95 * dt);
+      if (dist(h.pos, tp) < 0.15) h.path.shift();
+    }
+  }
+
+  // Faz E: kaçış bölümü — süre dolunca çıkış çöker (bir can gider).
+  private checkEscape() {
+    if (!this.escape || this.status !== "playing") return;
+    if (this.time > this.escapeTime) {
+      this.player.hp = 0; // çıkış çöktü → ezildin (checkDeath can düşürür)
+      this.escape = false; // tekrar tetiklenmesin
+    }
+  }
+
+  // HUD: kaçış geri sayımı ("" = kaçış bölümü değil)
+  escapeText(): string {
+    if (!this.escape) return "";
+    return `${Math.max(0, Math.ceil(this.escapeTime - this.time))}s`;
+  }
+
   private pickupPhoto() {
     const p = this.photoItem;
     if (!p || p.taken) return;
@@ -1091,6 +1176,8 @@ export class GameEngine {
         } else {
           // Bölüm geçince para bonusu (Madde: yeni para kazanma + risk çarpanı)
           this.levelClearBonus = Math.round((8 + this.level * 2) * this.riskMul);
+          // Faz E: rehni kurtarıp birlikte çıktıysan ekstra ödül
+          if (this.hostage?.rescued) this.levelClearBonus += Math.round(12 * this.riskMul);
           this.coinsEarned += this.levelClearBonus;
           this.status = this.level >= 10 ? "win" : "levelclear";
           this.events.push(this.status === "win" ? "win" : "levelclear");
