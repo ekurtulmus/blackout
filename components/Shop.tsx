@@ -1,7 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import Icon, { type IconName } from "@/components/Icon";
 import { getCoins, addCoins } from "@/lib/coins";
+
+// Dükkân eşya id → line ikon
+const ITEM_ICON: Record<string, IconName> = {
+  radar: "radar",
+  shield: "shield",
+  trap: "trap",
+  ammoPack: "ammo",
+  healthPack: "heart",
+  permAmmo: "ammo",
+  extraLife: "heart",
+  flash_amber: "flame",
+  flash_crimson: "flame",
+  skin_gold: "people",
+  skin_violet: "people",
+};
 import {
   SHOP_ITEMS,
   buyItem,
@@ -68,10 +84,14 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
       <button className="topback" onClick={onBack}>← Geri</button>
       <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div className="big" style={{ color: "#ffd75a" }}>🛒 {title}</div>
+          <div className="big" style={{ color: "#ffd75a", display: "flex", alignItems: "center", gap: 10 }}>
+            <Icon name="cart" size={28} stroke={1.6} /> {title}
+          </div>
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)", fontSize: 18 }}>
             <span className="lbl">Cüzdan</span>
-            <span className="val" style={{ color: "#ffd75a" }}>🪙 {coins}</span>
+            <span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 5 }}>
+              <Icon name="coin" size={16} /> {coins}
+            </span>
           </div>
         </div>
 
@@ -79,14 +99,14 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
 
         {/* Oyun parası (altın) satın al — ilk ürün. DENEME: ödeme alınmaz. */}
         <div className="card-parch" style={{ padding: 16, marginBottom: 18, borderColor: "rgba(255,205,80,0.5)" }}>
-          <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em" }}>🪙 ALTIN SATIN AL</div>
+          <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}><Icon name="coin" size={18} /> ALTIN SATIN AL</div>
           <div style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 12px" }}>
             Deneme sürümü — ödeme alınmaz, altın anında hesabına eklenir.
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
             {GOLD_PACKS.map((p) => (
               <div key={p.gold} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", background: "rgba(255,215,90,0.06)", border: "1px solid rgba(255,205,80,0.3)", borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd75a" }}>🪙 {p.gold}</div>
+                <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="coin" size={18} /> {p.gold}</div>
                 {p.tag && <div style={{ fontSize: 11, color: "#7dffb0" }}>{p.tag}</div>}
                 <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => buyGold(p.gold)}>
                   {p.price}
@@ -126,7 +146,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
                   gap: 8,
                 }}
               >
-                <div style={{ fontSize: 26 }}>{it.icon}</div>
+                <div style={{ color: "#e0a24a" }}><Icon name={ITEM_ICON[it.id] ?? "box"} size={26} stroke={1.6} /></div>
                 <div style={{ fontWeight: 800 }}>{it.title}</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{it.desc}</div>
                 {owned && <div style={{ fontSize: 12, color: "#7dffb0" }}>{owned}</div>}

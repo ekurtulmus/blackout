@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Icon from "@/components/Icon";
 import {
   getMyCode,
   getFriends,
@@ -67,7 +68,9 @@ export default function Friends({
     <div className="menuscreen">
       <button className="topback" onClick={onBack}>← Menü</button>
       <div style={{ maxWidth: 560, margin: "0 auto", width: "100%" }}>
-        <div className="big" style={{ color: "#7dffb0" }}>👥 Arkadaşlar</div>
+        <div className="big" style={{ color: "#7dffb0", display: "flex", alignItems: "center", gap: 10 }}>
+          <Icon name="people" size={30} stroke={1.6} /> Arkadaşlar
+        </div>
         <div className="subtitle">
           {friends.length} arkadaş · <b style={{ color: "#7dffb0" }}>{onlineCount} çevrimiçi</b>
         </div>

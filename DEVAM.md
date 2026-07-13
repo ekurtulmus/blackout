@@ -68,7 +68,12 @@ Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence**
   etti · Katıl") → `pendingJoin` ile lobiye taşınıp o odaya otomatik katılır. Canlı UI doğrulandı (kod Y5ZG45,
   arkadaş ekleme çalıştı); presence+davet **2 gerçek cihaz** gerektirir. NOT: stale Turbopack konsol hatası
   (page.tsx:1059) — dosya doğru, son derleme ✓, app çalışıyor.
-- 🎉 **10 FAZ + 4 ek istek/bug TAMAM.** Kalan: Faz 9 (emoji→line ikon geçişi) + canlı deploy + 2-cihaz online testi.
+- 🔄 **Faz 9 — Line ikonlar (DEVAM EDİYOR)**: `components/Icon.tsx` ortak ince-ikon seti (30 ikon, currentColor
+  SVG). Çevrildi: **ana menü** ikincil çipler (Sırlar/Dükkân/Başarım/Günlük + para) & arkadaş butonu, **Friends**
+  başlığı, **Shop** (başlık/cüzdan/altın + tüm eşya kartları id→ikon eşlemesiyle). Canlı: menü emoji-siz, dükkân 17 ikon.
+  KALAN: oyun-içi HUD (Game/OnlineGame: para/envanter/kalkan/radar/tuzak…), page.tsx ekran başlıkları (🏆/📖/♾️/⚔️),
+  Settings (🎵/🔊), mission/secret başlık emojileri.
+- 🎉 **Faz 1-8, 10 + 4 ek istek/bug TAMAM; Faz 9 kısmen.** Kalan: Faz 9 kalan yüzeyler + canlı deploy + 2-cihaz online testi.
 Zaten yapılmış: eşya tüm modlarda ortak/kalıcı ✅, ilerleme kaydı ✅, online global ✅.
 
 ## ONLINE DÜKKÂN + AYRILMA HATASI DÜZELTMESİ (2026-07-13)

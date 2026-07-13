@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Icon, { type IconName } from "@/components/Icon";
 
 // Sinematik ana menü — kullanıcının tasarımı (tepeden-bakış labirent animasyonu +
 // kanlı vinyet + Cinzel başlık) oyuna uyarlandı. Tüm modlara + ikincil ekranlara bağlı.
@@ -352,11 +353,11 @@ export default function MainMenu({
     { label: "Karanlık Görevler", onClick: onMissions },
     { label: "Modlar", onClick: onModes },
   ];
-  const secondary: { icon: string; label: string; note?: string; onClick: () => void }[] = [
-    { icon: "📷", label: "Sırlar", note: `${secrets}/${secretTotal}`, onClick: onSecrets },
-    { icon: "🛒", label: "Dükkân", note: `🪙${coins}`, onClick: onShop },
-    { icon: "🏆", label: "Başarımlar", note: `${ach}/${achTotal}`, onClick: onAchievements },
-    { icon: "📖", label: "Günlük", note: `${journal}/${journalTotal}`, onClick: onJournal },
+  const secondary: { icon: IconName; label: string; note?: string; coin?: boolean; onClick: () => void }[] = [
+    { icon: "photo", label: "Sırlar", note: `${secrets}/${secretTotal}`, onClick: onSecrets },
+    { icon: "cart", label: "Dükkân", note: `${coins}`, coin: true, onClick: onShop },
+    { icon: "trophy", label: "Başarımlar", note: `${ach}/${achTotal}`, onClick: onAchievements },
+    { icon: "book", label: "Günlük", note: `${journal}/${journalTotal}`, onClick: onJournal },
   ];
 
   // Nasıl Oynanır — konu-konu bilgi (kullanıcı merak ettiğine tıklar)
@@ -512,9 +513,14 @@ export default function MainMenu({
         <div className="mm-secondary">
           {secondary.map((it) => (
             <button key={it.label} className="mm-schip" onClick={it.onClick}>
-              <span className="mm-sicon">{it.icon}</span>
+              <Icon name={it.icon} size={15} className="mm-sicon" />
               {it.label}
-              {it.note ? <span className="mm-note"> {it.note}</span> : null}
+              {it.note ? (
+                <span className="mm-note">
+                  {it.coin ? <Icon name="coin" size={12} style={{ margin: "0 2px -2px 0" }} /> : " "}
+                  {it.note}
+                </span>
+              ) : null}
             </button>
           ))}
         </div>
