@@ -1,6 +1,7 @@
 // 10 bölümlük kademeli zorluk eğrisi.
 // Labirent büyür, zombi sayısı/hızı hafifçe artar — hepsi aynı anda değil, adım adım.
 import type { LevelConfig } from "./types";
+import { TUNING } from "./config";
 
 export const TOTAL_LEVELS = 10;
 
@@ -18,9 +19,11 @@ export function levelConfig(level: number): LevelConfig {
   // Zombi sayısı 2× (4 -> 20)
   const zombies = Math.round(2 + t * 8) * 2;
 
-  // Hız 1.5× — ama oyuncunun (3.4) hafif altında kalsın ki kaçış mümkün olsun
-  const rawSpeed = (1.5 + t * 0.9) * 1.5; // 2.25 -> 3.6
-  const zombieSpeed = Math.min(3.15, rawSpeed);
+  // Hız: YUMUŞAK ease-in artış (sıçramalı değil). Tavan = oyuncunun %8 altı,
+  // asla geçilmez → kaçış her zaman mümkün ama gitgide zor.
+  const sT = Math.pow(t, TUNING.brideSpeedEase); // ease-in (erken bölümler daha yumuşak)
+  const rawSpeed = 2.2 + sT * 1.4; // 2.2 -> 3.6 (ease-in)
+  const zombieSpeed = Math.min(TUNING.brideSpeedCap, rawSpeed);
 
   // Görüş bölüm ilerledikçe hafifçe daralır (gerilim artar)
   const visionRadius = Math.round(6.5 - t * 1.5); // 6 -> 5

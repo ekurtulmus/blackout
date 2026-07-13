@@ -121,8 +121,8 @@ export default function OnlineLobby({
     if (!room || room.role !== "host") return;
     if (players.length < 2) return;
     const themeSeed = randomThemeSeed();
-    const lvl = generateRaceLevel(1, diff, themeSeed);
     const pls = room.players();
+    const lvl = generateRaceLevel(1, diff, themeSeed, pls.length);
     room.startGame({ diff, level: serializeLevel(lvl), themeSeed });
     handedOff.current = true;
     onStarted(room, {

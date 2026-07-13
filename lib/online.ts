@@ -6,6 +6,7 @@ import { bfsDistances, floorCells, generateMaze, type Maze } from "./maze";
 import type { BrideConfig } from "./brides";
 import type { NetRole } from "./net";
 import { themeIndexFor } from "./themes";
+import { TUNING } from "./config";
 
 export const MAX_PLAYERS = 6;
 
@@ -45,7 +46,8 @@ export function raceBrideConfig(level: number, diff: RaceDiff): BrideConfig {
   return {
     intelligence: Math.max(0, Math.min(1, cfg.intelligence + p.intelAdd)),
     visionRadius: cfg.visionRadius,
-    zombieSpeed: Math.min(3.15, cfg.zombieSpeed * p.speedMul),
+    // Zor'da bile tavan = oyuncunun %8 altı (Madde 3)
+    zombieSpeed: Math.min(TUNING.brideSpeedCap, cfg.zombieSpeed * p.speedMul),
   };
 }
 
@@ -63,10 +65,24 @@ export type RaceLevel = {
   brideSpawns: Vec[]; // gelin başlangıçları — SADECE host kullanır (üretir/simüle eder)
 };
 
-export function generateRaceLevel(level: number, diff: RaceDiff = "orta", themeSeed = 0): RaceLevel {
+export function generateRaceLevel(
+  level: number,
+  diff: RaceDiff = "orta",
+  themeSeed = 0,
+  playerCount = 2
+): RaceLevel {
   const cfg = levelConfig(level);
-  const maze = generateMaze(cfg.cols, cfg.rows, cfg.braid, cfg.openness);
   const p = diffParams(diff);
+  // Madde 1: kişi sayısına oranlı harita boyutu (tek sayı tut)
+  const pc = Math.max(1, playerCount);
+  const extra = Math.floor((pc - 1) * TUNING.mapSizePerPlayer);
+  let cols = cfg.cols + extra;
+  let rows = cfg.rows + extra;
+  if (cols % 2 === 0) cols++;
+  if (rows % 2 === 0) rows++;
+  const maze = generateMaze(cols, rows, cfg.braid, cfg.openness);
+  // Yoğunluk çarpanı (gelin/mermi/can kişi sayısıyla ölçeklenir)
+  const density = TUNING.densityBase + TUNING.densityPer * pc;
 
   // Çıkış: sol-üstten en uzak ulaşılabilir hücre
   const dTL = bfsDistances(maze, { x: 1, y: 1 });
@@ -104,7 +120,9 @@ export function generateRaceLevel(level: number, diff: RaceDiff = "orta", themeS
     spawns.every((s) => Math.hypot(c.x - s.x, c.y - s.y) >= 4);
   let brideCand = reach.filter(farFromPlayers);
   if (brideCand.length === 0) brideCand = reach.filter((c) => !(c.x === exit.x && c.y === exit.y));
-  const brideCount = Math.max(2, Math.round(cfg.zombies * p.countMul));
+  // Gelin sayısı: zorluk × kişi-yoğunluğu (Madde 1). Kişi başı max 4 kuralı
+  // (Madde 0) simülasyonda üstte tutulur; buradaki artış haritaya yayılır.
+  const brideCount = Math.max(2, Math.ceil(cfg.zombies * p.countMul * density));
   const brideSpawns = shuffle(brideCand).slice(0, brideCount);
 
   // Mermiler: doğuş/çıkış dışı hücreler (gelin sayısı + bol tampon; ayrıca respawn var)
@@ -117,7 +135,8 @@ export function generateRaceLevel(level: number, diff: RaceDiff = "orta", themeS
   // Can paketleri: doğuş/çıkış ve mermi dışı hücreler (nadir)
   const ammoSet = new Set(ammo.map((a) => a.y * maze.cols + a.x));
   const healthCells = shuffle(reach.filter((c) => !onSpawn(c) && !ammoSet.has(c.y * maze.cols + c.x)));
-  const health = healthCells.slice(0, 3);
+  const healthCount = Math.min(TUNING.healthMax, Math.max(2, Math.round(TUNING.healthBase * density)));
+  const health = healthCells.slice(0, healthCount);
 
   return {
     level,

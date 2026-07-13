@@ -13,6 +13,7 @@ import {
   HEAL_AMOUNT,
 } from "@/lib/engine";
 import { BRIDE_RADIUS, moveBrides, randomDir } from "@/lib/brides";
+import { TUNING } from "@/lib/config";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
 import { sound } from "@/lib/audio";
@@ -235,7 +236,7 @@ export default function OnlineGame({
       resultPending.current = true;
       scores.current = scores.current.slice();
       scores.current[seat] = (scores.current[seat] ?? 0) + 1;
-      const next = generateRaceLevel(levelRef.current.level + 1, diff, info.themeSeed);
+      const next = generateRaceLevel(levelRef.current.level + 1, diff, info.themeSeed, order.length);
       room.send({
         t: "result",
         winnerSeat: seat,
@@ -486,7 +487,8 @@ export default function OnlineGame({
       if (amHost.current) {
         const targets: Vec[] = [selfPos.current];
         for (const o of others.current.values()) targets.push(o.pos);
-        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt);
+        // Madde 0: online'da bir oyuncunun peşinde en fazla N gelin
+        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt, TUNING.maxHuntersPerPlayer);
         // ölen gelinleri 20 sn sonra uzakta yeniden doğur
         const q = brideRespawnQueue.current;
         if (q.length) {

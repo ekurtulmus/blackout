@@ -62,6 +62,17 @@
   Karanlık Görevler / Bitmeyen Gece; ekran başlıkları (SENİ BULDULAR, KARANLIK KAZANDI, GÜN AĞARDI) ve
   açıklamalar daha atmosferik. Lobi "ÖLÜM YARIŞI". (Sadece görünen metin; ekran anahtarları aynı.)
 
+## RİTİM & ÇEŞİTLİLİK PAKETİ (devam ediyor)
+Amaç: tekdüzeliği kırmak, zorluğu artırmadan ritmi değiştirmek, online'da adaleti korumak.
+Merkezi ayar: **`lib/config.ts`** (`TUNING`) — tüm denge sayıları burada.
+- ✅ **Faz 1** (2026-07-13): Madde 0 kişi başı **max 4 gelin** (`brides.moveBrides(...,maxHunters)`, online host 4 verir,
+  tek kişilik Infinity) · Madde 1 **kişi sayısına oranlı harita+yoğunluk** (`online.generateRaceLevel(...,playerCount)`) ·
+  Madde 2 temas hasarı **35→20** · Madde 3 **yumuşak ease-in hız + %92 tavan** (`brideSpeedCap`, Zor'da bile geçilmez).
+  Test: 12 Faz-1 + regresyon (573) geçti.
+- ⏳ Faz 2: dinamik görüş (lastik-bant) + telegraph'lı fener kararması.
+- ⏳ Faz 3: karanlıkta hızlanan gelin + mukus gelin + görünmezlik duvağı.
+- ⏳ Faz 4: mini-görevler (online-adil). ⏳ Faz 5: korku olayları + Mezarlık teması.
+
 ## 3) Nasıl çalıştırılır (yerel)
 ```bash
 cd D:\OneDrive\Desktop\blackout

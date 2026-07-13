@@ -18,17 +18,18 @@ import {
 import { computeVisible, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
 import { BRIDE_RADIUS, moveBrides } from "./brides";
+import { TUNING } from "./config";
 import type { Mission } from "./missions";
 
 // --- Sabitler ---
-export const PLAYER_SPEED = 3.4; // hücre/saniye
+export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
 export const PLAYER_RADIUS = 0.3;
 export const ZOMBIE_RADIUS = BRIDE_RADIUS;
 export const BULLET_SPEED = 12;
 export const BULLET_LIFE = 1.2;
 export const FIRE_COOLDOWN = 0.22;
 export const PLAYER_MAX_HP = 100;
-export const CONTACT_DPS = 35; // temas başına saniyelik hasar
+export const CONTACT_DPS = TUNING.contactDps; // temas başına saniyelik hasar (config: 20)
 export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
 export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
 export const AMMO_RESPAWN_SEC = 10; // toplanan mermi kaç saniye sonra geri doğar
@@ -149,7 +150,8 @@ export class GameEngine {
       const dm = DIFF_MULT[diff];
       cfg = { ...cfg };
       cfg.zombies = Math.max(1, Math.round(cfg.zombies * dm.count));
-      cfg.zombieSpeed = Math.min(3.3, cfg.zombieSpeed * dm.speed);
+      // Zor'da bile gelin hızı tavanı (oyuncunun %8 altı) asla aşılmaz
+      cfg.zombieSpeed = Math.min(TUNING.brideSpeedCap, cfg.zombieSpeed * dm.speed);
       cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * dm.vision));
     }
     this.config = cfg;

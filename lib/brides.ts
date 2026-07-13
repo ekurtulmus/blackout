@@ -25,43 +25,69 @@ function randomDir(): Vec {
   return DIRS[Math.floor(Math.random() * DIRS.length)];
 }
 
-// Tüm gelinleri güncelle (en yakın oyuncuyu hedefleyerek)
+// Tüm gelinleri güncelle (en yakın oyuncuyu hedefleyerek).
+// maxHunters: bir oyuncunun peşinde AYNI ANDA kaç gelin olabileceği (Madde 0).
+// Online'da host bunu 4 verir; tek kişilikte Infinity (etkisiz).
 export function moveBrides(
   brides: Zombie[],
   maze: Maze,
   config: BrideConfig,
   players: Vec[],
-  dt: number
+  dt: number,
+  maxHunters = Infinity
 ) {
   if (players.length === 0) return;
   const smart = config.intelligence;
+  const hunterCount = new Array(players.length).fill(0); // oyuncu başına aktif avcı
   for (const z of brides) {
-    // en yakın oyuncu
-    let nearest = players[0];
+    // en yakın oyuncu (index)
+    let nIdx = 0;
     let nd = dist(z.pos, players[0]);
     for (let i = 1; i < players.length; i++) {
       const d = dist(z.pos, players[i]);
       if (d < nd) {
         nd = d;
-        nearest = players[i];
+        nIdx = i;
       }
     }
-    const pcell = cellOf(nearest);
     const zcell = cellOf(z.pos);
+    const nearestCell = cellOf(players[nIdx]);
     const detect = config.visionRadius + 0.5 + smart * 2.5;
-    const canSee = nd <= detect && hasLineOfSight(maze, zcell, pcell);
+    const canSee = nd <= detect && hasLineOfSight(maze, zcell, nearestCell);
 
     if (canSee) {
       z.aware = true;
-      z.lastSeen = { x: pcell.x, y: pcell.y };
+      z.lastSeen = { x: nearestCell.x, y: nearestCell.y };
       z.seenTimer = 0;
     } else {
       z.seenTimer += dt;
     }
 
     if (z.aware) {
-      const target = canSee || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
-      chase(z, maze, zcell, dt, target, canSee, smart, pcell, config.zombieSpeed);
+      // Hedef oyuncu: en yakın; doluysa (avcı sayısı >= cap) cap altı en yakın;
+      // hiçbiri uygun değilse aylak dolaş (baskı tek oyuncuda yığılmaz).
+      let ti = nIdx;
+      if (hunterCount[ti] >= maxHunters) {
+        ti = -1;
+        let bd = Infinity;
+        for (let i = 0; i < players.length; i++) {
+          if (hunterCount[i] >= maxHunters) continue;
+          const d = dist(z.pos, players[i]);
+          if (d < bd) {
+            bd = d;
+            ti = i;
+          }
+        }
+      }
+      if (ti === -1) {
+        wander(z, maze, dt, config.zombieSpeed);
+        continue;
+      }
+      hunterCount[ti]++;
+      const pcell = cellOf(players[ti]);
+      const seeTarget = ti === nIdx && canSee;
+      const target = seeTarget || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
+      chase(z, maze, zcell, dt, target, seeTarget, smart, pcell, config.zombieSpeed);
     } else {
       wander(z, maze, dt, config.zombieSpeed);
     }
