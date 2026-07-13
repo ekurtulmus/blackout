@@ -51,19 +51,26 @@ export function moveBrides(
   players: Vec[],
   dt: number,
   maxHunters = Infinity,
-  veiled?: boolean[] // Madde 8: bu oyuncular görünmez (duvak) → hiç hedeflenmez
+  veiled?: boolean[], // Madde 8: bu oyuncular görünmez (duvak) → hiç hedeflenmez
+  slowCells?: Set<number> // Faz C: bu hücrelerdeki (y*cols+x) gelin yavaşlar (tuzak)
 ) {
   if (players.length === 0) return;
   const smart = config.intelligence;
   const hunterCount = new Array(players.length).fill(0); // oyuncu başına aktif avcı
   const targetable = (i: number) => !veiled || !veiled[i];
+  // Bir gelinin bulunduğu hücrede tuzak varsa hız çarpanı (yoksa 1)
+  const trapMul = (z: Zombie): number => {
+    if (!slowCells) return 1;
+    const c = cellOf(z.pos);
+    return slowCells.has(c.y * maze.cols + c.x) ? TUNING.trapSlowMul : 1;
+  };
   for (const z of brides) {
     // Mini-görev "çan": oyuncuyu bırakıp çanın çaldığı yere gider (dikkat dağıldı).
     if (z.distractTimer && z.distractTimer > 0 && z.distractTarget) {
       z.distractTimer -= dt;
       z.aware = false;
       const zc0 = cellOf(z.pos);
-      chase(z, maze, zc0, dt, z.distractTarget, false, smart, z.distractTarget, config.zombieSpeed);
+      chase(z, maze, zc0, dt, z.distractTarget, false, smart, z.distractTarget, applyMul(config.zombieSpeed, trapMul(z)));
       continue;
     }
     // en yakın HEDEFLENEBİLİR (görünmez olmayan) oyuncu
@@ -85,7 +92,7 @@ export function moveBrides(
         z.kind === "dark"
           ? Math.min(TUNING.brideSpeedCap, config.zombieSpeed * TUNING.darkBrideDarkMul)
           : config.zombieSpeed;
-      wander(z, maze, dt, applyMul(spd0, z.speedMul));
+      wander(z, maze, dt, applyMul(spd0, (z.speedMul ?? 1) * trapMul(z)));
       continue;
     }
     const nearestCell = cellOf(players[nIdx]);
@@ -109,8 +116,8 @@ export function moveBrides(
         ? config.zombieSpeed // bizi görünce normal hızda gelir
         : Math.min(TUNING.brideSpeedCap, config.zombieSpeed * TUNING.darkBrideDarkMul); // karanlıkta hızlı
     }
-    // Mini-görev "yüzük": delirmiş gelin hızlanır (tavan yine geçerli)
-    spd = applyMul(spd, z.speedMul);
+    // Mini-görev "yüzük" (hızlan) + Faz C tuzak (yavaşla); tavan yine geçerli
+    spd = applyMul(spd, (z.speedMul ?? 1) * trapMul(z));
 
     if (z.aware) {
       // Hedef oyuncu: en yakın; doluysa (avcı sayısı >= cap) cap altı en yakın;

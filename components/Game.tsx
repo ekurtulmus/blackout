@@ -85,7 +85,8 @@ export default function Game({
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
-  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 }); // kullanılabilir eşyalar
+  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0 }); // kullanılabilir eşyalar
+  const [stamina, setStamina] = useState(100); // koşma barı (HUD)
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
@@ -147,7 +148,7 @@ export default function Game({
       // Kişiselleştirme: fener rengi + görünüm halkası
       flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
       skinRingRef.current = SKIN_RINGS[inv.skin];
-      setInvCounts({ shields: inv.shields, radars: inv.radars });
+      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
     }
     // Çember görevi çıkışı kilitler → bölüm başında oyuncuyu uyar
     if (!mission && engine.miniQuest?.kind === "markedkill") {
@@ -163,6 +164,7 @@ export default function Game({
       left: false,
       right: false,
       fire: false,
+      sprint: false,
       ax: 0,
       ay: 0,
     };
@@ -236,6 +238,21 @@ export default function Game({
         case " ":
         case "Spacebar":
           input.fire = down;
+          break;
+        case "Shift":
+          input.sprint = down; // Faz C: koşma
+          break;
+        case "e":
+        case "E":
+          if (down) usePlaceTrap(); // Faz C: tuzak koy
+          break;
+        case "r":
+        case "R":
+          if (down) useRadar(); // radar kullan
+          break;
+        case "q":
+        case "Q":
+          if (down) useShield(); // kalkan kullan
           break;
         case "Escape":
         case "p":
@@ -597,6 +614,34 @@ export default function Game({
         }
       }
 
+      // --- Tuzaklar (Faz C): örümcek ağı benzeri; üstteki gelin yavaşlar ---
+      for (const tr of engine.traps) {
+        if (vis.get(tr.y * cols + tr.x) === undefined) continue;
+        const sx = tr.x * TS + TS / 2 - camX;
+        const sy = tr.y * TS + TS / 2 - camY;
+        const fade = Math.min(1, Math.max(0.3, tr.until - engine.time)); // bitişe yakın soluklaş
+        ctx!.save();
+        ctx!.globalAlpha = 0.5 + 0.3 * fade;
+        ctx!.strokeStyle = "rgba(180,220,235,0.8)";
+        ctx!.lineWidth = 1.5;
+        const r = TS * 0.36;
+        // radyal ipler
+        for (let a = 0; a < 8; a++) {
+          const ang = (a / 8) * Math.PI * 2;
+          ctx!.beginPath();
+          ctx!.moveTo(sx, sy);
+          ctx!.lineTo(sx + Math.cos(ang) * r, sy + Math.sin(ang) * r);
+          ctx!.stroke();
+        }
+        // konsantrik halkalar
+        for (let ring = 1; ring <= 2; ring++) {
+          ctx!.beginPath();
+          ctx!.arc(sx, sy, (r * ring) / 2.2, 0, Math.PI * 2);
+          ctx!.stroke();
+        }
+        ctx!.restore();
+      }
+
       // --- Kanlı Gelinler (4 çeşit karışık, hep oyuncuya dönük) ---
       for (const z of engine.zombies) {
         const zc = { x: Math.floor(z.pos.x), y: Math.floor(z.pos.y) };
@@ -862,6 +907,7 @@ export default function Game({
         window.setTimeout(() => setHpBlink(false), 550);
       }
       prevHpRef.current = curHp;
+      setStamina(Math.round(engine.stamina)); // koşma barı
       // Kazanılan parayı kalıcı cüzdana işle (gelin/mini-görev/bölüm bonusu)
       const gained = engine.coinsEarned - coinSyncRef.current;
       if (gained > 0) {
@@ -920,7 +966,7 @@ export default function Game({
     inv.shields -= 1;
     saveInventory(inv);
     e.activateShield(3);
-    setInvCounts({ shields: inv.shields, radars: inv.radars });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
   };
   // Envanter: radarı kullan (çıkış yönünü 1 kez göster)
   const useRadar = () => {
@@ -931,7 +977,19 @@ export default function Game({
     inv.radars -= 1;
     saveInventory(inv);
     e.activateRadar();
-    setInvCounts({ shields: inv.shields, radars: inv.radars });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+  };
+  // Envanter: bulunduğun yere tuzak koy (gelini yavaşlatır)
+  const usePlaceTrap = () => {
+    const e = engineRef.current;
+    if (!e) return;
+    const inv = getInventory();
+    if (inv.traps <= 0) return;
+    if (e.placeTrap()) {
+      inv.traps -= 1;
+      saveInventory(inv);
+      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+    }
   };
 
   const hpPct = (hud.hp / PLAYER_MAX_HP) * 100;
@@ -990,6 +1048,18 @@ export default function Game({
             <div
               className="hpfill"
               style={{ width: `${hpPct}%`, background: hpColor }}
+            />
+          </div>
+        </div>
+        <div className="chip">
+          <span className="lbl">Nefes</span>
+          <div className="hpbar" style={{ width: 90 }}>
+            <div
+              className="hpfill"
+              style={{
+                width: `${stamina}%`,
+                background: stamina > 20 ? "#7ec8ff" : "#ff9a3c",
+              }}
             />
           </div>
         </div>
@@ -1112,7 +1182,15 @@ export default function Game({
           >
             📻 Radar ({invCounts.radars}) — çıkış yönünü göster
           </button>
-          {invCounts.shields <= 0 && invCounts.radars <= 0 && (
+          <button
+            className="btn"
+            disabled={invCounts.traps <= 0}
+            onClick={usePlaceTrap}
+            style={{ opacity: invCounts.traps > 0 ? 1 : 0.4 }}
+          >
+            🕸️ Tuzak ({invCounts.traps}) — buraya koy (E)
+          </button>
+          {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && (
             <div style={{ fontSize: 12, color: "var(--muted)" }}>
               Boş — dükkândan alabilirsin.
             </div>
@@ -1232,6 +1310,27 @@ export default function Game({
             onPointerCancel={() => setFlag("fire", false)}
           >
             ATEŞ
+          </button>
+        )}
+        {/* Koşma (basılı tut) — mobil */}
+        <button
+          className="barrierbtn"
+          style={{ right: 26, bottom: 148, background: "radial-gradient(circle at 40% 35%, #3a7ea8, #1c3a52)", borderColor: "rgba(150,210,255,0.5)" }}
+          onPointerDown={(e) => { e.preventDefault(); const i = inputExternal.current; if (i) i.sprint = true; }}
+          onPointerUp={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+          onPointerLeave={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+          onPointerCancel={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+        >
+          KOŞ
+        </button>
+        {/* Tuzak koy (dokun) — mobil, yalnız normal mod */}
+        {!mission && (
+          <button
+            className="barrierbtn"
+            style={{ right: 130, bottom: 50, opacity: invCounts.traps > 0 ? 1 : 0.4 }}
+            onPointerDown={(e) => { e.preventDefault(); usePlaceTrap(); }}
+          >
+            🕸️{invCounts.traps}
           </button>
         )}
       </div>

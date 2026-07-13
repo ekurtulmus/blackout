@@ -7,6 +7,7 @@ import { getCoins, addCoins } from "./coins";
 export type Inventory = {
   shields: number; // kalkan — oyunda istediğin an 3 sn dokunulmazlık (tüketilir)
   radars: number; // radar — oyunda istediğin an çıkış yönünü 1 kez gösterir (tüketilir)
+  traps: number; // tuzak — oyunda yere koy, gelini yavaşlatır (tüketilir)
   ammoPacks: number; // sonraki bölüme +3 mermi (bölüm başı otomatik tüketilir)
   healthPacks: number; // sonraki bölüme tam can + kalkan (bölüm başı otomatik tüketilir)
   permAmmo: boolean; // KALICI: her bölüm +3 mermiyle başla
@@ -18,6 +19,7 @@ export type Inventory = {
 const DEFAULT_INV: Inventory = {
   shields: 0,
   radars: 0,
+  traps: 0,
   ammoPacks: 0,
   healthPacks: 0,
   permAmmo: false,
@@ -95,6 +97,16 @@ export const SHOP_ITEMS: ShopItem[] = [
     kind: "consumable",
     canBuy: () => true,
     apply: (inv) => (inv.shields += 1),
+  },
+  {
+    id: "trap",
+    title: "Tuzak (x2)",
+    desc: "Yere koy — üstünden geçen gelin 8 sn yavaşlar (durdurmaz). 2 adet.",
+    icon: "🕸️",
+    price: 18,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.traps += 2),
   },
   {
     id: "ammoPack",

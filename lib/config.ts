@@ -56,4 +56,15 @@ export const TUNING = {
   // --- Madde 10: rastgele korku olayları (HASAR VERMEZ, sadece atmosfer) ---
   scareMinSec: 16, // korku olayları arası min süre (seyrek; art arda spam yok)
   scareMaxSec: 34, // korku olayları arası max süre
+
+  // --- Faz C: Koşma (sprint) ---
+  sprintMul: 1.6, // koşarken hız çarpanı
+  staminaMax: 100,
+  staminaDrain: 40, // koşarken saniyelik tükenme
+  staminaRegen: 22, // koşmazken saniyelik dolum
+  staminaMinToStart: 12, // bu değerin altında yeniden koşmaya başlayamazsın (nefeslen)
+
+  // --- Faz C: Tuzak (gelini yavaşlatır, DURDURMAZ) ---
+  trapSlowMul: 0.4, // tuzak üstündeki gelin hızı (%40)
+  trapSec: 8, // tuzak kaç saniye aktif kalır
 };

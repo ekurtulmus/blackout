@@ -19,6 +19,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
   function ownedText(it: ShopItem): string {
     if (it.id === "radar") return `Elinde: ${inv.radars}`;
     if (it.id === "shield") return `Elinde: ${inv.shields}`;
+    if (it.id === "trap") return `Elinde: ${inv.traps}`;
     if (it.id === "ammoPack") return `Elinde: ${inv.ammoPacks}`;
     if (it.id === "healthPack") return `Elinde: ${inv.healthPacks}`;
     if (it.id === "permAmmo") return inv.permAmmo ? "✓ Sahipsin" : "";

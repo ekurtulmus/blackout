@@ -55,6 +55,7 @@ export type Input = {
   left: boolean;
   right: boolean;
   fire: boolean;
+  sprint?: boolean; // Faz C: koşma (stamina tükenir)
   ax?: number; // analog joystick yatay (-1..1), mobil
   ay?: number; // analog joystick dikey (-1..1), mobil
 };
@@ -104,6 +105,11 @@ export class GameEngine {
   veilItems: Ammo[] = []; // Madde 8: gelin duvağı (görünmezlik) eşyası
   veilUntil = 0; // (saniye) bu ana kadar görünmez
   invulnUntil = 0; // (saniye) kalkan: bu ana kadar dokunulmaz (Faz B envanter)
+  // Faz C: koşma (stamina) + tuzaklar
+  stamina = TUNING.staminaMax;
+  sprinting = false;
+  private staminaLocked = false; // 0'a inince nefeslenene kadar kilitli
+  traps: { x: number; y: number; until: number }[] = []; // yerdeki tuzaklar
   photoItem: Ammo | null = null; // gizli: düğün fotoğrafı parçası (tek kişilik)
   photoTaken = false; // bu bölümün parçası toplandı mı
   bullets: Bullet[] = [];
@@ -479,6 +485,19 @@ export class GameEngine {
     }
 
     this.playerMoving = mx !== 0 || my !== 0;
+
+    // Faz C: koşma (sprint) — stamina tükenir/dolar, 0'a inince nefeslenmen gerekir
+    const wantSprint = !!input.sprint && this.playerMoving;
+    if (this.staminaLocked && this.stamina >= TUNING.staminaMinToStart) this.staminaLocked = false;
+    this.sprinting = wantSprint && !this.staminaLocked && this.stamina > 0;
+    if (this.sprinting) {
+      this.stamina = Math.max(0, this.stamina - TUNING.staminaDrain * dt);
+      if (this.stamina <= 0) this.staminaLocked = true; // bitti → kilitlen
+    } else {
+      this.stamina = Math.min(TUNING.staminaMax, this.stamina + TUNING.staminaRegen * dt);
+    }
+    const moveMul = this.sprinting ? TUNING.sprintMul : 1;
+
     if (mx !== 0 || my !== 0) {
       const len = Math.hypot(mx, my);
       mx /= len;
@@ -488,8 +507,8 @@ export class GameEngine {
         this.maze,
         this.player.pos,
         PLAYER_RADIUS,
-        mx * PLAYER_SPEED * speedScale * dt,
-        my * PLAYER_SPEED * speedScale * dt
+        mx * PLAYER_SPEED * speedScale * moveMul * dt,
+        my * PLAYER_SPEED * speedScale * moveMul * dt
       );
     }
 
@@ -643,9 +662,15 @@ export class GameEngine {
   }
 
   private updateZombies(dt: number) {
+    // Faz C: süresi geçen tuzakları temizle; aktiflerin hücrelerini yavaşlatma kümesine al
+    if (this.traps.length) this.traps = this.traps.filter((t) => t.until > this.time);
+    const slowCells =
+      this.traps.length > 0
+        ? new Set(this.traps.map((t) => t.y * this.maze.cols + t.x))
+        : undefined;
     // Gelin hareketi — ortak AI (en yakın oyuncuyu hedefler; tek kişilikte tek oyuncu)
-    // Madde 8: duvak açıkken oyuncu AI'ya görünmez
-    moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt, Infinity, [this.veiled]);
+    // Madde 8: duvak açıkken oyuncu AI'ya görünmez · Faz C: tuzak hücrelerinde yavaşlar
+    moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt, Infinity, [this.veiled], slowCells);
 
     // Oyuncuya temas: hasar + geri itme (duvak/kalkan açıkken temas hasarı yok)
     for (const z of this.zombies) {
@@ -717,6 +742,16 @@ export class GameEngine {
     this.mqHintDir = this.computeExitDir();
     this.mqHintUntil = this.time + 20;
     this.events.push("secret");
+  }
+
+  // Faz C: bulunduğun hücreye tuzak koy (Game envanter sayımını yönetir). Aynı
+  // hücrede zaten aktif tuzak varsa koymaz. Başarılıysa true.
+  placeTrap(): boolean {
+    const c = cellOf(this.player.pos);
+    if (this.traps.some((t) => t.x === c.x && t.y === c.y && t.until > this.time)) return false;
+    this.traps.push({ x: c.x, y: c.y, until: this.time + TUNING.trapSec });
+    this.events.push("pickup");
+    return true;
   }
 
   private pickupVeil() {
