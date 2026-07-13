@@ -11,6 +11,14 @@
 > local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
 > için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
 
+## BUG DÜZELTMELERİ (2026-07-14)
+- ✅ **Kişiselleştirme kalıcılığı**: `inventory.ts getInventory` artık sahip listelerini DAİMA yeni dizi olarak
+  döndürür (DEFAULT_INV'in paylaşılan dizisini mutasyona uğratmaz) + **kendini onarır**: seçili fener rengi/görünüm
+  her zaman `ownedFlash/ownedSkin`'e dahil → eski/bozuk kayıtta kişiselleştirme bir daha satın aldırılmaz. Doğrulandı:
+  bozuk kayıtta (amber seçili, owned'da yok) dükkân "✓ Seçili" gösteriyor, ücret almıyor.
+- ✅ **Can paketi respawn**: mermi gibi geri doğar — SP `engine.ts HEALTH_RESPAWN_SEC=30` (pickupHealth respawn),
+  online `OnlineGame HEALTH_RESPAWN_MS=30000` (health'e takenAt eklendi). Canın tamsa alınmaz ama süre dolunca döner.
+
 ## BÜYÜK REVİZE PAKETİ (2026-07-13) — 10 FAZ, sırayla
 Kullanıcı kararları: arkadaş sistemi = **arkadaş kodu + Supabase presence** (hesapsız); yeni **Arena** =
 **dalga hayatta kalma**; emoji→line-icon geçişi **en sona** (aşamalı). İlerleme:

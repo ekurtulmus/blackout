@@ -36,13 +36,27 @@ const KEY = "blackout_inventory";
 let mem: Inventory = { ...DEFAULT_INV };
 
 export function getInventory(): Inventory {
+  let stored: Partial<Inventory> = mem;
   try {
     const v = localStorage.getItem(KEY);
-    if (v) return { ...DEFAULT_INV, ...JSON.parse(v) };
+    if (v) stored = JSON.parse(v) as Partial<Inventory>;
   } catch {
     /* geç */
   }
-  return { ...mem };
+  // Sahip listeleri DAİMA yeni dizi (DEFAULT_INV'in paylaşılan dizisini asla mutasyona uğratma)
+  // + KENDİNİ ONAR: seçili/kuşanılan renk & görünüm her zaman "sahip" sayılır → eski/bozuk
+  // kayıtlarda kişiselleştirmeler bir daha ASLA yeniden satın aldırılmaz (kalıcı sahiplik).
+  const flashColor = stored.flashColor ?? DEFAULT_INV.flashColor;
+  const skin = stored.skin ?? DEFAULT_INV.skin;
+  const uniq = (arr: string[]) => Array.from(new Set(arr));
+  return {
+    ...DEFAULT_INV,
+    ...stored,
+    flashColor,
+    skin,
+    ownedFlash: uniq([...(stored.ownedFlash ?? []), "default", flashColor]),
+    ownedSkin: uniq([...(stored.ownedSkin ?? []), "default", skin]),
+  };
 }
 
 export function saveInventory(inv: Inventory) {

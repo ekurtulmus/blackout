@@ -45,6 +45,7 @@ export const CONTACT_DPS = TUNING.contactDps; // temas başına saniyelik hasar 
 export const LOSE_AGGRO_TIME = 4; // saniye görüş dışı kalınca sakinleş
 export const HEAL_AMOUNT = 45; // can paketi doldurma miktarı
 export const AMMO_RESPAWN_SEC = 10; // toplanan mermi kaç saniye sonra geri doğar
+export const HEALTH_RESPAWN_SEC = 30; // toplanan can paketi kaç saniye sonra geri doğar
 export const BRIDE_RESPAWN_SEC = 20; // ölen gelin kaç saniye sonra yeniden doğar
 export const COIN_PER_KILL = 1; // gelin başına temel para (risk çarpanıyla ölçeklenir)
 
@@ -938,12 +939,18 @@ export class GameEngine {
   }
 
   private pickupHealth() {
-    if (this.player.hp >= PLAYER_MAX_HP) return; // canın tamsa dokunma (israf etme)
     const pcell = cellOf(this.player.pos);
+    const full = this.player.hp >= PLAYER_MAX_HP;
     for (const h of this.healthItems) {
-      if (h.taken) continue;
+      if (h.taken) {
+        // toplanan can paketi bir süre sonra haritada geri doğar (mermi gibi)
+        if (this.time - (h.takenAt ?? 0) >= HEALTH_RESPAWN_SEC) h.taken = false;
+        continue;
+      }
+      if (full) continue; // canın tamsa alma (israf etme); respawn yukarıda işlendi
       if (h.cell.x === pcell.x && h.cell.y === pcell.y) {
         h.taken = true;
+        h.takenAt = this.time;
         this.player.hp = Math.min(PLAYER_MAX_HP, this.player.hp + HEAL_AMOUNT);
         this.events.push("heal");
       }

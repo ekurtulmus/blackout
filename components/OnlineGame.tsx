@@ -42,6 +42,7 @@ import { MQ_DEFS, MQ_KINDS_ONLINE, mulberry32, planMiniQuest, type MQPlan } from
 import { ScareDirector, type ScareFx } from "@/lib/scares";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
+const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
 const LEAVE_MS = 10000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır (sekme
@@ -120,7 +121,7 @@ export default function OnlineGame({
   const brideIdCounter = useRef(0); // host: yeniden doğan gelinlere benzersiz id
   // Mermi / ateş
   const ammo = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]);
-  const health = useRef<{ x: number; y: number; taken: boolean }[]>([]); // can paketleri (respawn yok)
+  const health = useRef<{ x: number; y: number; taken: boolean; takenAt: number }[]>([]); // can paketleri (30sn respawn)
   const veilItems = useRef<{ x: number; y: number; taken: boolean }[]>([]); // Madde 8: duvak eşyaları
   const veilUntil = useRef(0); // kendi görünmezlik bitişi (ms, performance.now)
   const veiledUntil = useRef<Record<number, number>>({}); // seat -> görünmezlik bitişi (host AI için)
@@ -180,7 +181,7 @@ export default function OnlineGame({
     }
     seen.current = Array.from({ length: lvl.rows }, () => Array.from({ length: lvl.cols }, () => false));
     ammo.current = lvl.ammo.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
-    health.current = lvl.health.map((c) => ({ x: c.x, y: c.y, taken: false }));
+    health.current = lvl.health.map((c) => ({ x: c.x, y: c.y, taken: false, takenAt: 0 }));
     veilItems.current = lvl.veils.map((c) => ({ x: c.x, y: c.y, taken: false }));
     // Mini-görev (online, deterministik): herkes aynı seviyeden aynı planı bağımsızca
     // üretir → adil. Sabit referans (spawn 1,1 + exit) kullanılır; kişi başı yerel ödül.
@@ -781,11 +782,18 @@ export default function OnlineGame({
         }
       }
 
-      // can paketi topla (canın tamsa dokunma)
-      if (hp.current < PLAYER_MAX_HP) {
+      // can paketi topla + 30 sn respawn (canın tamsa alma, ama respawn'ı işle)
+      {
+        const full = hp.current >= PLAYER_MAX_HP;
         for (const h of health.current) {
-          if (!h.taken && h.x === pc.x && h.y === pc.y) {
+          if (h.taken) {
+            if (now - h.takenAt >= HEALTH_RESPAWN_MS) h.taken = false;
+            continue;
+          }
+          if (full) continue;
+          if (h.x === pc.x && h.y === pc.y) {
             h.taken = true;
+            h.takenAt = now;
             hp.current = Math.min(PLAYER_MAX_HP, hp.current + HEAL_AMOUNT);
             sound.play("heal");
           }
