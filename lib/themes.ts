@@ -7,13 +7,15 @@ export type Theme = {
   name: string;
   floor: [number, number, number];
   wall: [number, number, number];
+  decor?: "graves" | "forest"; // Madde 11: zemine serpiştirilen deterministik süsler
 };
 
 export const THEMES: Theme[] = [
   { key: "zindan", name: "Zindan", floor: [58, 48, 42], wall: [104, 84, 70] }, // sıcak kahve taş
   { key: "hastane", name: "Hastane", floor: [44, 54, 56], wall: [118, 130, 122] }, // soğuk klinik yeşil-gri
   { key: "kilise", name: "Kilise", floor: [50, 50, 64], wall: [112, 108, 126] }, // soğuk mor-gri taş
-  { key: "orman", name: "Orman", floor: [40, 52, 38], wall: [76, 98, 64] }, // yosunlu koyu yeşil
+  { key: "orman", name: "Orman", floor: [40, 52, 38], wall: [76, 98, 64], decor: "forest" }, // yosunlu koyu yeşil + ağaç/çalı
+  { key: "mezarlik", name: "Mezarlık", floor: [42, 44, 46], wall: [92, 96, 100], decor: "graves" }, // soğuk toprak + mezar taşları
 ];
 
 // Kaç bölümde bir tema değişsin

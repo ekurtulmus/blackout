@@ -20,6 +20,7 @@ import { computeVisible } from "@/lib/vision";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { THEMES } from "@/lib/themes";
+import { drawDecor } from "@/lib/decor";
 import type { Maze } from "@/lib/maze";
 import {
   deserializeLevel,
@@ -809,6 +810,10 @@ export default function OnlineGame({
             ctx!.fillStyle = `rgb(${v | 0},${(v * 0.9) | 0},${(v * 0.82) | 0})`;
           }
           ctx!.fillRect(Math.floor(sx), Math.floor(sy), TS + 1, TS + 1);
+          // Madde 11: tema süsü (mezar taşı / ağaç-çalı) — deterministik, herkes aynı
+          if (!wall && theme.decor) {
+            drawDecor(ctx!, theme, x, y, Math.floor(sx), Math.floor(sy), TS, inten !== undefined);
+          }
         }
       }
 

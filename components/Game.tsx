@@ -15,6 +15,7 @@ import {
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
+import { drawDecor } from "@/lib/decor";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 
@@ -274,6 +275,10 @@ export default function Game({
             ctx!.fillStyle = `rgb(${v | 0},${(v * 0.9) | 0},${(v * 0.82) | 0})`;
           }
           ctx!.fillRect(Math.floor(sx), Math.floor(sy), TS + 1, TS + 1);
+          // Madde 11: tema süsü (mezar taşı / ağaç-çalı) — deterministik
+          if (!wall && theme.decor) {
+            drawDecor(ctx!, theme, x, y, Math.floor(sx), Math.floor(sy), TS, intensity !== undefined);
+          }
         }
       }
 
