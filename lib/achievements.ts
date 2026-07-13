@@ -10,7 +10,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: "reach8", title: "Cesur", desc: "8. bölüme ulaş.", icon: "🔥" },
   { id: "flawless", title: "Hayalet Gibi", desc: "Bir bölümü hiç hasar almadan bitir.", icon: "✨" },
   { id: "queenslayer", title: "Kraliçe Avcısı", desc: "Bir gelin kraliçesini öldür.", icon: "👑" },
-  { id: "savior", title: "Kurtarıcı", desc: "Bir tutsağı kurtarıp birlikte kaç.", icon: "🤝" },
+  { id: "savior", title: "Kurtarıcı", desc: "Zincirli bir askeri kurtar.", icon: "🤝" },
   { id: "escapist", title: "Kıl Payı", desc: "Çöken bir çıkıştan sağ çık.", icon: "🧨" },
   { id: "rich", title: "Karanlık Zengini", desc: "100 para biriktir.", icon: "🪙" },
   { id: "shopper", title: "Müşteri", desc: "Dükkândan ilk alışverişini yap.", icon: "🛒" },

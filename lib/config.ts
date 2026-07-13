@@ -66,7 +66,7 @@ export const TUNING = {
 
   // --- Faz C: Tuzak (gelini yavaşlatır, DURDURMAZ) ---
   trapSlowMul: 0.4, // tuzak üstündeki gelin hızı (%40)
-  trapSec: 8, // tuzak kaç saniye aktif kalır
+  trapSec: 10, // tuzak kaç saniye aktif kalır (kalıcı değil)
 
   // --- Faz D: Yeni gelin türleri (tek kişilik) ---
   callerCooldown: 6, // caller kaç saniyede bir yakındakileri çağırır
@@ -78,4 +78,12 @@ export const TUNING = {
   queenScale: 1.6, // kraliçe görsel büyüklük çarpanı
   queenEveryLevels: 4, // her bu kadar bölümde bir kraliçe (4, 8...)
   queenReward: 8, // kraliçe öldürünce ekstra para
+  queenDmgMul: 1.5, // kraliçe teması normalden 1.5 kat hasar
+  splitChildScale: 0.62, // bölünen yavru görsel boyutu
+  splitChildDmgMul: 0.6, // bölünen yavru normalden %40 az hasar
+
+  // --- Asker (kurtarılabilir müttefik, eski "rehin") ---
+  soldierFireCd: 3, // asker kaç saniyede bir ateş eder
+  soldierRange: 8, // asker bu menzildeki gelinlere ateş eder (hücre)
+  soldierRespawnSec: 8, // ölen asker kaç saniye sonra başka yerde doğar
 };

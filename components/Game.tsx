@@ -90,7 +90,7 @@ export default function Game({
   const [mqNotice, setMqNotice] = useState(""); // bölüm başı uyarı (ör. çember görevi)
   const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
   const [escapeSec, setEscapeSec] = useState(""); // Faz E: kaçış geri sayımı
-  const [hostageState, setHostageState] = useState<"none" | "rescue" | "escort">("none");
+  const [soldierState, setSoldierState] = useState<"none" | "rescue" | "escort">("none");
   const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
   const prevHpRef = useRef(PLAYER_MAX_HP);
   const engineRef = useRef<GameEngine | null>(null);
@@ -165,8 +165,8 @@ export default function Game({
     if (engine.escape) {
       setMqNotice("ÇIKIŞ ÇÖKÜYOR! Gizli kapıya koş — vaktin azalıyor!");
       window.setTimeout(() => setMqNotice(""), 6000);
-    } else if (engine.hostage) {
-      setMqNotice("Karanlıkta bir tutsak var — onu kurtar, birlikte kaçın (ekstra ödül).");
+    } else if (engine.soldiers.length > 0) {
+      setMqNotice("Karanlıkta zincirli asker(ler) var — çöz, arkanda gelir ve gelinlere ateş eder!");
       window.setTimeout(() => setMqNotice(""), 6000);
     } else if (!mission && engine.miniQuest?.kind === "markedkill") {
       setMqNotice(
@@ -684,36 +684,46 @@ export default function Game({
         ctx!.restore();
       }
 
-      // --- Rehin (Faz E): kurtar → seni takip eder ---
-      if (engine.hostage) {
-        const h = engine.hostage;
-        const hc = { x: Math.floor(h.pos.x), y: Math.floor(h.pos.y) };
-        if (vis.get(hc.y * cols + hc.x) !== undefined) {
-          const s = worldToScreen(h.pos.x, h.pos.y, camX, camY);
-          const col = h.rescued ? "#7dffb0" : "#8be9ff";
-          ctx!.save();
-          ctx!.shadowColor = col;
-          ctx!.shadowBlur = h.rescued ? 8 : 14;
-          // huddled figure: baş + gövde
-          ctx!.fillStyle = "#2a2f36";
+      // --- Askerler: kilitli (zincirli, kurtar!) / escort (silahlı, takip eder) ---
+      for (const sd of engine.soldiers) {
+        if (sd.state === "dead") continue;
+        const sc = { x: Math.floor(sd.pos.x), y: Math.floor(sd.pos.y) };
+        if (vis.get(sc.y * cols + sc.x) === undefined) continue;
+        const s = worldToScreen(sd.pos.x, sd.pos.y, camX, camY);
+        const escort = sd.state === "escort";
+        const col = escort ? "#7dffb0" : "#8be9ff";
+        ctx!.save();
+        ctx!.shadowColor = col;
+        ctx!.shadowBlur = escort ? 10 : 14;
+        // gövde (asker üniforması koyu yeşil-gri)
+        ctx!.fillStyle = "#39423a";
+        ctx!.beginPath();
+        ctx!.ellipse(s.sx, s.sy + TS * 0.06, TS * 0.2, TS * 0.26, 0, 0, Math.PI * 2);
+        ctx!.fill();
+        // baş
+        ctx!.fillStyle = escort ? "#cfe9d6" : "#cfe0ee";
+        ctx!.beginPath();
+        ctx!.arc(s.sx, s.sy - TS * 0.16, TS * 0.11, 0, Math.PI * 2);
+        ctx!.fill();
+        if (escort) {
+          // tüfek (namlu oyuncuya doğru değil, ileri)
+          ctx!.strokeStyle = "#20242a";
+          ctx!.lineWidth = Math.max(2, TS * 0.05);
           ctx!.beginPath();
-          ctx!.ellipse(s.sx, s.sy + TS * 0.06, TS * 0.22, TS * 0.26, 0, 0, Math.PI * 2);
-          ctx!.fill();
-          ctx!.fillStyle = h.rescued ? "#cfe9d6" : "#cfe0ee";
+          ctx!.moveTo(s.sx - TS * 0.05, s.sy);
+          ctx!.lineTo(s.sx + TS * 0.28, s.sy - TS * 0.04);
+          ctx!.stroke();
+        } else {
+          // kilit/zincir halkası (kurtar!)
+          ctx!.globalAlpha = 0.4 + 0.3 * Math.sin(engine.time * 4);
+          ctx!.strokeStyle = col;
+          ctx!.lineWidth = 2;
+          ctx!.setLineDash([4, 4]);
           ctx!.beginPath();
-          ctx!.arc(s.sx, s.sy - TS * 0.16, TS * 0.12, 0, Math.PI * 2);
-          ctx!.fill();
-          if (!h.rescued) {
-            // kilit/parlama halkası (kurtar!)
-            ctx!.globalAlpha = 0.4 + 0.3 * Math.sin(engine.time * 4);
-            ctx!.strokeStyle = col;
-            ctx!.lineWidth = 2;
-            ctx!.beginPath();
-            ctx!.arc(s.sx, s.sy, TS * 0.4, 0, Math.PI * 2);
-            ctx!.stroke();
-          }
-          ctx!.restore();
+          ctx!.arc(s.sx, s.sy, TS * 0.4, 0, Math.PI * 2);
+          ctx!.stroke();
         }
+        ctx!.restore();
       }
 
       // --- Kanlı Gelinler (türlere göre) ---
@@ -726,15 +736,26 @@ export default function Game({
         const ghost = z.kind === "climber" || z.kind === "queen";
         if (!visible && !ghost) continue;
         const lean = engine.player.pos.x < z.pos.x ? -1 : 1;
-        const scale = z.kind === "queen" ? TUNING.queenScale : 1;
+        const scale = z.scale ?? 1; // kraliçe büyük, bölünen yavru küçük
         ctx!.save();
         if (!visible) ctx!.globalAlpha = 0.5; // karanlıktaki tırmanan/kraliçe soluk
         drawBride(ctx!, TS * scale, s.sx, s.sy, engine.time, z.id, z.aware, lean);
         ctx!.restore();
 
-        // Kraliçe: taç + can pip'leri
+        // Kraliçe: uzaktan fark edilen kızıl aura + taç + can pip'leri
         if (z.kind === "queen") {
           const r = TS * scale * 0.42;
+          // aura (uzaktan bile görünür)
+          ctx!.save();
+          const aura = ctx!.createRadialGradient(s.sx, s.sy, r * 0.5, s.sx, s.sy, r * 2.4);
+          const ap = 0.28 + 0.12 * Math.sin(engine.time * 3);
+          aura.addColorStop(0, `rgba(180,20,40,${ap})`);
+          aura.addColorStop(1, "rgba(180,20,40,0)");
+          ctx!.fillStyle = aura;
+          ctx!.beginPath();
+          ctx!.arc(s.sx, s.sy, r * 2.4, 0, Math.PI * 2);
+          ctx!.fill();
+          ctx!.restore();
           ctx!.save();
           ctx!.fillStyle = "#ffd75a";
           ctx!.shadowColor = "rgba(255,215,90,0.9)";
@@ -1020,7 +1041,7 @@ export default function Game({
           kills: engine.zombiesKilled,
           flawless: engine.player.hp >= PLAYER_MAX_HP,
           killedQueen: engine.killedQueen,
-          hostageRescued: !!engine.hostage?.rescued,
+          hostageRescued: engine.soldierRescued,
           wasEscape: engine.escape || engine.escapeTime > 0,
         });
         return; // döngüyü durdur
@@ -1062,9 +1083,11 @@ export default function Game({
       // Mini-görev (Faz 4): aktif hedef metni + ayna kehaneti yönü
       setMq(engine.miniQuestText());
       setExitHint(engine.exitHintText());
-      // Faz E: kaçış geri sayımı + rehin durumu
+      // Faz E: kaçış geri sayımı + asker durumu
       setEscapeSec(engine.escapeText());
-      setHostageState(engine.hostage ? (engine.hostage.rescued ? "escort" : "rescue") : "none");
+      setSoldierState(
+        engine.soldiers.length === 0 ? "none" : engine.hasEscort ? "escort" : "rescue"
+      );
       if (engine.mqRewardMsg && !mqReportedRef.current) {
         mqReportedRef.current = true;
         const d = engine.mqDef;
@@ -1268,11 +1291,11 @@ export default function Game({
             <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
           </div>
         )}
-        {hostageState !== "none" && (
-          <div className="chip" style={{ borderColor: hostageState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
-            <span className="lbl">Rehin</span>
-            <span className="val" style={{ color: hostageState === "escort" ? "#7dffb0" : "#8be9ff" }}>
-              {hostageState === "escort" ? "çıkışa götür" : "kurtar"}
+        {soldierState !== "none" && (
+          <div className="chip" style={{ borderColor: soldierState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
+            <span className="lbl">Asker</span>
+            <span className="val" style={{ color: soldierState === "escort" ? "#7dffb0" : "#8be9ff" }}>
+              {soldierState === "escort" ? "yanında (ateş ediyor)" : "zincirini çöz"}
             </span>
           </div>
         )}
@@ -1302,10 +1325,15 @@ export default function Game({
         {!mission && (
           <button
             className="chip mutebtn"
-            onClick={() => setInvOpen((v) => !v)}
-            title="Envanter (kalkan / radar)"
+            onClick={() => {
+              // panel açılırken envanteri kalıcı depodan TAZELE (dükkândan alınanlar görünsün)
+              const inv = getInventory();
+              setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+              setInvOpen((v) => !v);
+            }}
+            title="Envanter (kalkan / radar / tuzak)"
           >
-            <span className="val">📦 {invCounts.shields + invCounts.radars}</span>
+            <span className="val">📦 {invCounts.shields + invCounts.radars + invCounts.traps}</span>
           </button>
         )}
         <button

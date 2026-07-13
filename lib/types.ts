@@ -37,6 +37,8 @@ export type Zombie = {
   screamT?: number; // Faz D "caller": çığlık görsel efektinin kalan süresi (sn)
   maxHp?: number; // Faz D "queen": can pip'i göstermek için başlangıç canı
   noSplit?: boolean; // Faz D "splitter": bölünmeden doğan yavru tekrar bölünmez
+  dmgMul?: number; // temas hasar çarpanı (kraliçe 1.5, bölünen yavru 0.6)
+  scale?: number; // görsel boyut çarpanı (kraliçe büyük, yavru küçük)
 };
 
 // Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi

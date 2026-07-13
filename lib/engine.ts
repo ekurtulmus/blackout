@@ -15,7 +15,7 @@ import {
   isWall,
   type Maze,
 } from "./maze";
-import { computeVisible, type VisibleCell } from "./vision";
+import { computeVisible, hasLineOfSight, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
 import { findPath } from "./pathfind";
 import { BRIDE_RADIUS, assignBrideKind, moveBrides } from "./brides";
@@ -146,8 +146,21 @@ export class GameEngine {
   // Faz E: kaçış bölümü (çıkış çöküyor — geri sayımla kaç)
   escape = false;
   escapeTime = 0; // bu ana kadar çıkışa ulaşmalısın (sn)
-  // Faz E: rehin kurtarma (kilitli birini kurtar, seni takip eder, birlikte çık)
-  hostage: { pos: Vec; rescued: boolean; path?: Vec[] | null; repath?: number } | null = null;
+  // Asker (kurtarılabilir müttefik): zincirini çöz → seni takip eder + 3 sn'de bir
+  // gelinlere ateş eder. Harita boyutuna göre 1-2 asker; AYNI ANDA tek asker kurtarabilirsin,
+  // o ölünce başka yerde doğar ve bir başkasını (varsa) kurtarabilirsin.
+  soldiers: {
+    pos: Vec;
+    state: "locked" | "escort" | "dead";
+    fireCd: number;
+    respawnAt: number;
+    path?: Vec[] | null;
+    repath?: number;
+  }[] = [];
+  soldierRescued = false; // bu bölümde en az bir asker kurtarıldı mı (başarım/bonus)
+  get hasEscort(): boolean {
+    return this.soldiers.some((s) => s.state === "escort");
+  }
   ammoCount = 0;
   zombiesKilled = 0;
   coinsEarned = 0; // bu bölümde kazanılan para (Game kalıcı cüzdana işler)
@@ -383,23 +396,24 @@ export class GameEngine {
         this.escape = true;
         this.exitOpen = true;
         this.escapeTime = (best / PLAYER_SPEED) * 1.7 + 5;
-      } else if (this.level >= 2 && Math.random() < 0.25) {
-        // Rehin: çıkışa uzak, mermilerden farklı bir hücrede
-        const used = new Set([
-          ...this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
-          ...this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
-        ]);
-        const hCells = this.shuffle(
+      } else if (this.level >= 2 && Math.random() < 0.28) {
+        // Askerler: harita büyükse 2, değilse 1 — çıkışa/başlangıca uzak hücrelerde kilitli
+        const count = this.maze.cols >= 21 ? 2 : 1;
+        const sCells = this.shuffle(
           floors.filter(
             (c) =>
               distMap[c.y][c.x] >= 6 &&
               !(c.x === spawnCell.x && c.y === spawnCell.y) &&
-              !(c.x === exit.x && c.y === exit.y) &&
-              !used.has(c.y * this.maze.cols + c.x)
+              !(c.x === exit.x && c.y === exit.y)
           )
         );
-        if (hCells[0]) {
-          this.hostage = { pos: { x: hCells[0].x + 0.5, y: hCells[0].y + 0.5 }, rescued: false };
+        for (let i = 0; i < count && sCells[i]; i++) {
+          this.soldiers.push({
+            pos: { x: sCells[i].x + 0.5, y: sCells[i].y + 0.5 },
+            state: "locked",
+            fireCd: 0,
+            respawnAt: 0,
+          });
         }
       } else {
         const plan = planMiniQuest(Math.random, floors, spawnCell, this.exit, MQ_KINDS_SP);
@@ -481,6 +495,8 @@ export class GameEngine {
       repathTimer: 0,
       kind: "queen",
       speedMul: TUNING.queenSpeedMul, // yavaş ama asla durmaz
+      dmgMul: TUNING.queenDmgMul, // 1.5 kat hasar
+      scale: TUNING.queenScale, // büyük (uzaktan fark edilir)
     });
   }
 
@@ -535,7 +551,7 @@ export class GameEngine {
     this.pickupVeil();
     this.updateMucus(dt);
     this.updateMiniQuest(dt);
-    this.updateHostage(dt);
+    this.updateSoldiers(dt);
     this.computeVision();
     this.checkExit();
     this.checkMission();
@@ -722,13 +738,15 @@ export class GameEngine {
     if (z.kind === "mucus") {
       this.mucus.push({ x: Math.floor(z.pos.x), y: Math.floor(z.pos.y), until: this.time + TUNING.mucusSec });
     }
-    // Faz D "splitter": ölünce iki HIZLI yavruya bölünür (yavrular tekrar bölünmez)
+    // Faz D "splitter": ölünce iki küçük, hızlı yavruya bölünür (tekrar bölünmez).
+    // Yavrular gelinin TAM konumunda doğar, duvara girmeden hafifçe ayrılır (yoksa
+    // duvara saplanıp hareket edemiyorlardı).
     if (z.kind === "splitter" && !z.noSplit) {
       const pc = { x: Math.floor(this.player.pos.x), y: Math.floor(this.player.pos.y) };
       for (let k = 0; k < 2; k++) {
-        this.zombies.push({
+        const child: Zombie = {
           id: this.nextId++,
-          pos: { x: z.pos.x + (k === 0 ? -0.3 : 0.3), y: z.pos.y },
+          pos: { x: z.pos.x, y: z.pos.y },
           hp: 1,
           aware: true,
           lastSeen: { x: pc.x, y: pc.y },
@@ -740,7 +758,11 @@ export class GameEngine {
           kind: "normal",
           noSplit: true,
           speedMul: TUNING.splitChildSpeedMul,
-        });
+          scale: TUNING.splitChildScale, // daha küçük
+          dmgMul: TUNING.splitChildDmgMul, // %40 az hasar
+        };
+        tryMove(this.maze, child.pos, ZOMBIE_RADIUS, k === 0 ? -0.28 : 0.28, 0); // duvara girmeden ayır
+        this.zombies.push(child);
       }
     }
     // Faz D "queen": ekstra para + puan ödülü + başarım bayrağı
@@ -822,7 +844,7 @@ export class GameEngine {
     for (const z of this.zombies) {
       if (!this.veiled && !this.invuln && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
         if (this.hurtFlash <= 0) this.events.push("hurt");
-        this.player.hp -= CONTACT_DPS * dt;
+        this.player.hp -= CONTACT_DPS * (z.dmgMul ?? 1) * dt; // kraliçe 1.5x, yavru 0.6x
         this.hurtFlash = 0.25;
         const nx = this.player.pos.x - z.pos.x;
         const ny = this.player.pos.y - z.pos.y;
@@ -1125,34 +1147,103 @@ export class GameEngine {
     return `Çıkış kilitli: önce ${need} gelini yok et.`;
   }
 
-  // Faz E: rehin — yakınına gelince kurtar; kurtulduysa oyuncuyu takip eder.
-  private updateHostage(dt: number) {
-    const h = this.hostage;
-    if (!h) return;
-    const d = dist(h.pos, this.player.pos);
-    if (!h.rescued) {
-      if (d < 0.8) {
-        h.rescued = true;
-        this.events.push("secret");
+  // Asker: kilitliyken yakınına gelip (başka escort yoksa) kurtar → seni takip eder
+  // + 3 sn'de bir menzildeki gelinlere ateş eder. Gelin değerse ölür, sonra başka
+  // yerde yeniden kilitli doğar (yalnız o zaman başka birini kurtarabilirsin).
+  private updateSoldiers(dt: number) {
+    if (this.soldiers.length === 0) return;
+    let escortTaken = this.soldiers.some((s) => s.state === "escort"); // aynı karede 2 kurtarılmasın
+    for (const s of this.soldiers) {
+      if (s.state === "dead") {
+        if (this.time >= s.respawnAt) {
+          const cell = this.farCellFromPlayer(6);
+          if (cell) {
+            s.pos = { x: cell.x + 0.5, y: cell.y + 0.5 };
+            s.state = "locked";
+            s.path = null;
+          }
+        }
+        continue;
       }
-      return;
+      if (s.state === "locked") {
+        if (!escortTaken && dist(s.pos, this.player.pos) < 0.9) {
+          s.state = "escort";
+          s.fireCd = 1;
+          escortTaken = true;
+          this.soldierRescued = true;
+          this.events.push("secret");
+        }
+        continue;
+      }
+      // escort: önce ölüm kontrolü (gelin teması)
+      let died = false;
+      for (const z of this.zombies) {
+        if (dist(z.pos, s.pos) < ZOMBIE_RADIUS + PLAYER_RADIUS) {
+          s.state = "dead";
+          s.respawnAt = this.time + TUNING.soldierRespawnSec;
+          this.events.push("hurt");
+          died = true;
+          break;
+        }
+      }
+      if (died) continue;
+      // takip (labirentte yol bularak, oyuncunun biraz gerisinde)
+      const d = dist(s.pos, this.player.pos);
+      if (d > 1.2) {
+        s.repath = (s.repath ?? 0) - dt;
+        if (!s.path || s.path.length === 0 || (s.repath ?? 0) <= 0) {
+          s.path = findPath(this.maze, cellOf(s.pos), cellOf(this.player.pos));
+          s.repath = 0.4;
+        }
+        if (s.path && s.path.length > 0) {
+          const next = s.path[0];
+          const tp = { x: next.x + 0.5, y: next.y + 0.5 };
+          const dx = tp.x - s.pos.x;
+          const dy = tp.y - s.pos.y;
+          const len = Math.hypot(dx, dy) || 1;
+          tryMove(this.maze, s.pos, PLAYER_RADIUS, (dx / len) * PLAYER_SPEED * 0.98 * dt, (dy / len) * PLAYER_SPEED * 0.98 * dt);
+          if (dist(s.pos, tp) < 0.15) s.path.shift();
+        }
+      }
+      // ateş (3 sn'de bir): menzilde + görüş hattı açık en yakın gelin
+      s.fireCd -= dt;
+      if (s.fireCd <= 0) {
+        const scell = cellOf(s.pos);
+        let target: Zombie | null = null;
+        let td = Infinity;
+        for (const z of this.zombies) {
+          const dz = dist(z.pos, s.pos);
+          if (dz <= TUNING.soldierRange && dz < td && hasLineOfSight(this.maze, scell, cellOf(z.pos))) {
+            td = dz;
+            target = z;
+          }
+        }
+        if (target) {
+          s.fireCd = TUNING.soldierFireCd;
+          const dx = target.pos.x - s.pos.x;
+          const dy = target.pos.y - s.pos.y;
+          const len = Math.hypot(dx, dy) || 1;
+          this.bullets.push({
+            id: this.nextId++,
+            pos: { x: s.pos.x, y: s.pos.y },
+            vel: { x: (dx / len) * BULLET_SPEED, y: (dy / len) * BULLET_SPEED },
+            life: BULLET_LIFE,
+          });
+          this.events.push("shot");
+        }
+      }
     }
-    // Kurtuldu → oyuncuyu ~1 hücre geriden, LABİRENTTE yol bularak takip et
-    if (d <= 1.1) return; // yeterince yakın, bekle
-    h.repath = (h.repath ?? 0) - dt;
-    if (!h.path || h.path.length === 0 || (h.repath ?? 0) <= 0) {
-      h.path = findPath(this.maze, cellOf(h.pos), cellOf(this.player.pos));
-      h.repath = 0.4;
+  }
+
+  // Oyuncudan en az minD uzak rastgele bir zemin hücresi (asker yeniden doğuşu için)
+  private farCellFromPlayer(minD: number): Vec | null {
+    for (let i = 0; i < 40; i++) {
+      const c = this.floors[Math.floor(Math.random() * this.floors.length)];
+      if (!c) continue;
+      if (c.x === this.exit.x && c.y === this.exit.y) continue;
+      if (Math.hypot(c.x + 0.5 - this.player.pos.x, c.y + 0.5 - this.player.pos.y) >= minD) return c;
     }
-    if (h.path && h.path.length > 0) {
-      const next = h.path[0];
-      const tp = { x: next.x + 0.5, y: next.y + 0.5 };
-      const dx = tp.x - h.pos.x;
-      const dy = tp.y - h.pos.y;
-      const len = Math.hypot(dx, dy) || 1;
-      tryMove(this.maze, h.pos, PLAYER_RADIUS, (dx / len) * PLAYER_SPEED * 0.95 * dt, (dy / len) * PLAYER_SPEED * 0.95 * dt);
-      if (dist(h.pos, tp) < 0.15) h.path.shift();
-    }
+    return null;
   }
 
   // Faz E: kaçış bölümü — süre dolunca çıkış çöker (bir can gider).
@@ -1214,8 +1305,8 @@ export class GameEngine {
         } else {
           // Bölüm geçince para bonusu (Madde: yeni para kazanma + risk çarpanı)
           this.levelClearBonus = Math.round((8 + this.level * 2) * this.riskMul);
-          // Faz E: rehni kurtarıp birlikte çıktıysan ekstra ödül
-          if (this.hostage?.rescued) this.levelClearBonus += Math.round(12 * this.riskMul);
+          // Asker kurtarıp birlikte çıktıysan ekstra ödül
+          if (this.soldierRescued) this.levelClearBonus += Math.round(12 * this.riskMul);
           this.coinsEarned += this.levelClearBonus;
           this.status = this.level >= 10 ? "win" : "levelclear";
           this.events.push(this.status === "win" ? "win" : "levelclear");
