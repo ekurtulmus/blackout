@@ -9,6 +9,7 @@ import {
   type Inventory,
   type ShopItem,
 } from "@/lib/inventory";
+import { unlock } from "@/lib/achievements";
 
 // Dükkân ekranı — parayla eşya al. Menüden veya bölüm arası açılır.
 export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => void; title?: string }) {
@@ -33,6 +34,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
     setCoins(r.coins);
     setInv(getInventory());
     if (r.ok) {
+      unlock("shopper"); // Faz F başarım
       setMsg(`✓ ${it.title} alındı`);
     } else {
       setMsg(r.reason === "yetersiz para" ? "✗ Yetersiz para" : "✗ Zaten sahipsin");

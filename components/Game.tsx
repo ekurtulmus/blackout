@@ -31,6 +31,12 @@ export type EndResult = {
   coins?: number; // kalıcı cüzdandaki toplam para (senkron sonrası)
   coinsGained?: number; // bu bölümde kazanılan para
   levelClearBonus?: number; // bölüm-geçince bonusu (levelclear ekranında göster)
+  // Faz F: başarım koşulları için bölüm özeti
+  kills?: number;
+  flawless?: boolean; // hasarsız bitti mi
+  killedQueen?: boolean;
+  hostageRescued?: boolean;
+  wasEscape?: boolean;
 };
 
 type Hud = {
@@ -58,6 +64,7 @@ export default function Game({
   onEnd,
   onQuit,
   onFragment,
+  onNote,
 }: {
   level: number;
   score: number;
@@ -69,6 +76,7 @@ export default function Game({
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
   onFragment?: () => void;
+  onNote?: (id: number) => void;
 }) {
   const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -167,6 +175,7 @@ export default function Game({
       window.setTimeout(() => setMqNotice(""), 7000);
     }
     let fragmentReported = false;
+    let noteReported = false;
     const input: Input = {
       up: false,
       down: false,
@@ -480,6 +489,30 @@ export default function Game({
           ctx!.fillRect(-w / 2, -h / 2, w, h);
           ctx!.fillStyle = "#7a6a52"; // sepya portre
           ctx!.fillRect(-w / 2 + w * 0.14, -h / 2 + h * 0.12, w * 0.72, h * 0.6);
+          ctx!.restore();
+        }
+      }
+
+      // --- Faz F: günlük/not sayfası (soluk kağıt, hafif salınan) ---
+      if (engine.noteItem && !engine.noteItem.taken) {
+        const n = engine.noteItem;
+        if (vis.get(n.cell.y * cols + n.cell.x) !== undefined) {
+          const sx = n.cell.x * TS + TS / 2 - camX;
+          const sy = n.cell.y * TS + TS / 2 - camY + Math.sin(engine.time * 1.8) * 1.5;
+          const w = TS * 0.24, h = TS * 0.3;
+          ctx!.save();
+          ctx!.shadowColor = "rgba(230,220,180,0.8)";
+          ctx!.shadowBlur = 12;
+          ctx!.fillStyle = "#e9e0c4"; // kağıt
+          ctx!.fillRect(sx - w / 2, sy - h / 2, w, h);
+          ctx!.strokeStyle = "rgba(90,80,60,0.6)"; // satırlar
+          ctx!.lineWidth = 1;
+          for (let i = 1; i <= 3; i++) {
+            ctx!.beginPath();
+            ctx!.moveTo(sx - w / 2 + w * 0.15, sy - h / 2 + (h * i) / 4);
+            ctx!.lineTo(sx + w / 2 - w * 0.15, sy - h / 2 + (h * i) / 4);
+            ctx!.stroke();
+          }
           ctx!.restore();
         }
       }
@@ -984,6 +1017,11 @@ export default function Game({
           coins: total,
           coinsGained: engine.coinsEarned,
           levelClearBonus: engine.levelClearBonus,
+          kills: engine.zombiesKilled,
+          flawless: engine.player.hp >= PLAYER_MAX_HP,
+          killedQueen: engine.killedQueen,
+          hostageRescued: !!engine.hostage?.rescued,
+          wasEscape: engine.escape || engine.escapeTime > 0,
         });
         return; // döngüyü durdur
       }
@@ -1044,6 +1082,13 @@ export default function Game({
       if (engine.photoTaken && !fragmentReported) {
         fragmentReported = true;
         onFragment?.();
+      }
+      // Faz F: günlük sayfası toplandıysa bir kez bildir + toast
+      if (engine.noteTaken && !noteReported) {
+        noteReported = true;
+        onNote?.(engine.noteId);
+        setMqToast("📖 Günlük sayfası bulundu — menüden okuyabilirsin");
+        window.setTimeout(() => setMqToast(""), 3500);
       }
     }, 100);
 

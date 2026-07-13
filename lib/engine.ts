@@ -31,6 +31,7 @@ import {
   type MQPlan,
 } from "./miniquests";
 import { ScareDirector, type ScareKind } from "./scares";
+import { JOURNAL } from "./journal";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -113,6 +114,10 @@ export class GameEngine {
   traps: { x: number; y: number; until: number }[] = []; // yerdeki tuzaklar
   photoItem: Ammo | null = null; // gizli: düğün fotoğrafı parçası (tek kişilik)
   photoTaken = false; // bu bölümün parçası toplandı mı
+  killedQueen = false; // Faz F: bu bölümde kraliçe öldürüldü mü (başarım)
+  noteItem: Ammo | null = null; // Faz F: günlük/not sayfası eşyası
+  noteId = -1; // toplanınca açılacak günlük girişi
+  noteTaken = false; // bu bölümün notu toplandı mı
   bullets: Bullet[] = [];
 
   // Ölen gelinlerin yeniden doğma zamanları (saniye) + zemin hücreleri
@@ -403,6 +408,25 @@ export class GameEngine {
           this.mqDef = MQ_DEFS[plan.kind];
         }
       }
+      // Faz F: günlük/not sayfası — kaçış dışı bölümlerde seyrek (bölüme göre giriş)
+      if (!this.escape && Math.random() < 0.4) {
+        const used = new Set([
+          ...this.ammoItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+          ...this.healthItems.map((a) => a.cell.y * this.maze.cols + a.cell.x),
+        ]);
+        const nCells = this.shuffle(
+          floors.filter(
+            (c) =>
+              !(c.x === spawnCell.x && c.y === spawnCell.y) &&
+              !(c.x === exit.x && c.y === exit.y) &&
+              !used.has(c.y * this.maze.cols + c.x)
+          )
+        );
+        if (nCells[0]) {
+          this.noteItem = { id: this.nextId++, cell: { x: nCells[0].x, y: nCells[0].y }, taken: false };
+          this.noteId = (this.level - 1) % JOURNAL.length;
+        }
+      }
       // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)
       this.assignSpecialKinds();
     }
@@ -507,6 +531,7 @@ export class GameEngine {
     this.pickupHealth();
     this.pickupCollect();
     this.pickupPhoto();
+    this.pickupNote();
     this.pickupVeil();
     this.updateMucus(dt);
     this.updateMiniQuest(dt);
@@ -718,10 +743,11 @@ export class GameEngine {
         });
       }
     }
-    // Faz D "queen": ekstra para + puan ödülü
+    // Faz D "queen": ekstra para + puan ödülü + başarım bayrağı
     if (z.kind === "queen") {
       this.coinsEarned += Math.round(TUNING.queenReward * this.riskMul);
       this.score += Math.round(300 * this.riskMul);
+      this.killedQueen = true;
     }
     // 20 sn sonra yeniden doğsun (tüm modlarda)
     this.respawnQueue.push(this.time + BRIDE_RESPAWN_SEC);
@@ -1151,6 +1177,18 @@ export class GameEngine {
     if (p.cell.x === pc.x && p.cell.y === pc.y) {
       p.taken = true;
       this.photoTaken = true;
+      this.events.push("secret");
+    }
+  }
+
+  // Faz F: günlük sayfası topla
+  private pickupNote() {
+    const n = this.noteItem;
+    if (!n || n.taken) return;
+    const pc = cellOf(this.player.pos);
+    if (n.cell.x === pc.x && n.cell.y === pc.y) {
+      n.taken = true;
+      this.noteTaken = true;
       this.events.push("secret");
     }
   }

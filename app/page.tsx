@@ -7,6 +7,8 @@ import OnlineGame from "@/components/OnlineGame";
 import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import { getInventory } from "@/lib/inventory";
+import { ACHIEVEMENTS, getUnlocked, unlock, achievementById } from "@/lib/achievements";
+import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
@@ -34,6 +36,8 @@ type Screen =
   | "endlessresult"
   | "secrets"
   | "shop"
+  | "achievements"
+  | "journal"
   | "playing"
   | "dead"
   | "levelclear"
@@ -50,6 +54,9 @@ export default function Page() {
   // Ekonomi (Faz A): bölüm sonu para bilgisi
   const [coinInfo, setCoinInfo] = useState({ gained: 0, bonus: 0, total: 0 });
   const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
+  const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
+  const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
+  const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
   const [runId, setRunId] = useState(0);
   const [themeSeed, setThemeSeed] = useState(0); // her yeni oyunda rastgele
   const roomRef = useRef<NetRoom | null>(null);
@@ -85,6 +92,8 @@ export default function Page() {
       if (sec) setUnlockedSecrets(JSON.parse(sec));
       const sd = localStorage.getItem("blackout_sp_diff");
       if (sd === "kolay" || sd === "orta" || sd === "zor") setSpDiff(sd);
+      setAchList(getUnlocked()); // Faz F
+      setJournalGot(getCollected());
     } catch {
       /* geç */
     }
@@ -178,7 +187,37 @@ export default function Page() {
       bonus: r.levelClearBonus ?? 0,
       total: r.coins ?? 0,
     });
+    // Faz F: başarım kontrolleri
+    const newly: string[] = [];
+    const tryU = (id: string) => {
+      if (unlock(id)) newly.push(id);
+    };
+    if ((r.kills ?? 0) >= 1) tryU("first_kill");
+    if (r.level >= 3) tryU("reach3");
+    if (r.level >= 5) tryU("reach5");
+    if (r.level >= 8) tryU("reach8");
+    if (r.killedQueen) tryU("queenslayer");
+    if ((r.coins ?? 0) >= 100) tryU("rich");
+    if (r.status === "levelclear" || r.status === "win") {
+      if (r.flawless) tryU("flawless");
+      if (r.hostageRescued) tryU("savior");
+      if (r.wasEscape) tryU("escapist");
+    }
+    if (r.status === "win") tryU("win");
+    if (newly.length) {
+      setNewAch(newly);
+      setAchList(getUnlocked());
+    } else {
+      setNewAch([]);
+    }
     setScreen(r.status);
+  }
+
+  // Faz F: günlük sayfası toplandı
+  function handleNote(id: number) {
+    collectNote(id);
+    setJournalGot(getCollected());
+    if (unlock("collector")) setAchList(getUnlocked());
   }
 
   function playMission(i: number) {
@@ -276,6 +315,7 @@ export default function Page() {
         diff={spDiff}
         onEnd={handleEnd}
         onQuit={() => setScreen("menu")}
+        onNote={handleNote}
       />
     );
   }
@@ -296,6 +336,61 @@ export default function Page() {
         title={shopReturn === "levelclear" ? "BÖLÜM ARASI DÜKKÂN" : "DÜKKÂN"}
         onBack={() => setScreen(shopReturn)}
       />
+    );
+  }
+
+  if (screen === "achievements") {
+    return (
+      <div className="stage" style={{ overflowY: "auto", padding: "24px 16px" }}>
+        <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
+          <div className="big" style={{ color: "#ffd75a" }}>🏆 Başarımlar</div>
+          <div className="subtitle">{achList.length}/{ACHIEVEMENTS.length} açıldı</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
+            {ACHIEVEMENTS.map((a) => {
+              const got = achList.includes(a.id);
+              return (
+                <div key={a.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 14, opacity: got ? 1 : 0.5, background: got ? "rgba(255,215,90,0.06)" : "rgba(255,255,255,0.02)" }}>
+                  <div style={{ fontSize: 26 }}>{got ? a.icon : "🔒"}</div>
+                  <div style={{ fontWeight: 800 }}>{a.title}</div>
+                  <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4 }}>{a.desc}</div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "journal") {
+    return (
+      <div className="stage" style={{ overflowY: "auto", padding: "24px 16px" }}>
+        <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
+          <div className="big" style={{ color: "#e9e0c4" }}>📖 Günlük</div>
+          <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
+            {JOURNAL.map((e) => {
+              const got = journalGot.includes(e.id);
+              return (
+                <div key={e.id} style={{ border: "1px solid var(--border)", borderRadius: 12, padding: 16, background: got ? "rgba(233,224,196,0.05)" : "rgba(255,255,255,0.02)" }}>
+                  <div style={{ fontWeight: 800, color: got ? "#e9e0c4" : "var(--muted)" }}>
+                    {got ? `“${e.title}”` : "🔒 Kayıp Sayfa"}
+                  </div>
+                  <div style={{ fontSize: 14, lineHeight: 1.6, color: got ? "#cfc7ad" : "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
+                    {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <div style={{ textAlign: "center", marginTop: 20 }}>
+            <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -636,6 +731,12 @@ export default function Page() {
             <button className="btn" onClick={() => { setShopReturn("menu"); setScreen("shop"); }}>
               🛒 Dükkân
             </button>
+            <button className="btn" onClick={() => setScreen("achievements")}>
+              🏆 Başarımlar ({achList.length}/{ACHIEVEMENTS.length})
+            </button>
+            <button className="btn" onClick={() => setScreen("journal")}>
+              📖 Günlük ({journalGot.length}/{JOURNAL.length})
+            </button>
             <button className="btn" onClick={() => setScreen("ayarlar")}>
               ⚙ Ayarlar
             </button>
@@ -720,6 +821,11 @@ export default function Page() {
             )}
             {" · "}Cüzdan: <b>{coinInfo.total}</b>
           </div>
+          {newAch.length > 0 && (
+            <div className="subtitle" style={{ color: "#ffd75a" }}>
+              🏆 Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+            </div>
+          )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button
               className="btn btn-primary"
@@ -764,6 +870,11 @@ export default function Page() {
           <div className="subtitle" style={{ color: "#ffd75a" }}>
             🪙 Cüzdan: <b>{coinInfo.total} para</b>
           </div>
+          {newAch.length > 0 && (
+            <div className="subtitle" style={{ color: "#ffd75a" }}>
+              🏆 Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+            </div>
+          )}
           <button className="btn btn-primary" onClick={startNewGame}>
             Yeniden Oyna
           </button>
