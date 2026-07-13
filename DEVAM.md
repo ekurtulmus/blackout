@@ -4,10 +4,13 @@
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
 > Son güncelleme: **2026-07-13**
 >
-> **NEREDE KALDIK (özet):** "Ritim & Çeşitlilik Paketi" uygulanıyor. **Faz 1-2-3 BİTTİ ve commit'lendi**
-> (madde 0-8). **Sırada Faz 4 (madde 9 mini-görevler) ve Faz 5 (madde 10 korku olayları + madde 11
-> Mezarlık teması).** Tam şartname aşağıda "RİTİM & ÇEŞİTLİLİK PAKETİ" bölümünde. Commit'ler local'de
-> (push edilmedi — istersen `git push origin main`). Yeni sohbette: "DEVAM.md oku, Faz 4'ten devam et".
+> **NEREDE KALDIK (özet):** "Ritim & Çeşitlilik Paketi" **TAMAMLANDI** — Faz 1-2-3-4-5 hepsi
+> bitti ve commit'lendi (madde 0-11). **Faz 4** (madde 9 mini-görevler) ve **Faz 5** (madde 10
+> rastgele korku olayları + madde 11 Mezarlık teması/Orman zenginleştirme) bu oturumda eklendi.
+> Doğrulama: `tsc` temiz + 53 headless test (27 mini-görev + 13 korku + 13 tema/dekor) + canlı
+> duman-testi (menü/oyun açılıyor, konsol temiz, HUD mini-görev çipi çalışıyor). Commit'ler local'de
+> (push edilmedi — istersen `git push origin main`). **SIRADA: canlı playtest** (canvas rAF panelde
+> donar → gerçek tarayıcıda oyna: mini-görev ödülleri, korku anları, Mezarlık/Orman süsleri) + Sırada(7).
 
 ---
 
@@ -66,6 +69,12 @@
 - ✅ **UI metinleri korku tonuna çekildi** (2026-07-12): mod adları — Yalnız Kaçış / **Ölüm Yarışı** /
   Karanlık Görevler / Bitmeyen Gece; ekran başlıkları (SENİ BULDULAR, KARANLIK KAZANDI, GÜN AĞARDI) ve
   açıklamalar daha atmosferik. Lobi "ÖLÜM YARIŞI". (Sadece görünen metin; ekran anahtarları aynı.)
+- ✅ **Mini-görevler** (Madde 9): normal bölümlerde opsiyonel "Fırsat" hedefi (tek kişilik 7 çeşit; online
+  yalnız "kanı takip et"), tamamlanınca ödül. Çıkışı geciktirmez, yarışı bozmaz. `lib/miniquests.ts`.
+- ✅ **Rastgele korku olayları** (Madde 10): seyrek, hasarsız atmosfer anları (fısıltı/gölge/fener sıçraması/
+  kapı çarpması/kalp atışı). `lib/scares.ts` — yerel, tek kişilik + online.
+- ✅ **Mezarlık teması + Orman süsleri** (Madde 11): yeni tema, zemine deterministik mezar taşı/ağaç/çalı.
+  `lib/decor.ts` + `themes.ts` `decor` alanı.
 
 ## RİTİM & ÇEŞİTLİLİK PAKETİ (devam ediyor)
 Amaç: tekdüzeliği kırmak, zorluğu artırmadan ritmi değiştirmek, online'da adaleti korumak.
@@ -82,7 +91,19 @@ Merkezi ayar: **`lib/config.ts`** (`TUNING`) — tüm denge sayıları burada.
   görünür) + Madde 7 **mukus gelini** (ölünce 10sn hasar lekesi, ~8dps, parlak yeşil) + Madde 8 **gelin duvağı**
   (5sn görünmez, ateş=iptal, temas hasarı yok). `types.BrideKind` + `brides.assignBrideKind`; online host-otoriter
   (kind stream'e eklendi, mukus kill mesajıyla, duvak seat bazlı `{t:veil,on}` ile). Test: 13 Faz-3 + regresyon.
-- ⏳ Faz 4: mini-görevler (online-adil). ⏳ Faz 5: korku olayları + Mezarlık teması.
+- ✅ **Faz 4** (2026-07-13): Madde 9 **mini-görevler** — normal bölümlere serpiştirilen opsiyonel hedefler.
+  `lib/miniquests.ts` (7 görev: mumlar/yüzük/işaretli-infaz/çan/kanı-takip/fenersiz/ayna). Yüzük bir gelini
+  delirtir (`brides.speedMul`, tavan geçerli), çan tüm gelinleri ayaklandırır, işaretli bölgede infaz ödül
+  verir. Çıkışı GECİKTİRMEZ; tamamlanınca mermi/can/puan + HUD "Fırsat" çipi + toast. Online: yalnız KISA +
+  gelin-nötr "kanı takip et" — deterministik plan (`mulberry32`, herkes aynı seviyeden aynı görevi bağımsızca
+  üretir), kişisel mermi ödülü, host-otoriter gelin AI'sına dokunmaz. Test: 27 mini-görev.
+- ✅ **Faz 5a** (2026-07-13): Madde 10 **rastgele korku olayları** — `lib/scares.ts` `ScareDirector`. Seyrek,
+  cooldown'lu, HASARSIZ: fısıltı/uzak kapı çarpması/kalp atışı (ses) + kenardan geçen gölge/fener sıçraması
+  (görsel). Art arda aynı tür yok, min taban korunur (spam yok). Tamamen yerel → online host-otoriterlik gerektirmez.
+  `config.scareMin/MaxSec` + `audio` yeni sesler + engine/OnlineGame render fx. Test: 13 korku.
+- ✅ **Faz 5b** (2026-07-13): Madde 11 **Mezarlık teması + Orman zenginleştirme** — `THEMES`e "Mezarlık" (soğuk
+  toprak + soluk taş). Tema modeline `decor` alanı (graves/forest). `lib/decor.ts` hash tabanlı DETERMİNİSTİK
+  zemin süsleri (mezar taşı/haç, ağaç/çalı) → tek kişilik + online aynı, ekstra ağ yok. Test: 13 tema/dekor.
 
 ### KURALLAR (tüm paket boyunca geçerli)
 - localStorage şemasını bozma; yeni alanlar default'lu/geriye uyumlu.
@@ -147,7 +168,10 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 | `lib/online.ts` | Yarış seviyesi üretimi + eşit doğuş + serialize |
 | `lib/net.ts` | Supabase Realtime oda (broadcast + el sıkışma) |
 | `lib/audio.ts` | Web Audio ses sentezi + müzik dosyaları (can için `heal` sesi) |
-| `lib/themes.ts` | Görsel temalar (Zindan/Hastane/Kilise/Orman) + otomatik/rastgele seçim |
+| `lib/themes.ts` | Görsel temalar (Zindan/Hastane/Kilise/Orman/**Mezarlık**) + `decor` alanı + otomatik/rastgele seçim |
+| `lib/decor.ts` | Madde 11: hash tabanlı deterministik zemin süsleri (mezar taşı/ağaç/çalı) — ortak |
+| `lib/miniquests.ts` | Madde 9: mini-görev tanımları + deterministik planlayıcı (online-adil) — ortak |
+| `lib/scares.ts` | Madde 10: rastgele korku olayları yönetici (ScareDirector, hasarsız/yerel) — ortak |
 | `lib/story.ts` | Hikaye girişi + bölüm arası tekinsiz notlar |
 | `lib/maze.ts`, `lib/vision.ts`, `lib/pathfind.ts`, `lib/levels.ts`, `lib/types.ts` | Labirent, görüş/sis, yol bulma, bölüm ayarları, tipler |
 | `public/audio/menu.mp3`, `game.mp3` | Açılış + oyun-içi müzik |
@@ -207,6 +231,10 @@ ses (ateş/toplama/hasar/kapı/ağlama).
 - **Çıkış:** herkes kendi çıkışını açar (≥1 gelin öldür).
 
 ## 10) Son commitler (git log)
+- `16bdc93` Faz 5 (Madde 11): Mezarlık teması + Orman zenginleştirme
+- `4202802` Faz 5 (Madde 10): Rastgele korku olayları — atmosfer, hasarsız
+- `1ff58c7` Faz 4 (Madde 9): Mini-görevler — bölüm içi opsiyonel hedefler + ödül
+- `de6ba86` Anti-radar: 2 hak, her biri tek tur geçerli
 - `5f06f5d` Online: can barı + güvenli yeniden doğma
 - `d75db3d` Görsel birlik (ortak sprite'lar; online detaylı)
 - `31d5202` Faz 2c: online bariyerler
