@@ -11,7 +11,10 @@ import {
   BULLET_LIFE,
   FIRE_COOLDOWN,
   HEAL_AMOUNT,
+  COIN_PER_KILL,
 } from "@/lib/engine";
+import { getCoins, addCoins } from "@/lib/coins";
+import { getInventory, saveInventory } from "@/lib/inventory";
 import { BRIDE_RADIUS, assignBrideKind, moveBrides, randomDir } from "@/lib/brides";
 import { TUNING } from "@/lib/config";
 import { Flashlight } from "@/lib/flashlight";
@@ -21,7 +24,7 @@ import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, grime } from "@/lib/sprites";
 import { THEMES } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
-import type { Maze } from "@/lib/maze";
+import { bfsDistances, type Maze } from "@/lib/maze";
 import {
   deserializeLevel,
   generateRaceLevel,
@@ -41,6 +44,7 @@ const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
 const LEAVE_MS = 4000; // bu kadar süre pos gelmezse oyuncu "ayrıldı" sayılır
+const RACE_WIN_COINS = 10; // bir bölümü (turu) kazanınca kişisel para ödülü
 
 // Koltuk (seat) renkleri — 0 host
 const SEAT_COLORS = ["#6ee7ff", "#ff9a3c", "#7dffb0", "#c98cff", "#ffd166", "#ff6b9d"];
@@ -72,6 +76,13 @@ export default function OnlineGame({
   const [mqHud, setMqHud] = useState(""); // aktif mini-görev etiketi (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev ödül bildirimi
   const [alone, setAlone] = useState(false); // diğerleri gitti → tek kaldın
+  // Ekonomi + envanter (online): para gelin/tur başına kazanılır (kişisel, kalıcı cüzdan);
+  // kalkan/radar kişisel envanterden tüketilir (SP ile aynı depo).
+  const [coins, setCoins] = useState(0);
+  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 });
+  const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
+  const radarUntil = useRef(0); // radar oku bitişi (ms, performance.now)
+  const radarAngle = useRef(0); // radar oku yönü (radyan)
 
   const mySeat = info.seat;
   const diff = info.diff;
@@ -194,6 +205,8 @@ export default function OnlineGame({
     onlineTraps.current.clear();
     trapStock.current = 2;
     setTrapCount(2);
+    radarUntil.current = 0;
+    { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars }); }
     if (amHost.current) {
       const total = lvl.brideSpawns.length;
       hostBrides.current = lvl.brideSpawns.map((c, i) => ({
@@ -260,12 +273,11 @@ export default function OnlineGame({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Ses — online moda bağla (menü müziği page tarafında susturuldu)
+    // Ses — online moda bağla. Ölüm Koşusu'nun arka plan müziği (dükkân/envanter.mp3)
+    // page.tsx tarafından çalınır; burada yalnız ses motorunu hazır tutarız.
     sound.init();
     sound.resume();
-    sound.playGameMusic().then((ok) => {
-      if (!ok) sound.startAmbient();
-    });
+    setCoins(getCoins()); // kalıcı cüzdanı HUD'a yükle
 
     let toastTimer = 0;
     function flash(msg: string) {
@@ -328,6 +340,7 @@ export default function OnlineGame({
     }
     function showResult(winnerSeat: number) {
       resultPending.current = true;
+      if (winnerSeat === mySeat) setCoins(addCoins(RACE_WIN_COINS)); // turu kazandın → bonus para
       setOverlay({ winnerSeat, scores: scores.current.slice() });
     }
     function scheduleLoad(next: RaceLevel) {
@@ -405,6 +418,7 @@ export default function OnlineGame({
       } else guestBrides.current.delete(id);
       if (local) {
         kills.current++;
+        setCoins(addCoins(COIN_PER_KILL)); // gelin başına para (kişisel, kalıcı cüzdan)
         if (kills.current >= 1 && !exitOpen.current) {
           exitOpen.current = true;
           sound.play("dooropen");
@@ -491,6 +505,8 @@ export default function OnlineGame({
         case " ": case "Spacebar": input.current.fire = d; break;
         case "e": case "E": input.current.place = d; break;
         case "t": case "T": if (d) placeTrapOnline(); break;
+        case "q": case "Q": if (d) activateShieldOnline(); break; // envanter: kalkan
+        case "r": case "R": if (d) activateRadarOnline(); break; // envanter: radar
         default: return;
       }
       e.preventDefault();
@@ -1193,6 +1209,42 @@ export default function OnlineGame({
         ctx!.fillRect(0, 0, cssW, cssH);
       }
 
+      // Envanter radarı: 1.5 sn çıkışa dönük parlak ok (metin yok)
+      if (radarUntil.current > performance.now()) {
+        const rem = (radarUntil.current - performance.now()) / 1000;
+        const a = Math.min(1, rem / 1.5);
+        const ang = radarAngle.current;
+        const pulse = 1 + 0.12 * Math.sin(T * 12);
+        const dist = TS * (2.1 + 0.25 * Math.sin(T * 6));
+        const ax = cx + Math.cos(ang) * dist;
+        const ay = cy + Math.sin(ang) * dist;
+        ctx!.save();
+        ctx!.globalAlpha = a;
+        const trail = ctx!.createLinearGradient(cx, cy, ax, ay);
+        trail.addColorStop(0, "rgba(120,220,255,0)");
+        trail.addColorStop(1, "rgba(120,220,255,0.5)");
+        ctx!.strokeStyle = trail;
+        ctx!.lineWidth = 3;
+        ctx!.beginPath();
+        ctx!.moveTo(cx, cy);
+        ctx!.lineTo(ax, ay);
+        ctx!.stroke();
+        ctx!.translate(ax, ay);
+        ctx!.rotate(ang);
+        ctx!.shadowColor = "rgba(120,220,255,0.95)";
+        ctx!.shadowBlur = 22;
+        ctx!.fillStyle = "#cfeeff";
+        const s = TS * 0.5 * pulse;
+        ctx!.beginPath();
+        ctx!.moveTo(s, 0);
+        ctx!.lineTo(-s * 0.55, -s * 0.62);
+        ctx!.lineTo(-s * 0.22, 0);
+        ctx!.lineTo(-s * 0.55, s * 0.62);
+        ctx!.closePath();
+        ctx!.fill();
+        ctx!.restore();
+      }
+
       // Madde 10: görsel korku efektleri (gölge / fener sıçraması) — hasarsız
       drawScareFx(scares.current.fx, T, cssW, cssH);
     }
@@ -1267,6 +1319,51 @@ export default function OnlineGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Envanter: kalkanı kullan (kişisel envanterden tüket → 3 sn dokunulmazlık)
+  function activateShieldOnline() {
+    if (!ready.current || resultPending.current) return;
+    const inv = getInventory();
+    if (inv.shields <= 0) return;
+    inv.shields -= 1;
+    saveInventory(inv);
+    invulnUntil.current = Math.max(invulnUntil.current, performance.now() + 3000);
+    sound.play("veil"); // hayaletimsi kalkan sesi
+    setInvCounts({ shields: inv.shields, radars: inv.radars });
+  }
+  // Envanter: radarı kullan (kişisel envanterden tüket → 1.5 sn çıkışa dönük ok)
+  function activateRadarOnline() {
+    if (!ready.current || resultPending.current) return;
+    const maze = mazeRef.current, lvl = levelRef.current;
+    if (!maze || !lvl) return;
+    const inv = getInventory();
+    if (inv.radars <= 0) return;
+    inv.radars -= 1;
+    saveInventory(inv);
+    // Çıkış yönünü BFS mesafe haritasıyla bul (komşu hücrelerden en yakını)
+    const dist = bfsDistances(maze, lvl.exit);
+    const pc = cellOf(selfPos.current);
+    const here = dist[pc.y]?.[pc.x] ?? -1;
+    let bestAng = 0;
+    let bestD = here >= 0 ? here : Infinity;
+    const opts = [
+      { dx: 1, dy: 0, a: 0 },
+      { dx: -1, dy: 0, a: Math.PI },
+      { dx: 0, dy: -1, a: -Math.PI / 2 },
+      { dx: 0, dy: 1, a: Math.PI / 2 },
+    ];
+    for (const o of opts) {
+      const d = dist[pc.y + o.dy]?.[pc.x + o.dx];
+      if (d !== undefined && d >= 0 && d < bestD) {
+        bestD = d;
+        bestAng = o.a;
+      }
+    }
+    radarAngle.current = bestAng;
+    radarUntil.current = performance.now() + 1500;
+    sound.play("secret");
+    setInvCounts({ shields: inv.shields, radars: inv.radars });
+  }
+
   // Menüye dön — ayrıldığını hemen bildir (diğerleri anında görsün)
   function quit() {
     try {
@@ -1300,6 +1397,7 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Mermi</span><span className="val">{hud.ammo}</span></div>
         <div className="chip"><span className="lbl">Bariyer</span><span className="val">{hud.barriers}</span></div>
         <div className="chip"><span className="lbl">Tuzak</span><span className="val">🕸️ {trapCount}</span></div>
+        <div className="chip"><span className="lbl">Para</span><span className="val" style={{ color: "#ffd75a" }}>🪙 {coins}</span></div>
         <div className="chip">
           <span className="lbl">Çıkışın</span>
           <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
@@ -1339,10 +1437,78 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Sen</span>
           <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
+        <button
+          className="chip mutebtn"
+          onClick={() => {
+            const inv = getInventory();
+            setInvCounts({ shields: inv.shields, radars: inv.radars });
+            setInvOpen((v) => !v);
+          }}
+          title="Envanter (kalkan / radar)"
+        >
+          <span className="val">📦 {invCounts.shields + invCounts.radars}</span>
+        </button>
         <button className="chip mutebtn" onClick={quit} title="Menüye dön">
           <span className="val">⎋</span>
         </button>
       </div>
+
+      {/* Oyun-içi envanter (online) — ortalanmış modal, mobil dostu */}
+      {invOpen && (
+        <div
+          onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.55)",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 12,
+              background: "linear-gradient(180deg, rgba(20,15,13,0.98), rgba(10,8,7,0.98))",
+              border: "1px solid rgba(120,110,95,0.3)",
+              borderTop: "2px solid #d11a1a",
+              borderRadius: 10,
+              padding: 18,
+              minWidth: "min(300px, 88vw)",
+              boxShadow: "0 30px 90px rgba(0,0,0,0.7)",
+            }}
+          >
+            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
+            <button
+              className="btn"
+              disabled={invCounts.shields <= 0}
+              onClick={() => { activateShieldOnline(); }}
+              style={{ opacity: invCounts.shields > 0 ? 1 : 0.4 }}
+            >
+              🛡️ Kalkan ({invCounts.shields}) — 3 sn dokunulmazlık
+            </button>
+            <button
+              className="btn"
+              disabled={invCounts.radars <= 0}
+              onClick={() => { activateRadarOnline(); setInvOpen(false); }}
+              style={{ opacity: invCounts.radars > 0 ? 1 : 0.4 }}
+            >
+              📻 Radar ({invCounts.radars}) — çıkış yönünü göster
+            </button>
+            {invCounts.shields <= 0 && invCounts.radars <= 0 && (
+              <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                Boş — menüdeki dükkândan alabilirsin.
+              </div>
+            )}
+            <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
+              Kapat
+            </button>
+          </div>
+        </div>
+      )}
 
       {toast && (
         <div
@@ -1402,7 +1568,7 @@ export default function OnlineGame({
       )}
 
       <div className="hint">
-        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · çıkışın için 1 gelin öldür
+        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · <b>T</b> tuzak · <b>Q</b> kalkan · <b>R</b> radar · 📦 envanter · çıkışın için 1 gelin öldür
       </div>
 
       <div className="touch">

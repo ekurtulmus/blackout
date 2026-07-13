@@ -305,6 +305,9 @@ export default function Game({
     };
     window.addEventListener("keydown", startAudio);
     window.addEventListener("pointerdown", startAudio);
+    // Ses menüde zaten açıldıysa (buraya gelmek için tıklandı) müziği HEMEN başlat —
+    // özellikle Bitmeyen Gece'ye girer girmez müzik çalsın (tuşa basmayı bekleme).
+    startAudio();
 
     // --- Render ---
     function shade(base: number[], f: number) {

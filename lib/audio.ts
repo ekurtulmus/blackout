@@ -349,7 +349,8 @@ class SoundEngine {
           a.preload = "auto";
           this.islikAudio = a;
         }
-        this.islikAudio.volume = Math.min(1, this.vol * 0.6);
+        // Islık, oyun müziğini bastırmasın: oyun müziği seviyesinin (~0.45) yalnız %35'i
+        this.islikAudio.volume = Math.min(1, this.vol * 0.45 * 0.35);
         this.islikAudio.currentTime = 0;
         this.islikAudio.play().catch(() => {});
       }

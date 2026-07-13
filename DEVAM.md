@@ -4,13 +4,35 @@
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
 > Son güncelleme: **2026-07-13**
 >
-> **NEREDE KALDIK (özet):** "Ritim & Çeşitlilik Paketi" **TAMAMLANDI** — Faz 1-2-3-4-5 hepsi
+> **NEREDE KALDIK (özet):** Bu oturumda **online ekonomi/envanter + müzik yönlendirme + Nasıl
+> Oynanır zenginleştirme + ıslık dengesi** yapıldı (aşağıda "MÜZİK & ONLINE EKONOMİ OTURUMU").
+> Doğrulama: `tsc` temiz + canlı duman-testi (3007'de HMR tüm dosyaları hatasız derledi, konsol
+> temiz, Nasıl Oynanır modalı yeni gelin içeriğiyle render oldu, Dükkân açılıyor). Commit'ler
+> local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
+> için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
+
+## MÜZİK & ONLINE EKONOMİ OTURUMU (2026-07-13)
+- ✅ **Online (Ölüm Koşusu) ekonomi + envanter** (`components/OnlineGame.tsx`): gelin başına **para**
+  (`COIN_PER_KILL`, kişisel/kalıcı cüzdan `coins.ts`), tur kazanınca **+10 para** (`RACE_WIN_COINS`,
+  yalnız kazanan seat'e). HUD'da 🪙 Para çipi. **Envanter** kişisel depodan (`inventory.ts`) tüketilir:
+  **Q kalkan** (3sn dokunulmazlık), **R radar** (BFS ile çıkış yönü oku — `bfsDistances`), 📦 panel +
+  touch düğmesi. Tuzak (T) zaten vardı. Radar oku render'ı SP'den aynen taşındı.
+- ✅ **Müzik yönlendirme** (`app/page.tsx` + `OnlineGame.tsx`): **Ölüm Koşusu**'nda artık **dükkân
+  müziği** (`envanter.mp3`) çalar (page `playScreenMusic("shop")`; OnlineGame'den `playGameMusic`
+  kaldırıldı). **Dükkân** ekranında artık **menü müziği devam eder** (dükkânın ayrı müziği kaldırıldı).
+- ✅ **Bitmeyen Gece müziği otomatik** (`components/Game.tsx`): oyun müziği artık mount'ta HEMEN başlar
+  (`startAudio()` çağrısı) — tuşa basmayı beklemez; endless'e girer girmez çalar.
+- ✅ **Islık dengesi** (`lib/audio.ts`): oyun-içi ıslık sesi `vol*0.6` → **`vol*0.45*0.35`** (oyun
+  müziğinin ~%35'i) → normal oyun sesini bastırmıyor.
+- ✅ **Nasıl Oynanır zenginleştirildi** (`components/MainMenu.tsx`): atmosferik giriş + kontroller +
+  **"Kanlı Gelinler"** bölümü (7 tür: Kanlı/Karanlık/Mukus/Çağıran/Bölünen/Duvar-Aşan/Kraliçe özellikleri)
+  + ipucu. Modal kaydırılabilir (max-height 86vh), yeni CSS (`.mm-intro/.mm-brides/.mm-tip`, `h3`).
+
+---
+
+> **ÖNCEKİ ÖZET:** "Ritim & Çeşitlilik Paketi" **TAMAMLANDI** — Faz 1-2-3-4-5 hepsi
 > bitti ve commit'lendi (madde 0-11). **Faz 4** (madde 9 mini-görevler) ve **Faz 5** (madde 10
-> rastgele korku olayları + madde 11 Mezarlık teması/Orman zenginleştirme) bu oturumda eklendi.
-> Doğrulama: `tsc` temiz + 53 headless test (27 mini-görev + 13 korku + 13 tema/dekor) + canlı
-> duman-testi (menü/oyun açılıyor, konsol temiz, HUD mini-görev çipi çalışıyor). Commit'ler local'de
-> (push edilmedi — istersen `git push origin main`). **SIRADA: canlı playtest** (canvas rAF panelde
-> donar → gerçek tarayıcıda oyna: mini-görev ödülleri, korku anları, Mezarlık/Orman süsleri) + Sırada(7).
+> rastgele korku olayları + madde 11 Mezarlık teması/Orman zenginleştirme) eklendi.
 
 ---
 

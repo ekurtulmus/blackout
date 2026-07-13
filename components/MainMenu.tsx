@@ -403,15 +403,35 @@ export default function MainMenu({
         <div className="mm-card">
           <span className="mm-close" onClick={() => setModal(false)}>✕</span>
           <h2>Nasıl Oynanır</h2>
+          <p className="mm-intro">
+            Bir düğün gecesi kana bulandı. Şimdi kapkaranlık labirentte, elinde titrek bir
+            fenerle kaçıyorsun. <b>Kanlı gelinler</b> damadını arıyor — ve seni ona benzetiyorlar.
+            Fenerin yalnızca önünü aydınlatır; arkan hep karanlık. Sessiz ol, mermini boşa harcama,
+            yolunu bul.
+          </p>
           <ul>
-            <li>Hareket: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> veya ok tuşları · <kbd>Shift</kbd> koş</li>
-            <li>Ateş: <kbd>Boşluk</kbd> — gittiğin yöne ateş eder</li>
-            <li>Yerdeki parlayan <b>mermileri</b> topla (sınırlı!)</li>
-            <li>En az 1 <b>gelini</b> yok edince <b>çıkış açılır</b>; yeşil kapıya ulaş</li>
-            <li>Envanter: <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · <kbd>E</kbd> tuzak</li>
-            <li>Gelin/bölüm başına <b>para</b> kazan → <b>Dükkân</b>'dan eşya al</li>
-            <li><b>3 can</b> hakkın var. Gelin teması can barını düşürür.</li>
+            <li>Hareket: <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / ok tuşları · <kbd>Shift</kbd> koş (nefesin tükenir)</li>
+            <li>Ateş: <kbd>Boşluk</kbd> — baktığın yöne ateş eder. Mermi <b>azdır</b>, yerden topla.</li>
+            <li>En az <b>1 gelini</b> yok edince <b>çıkış açılır</b>; parlayan yeşil kapıya ulaş.</li>
+            <li>Envanter: <kbd>Q</kbd> kalkan (kısa dokunulmazlık) · <kbd>R</kbd> radar (çıkış yönü) · <kbd>E</kbd> tuzak · <kbd>T</kbd> duvak</li>
+            <li>Gelin başına ve bölüm sonunda <b>para</b> kazan → <b>Dükkân</b>'dan eşya/geliştirme al.</li>
+            <li><b>3 canın</b> var; gelin teması can barını düşürür. Karanlıkta <b>kalp atışın</b> hızlanır.</li>
           </ul>
+
+          <h3>Kanlı Gelinler</h3>
+          <ul className="mm-brides">
+            <li><b>🕯️ Kanlı Gelin</b> — Klasik avcı. Seni görünce koşar, <b>asla vazgeçmez</b>; bölüm ilerledikçe daha zekileşir.</li>
+            <li><b>🌑 Karanlık Gelin</b> — Işıkta yavaş, <b>karanlıkta hızlanır</b>. Fenersiz köşelerde kırmızı gözleri parlar.</li>
+            <li><b>🟢 Mukus Gelini</b> — Öldüğünde yere <b>10 sn zehirli yeşil leke</b> bırakır; üstünden geçersen canın erir.</li>
+            <li><b>🗣️ Çağıran Gelin</b> — <b>Çığlık atıp</b> yakındaki uyuyan gelinleri uyandırır, üzerine sürü çeker.</li>
+            <li><b>👯 Bölünen Gelin</b> — Vurup öldürünce <b>iki hızlı yavruya bölünür</b>. Köşede sıkışma!</li>
+            <li><b>🧱 Duvar Aşan Gelin</b> — Duvarların içinden yavaşça <b>süzülür</b>; labirent onu durduramaz.</li>
+            <li><b>👑 Kraliçe Gelin</b> — <b>Dev boss</b>, birkaç bölümde bir çıkar. Taçlı, kızıl auralı, çok hızlı ve ölümcül.</li>
+          </ul>
+          <p className="mm-tip">
+            İpucu: <b>Duvak</b> eşyasını al → 5 sn görünmez ol (ateş edersen bozulur). <b>Bariyer</b>
+            koyup gelinlere yolu kapa. Panikleme; karanlık en çok acele edeni yutar.
+          </p>
         </div>
       </div>
     </div>
@@ -457,13 +477,23 @@ const MM_CSS = `
 @keyframes mm-fade{to{opacity:1;transform:none;}}
 .mm-modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.74);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .35s;}
 .mm-modal.open{opacity:1;pointer-events:auto;}
-.mm-card{width:min(500px,88vw);background:linear-gradient(180deg,rgba(18,14,12,.97),rgba(10,8,7,.97));border:1px solid rgba(120,110,95,.2);border-top:2px solid #d11a1a;padding:34px 38px;position:relative;transform:translateY(16px) scale(.98);transition:transform .35s;box-shadow:0 30px 90px rgba(0,0,0,.7);}
+.mm-card{width:min(540px,90vw);max-height:86vh;overflow-y:auto;background:linear-gradient(180deg,rgba(18,14,12,.98),rgba(10,8,7,.98));border:1px solid rgba(120,110,95,.2);border-top:2px solid #d11a1a;padding:34px 38px;position:relative;transform:translateY(16px) scale(.98);transition:transform .35s;box-shadow:0 30px 90px rgba(0,0,0,.7);}
+.mm-card::-webkit-scrollbar{width:8px;}
+.mm-card::-webkit-scrollbar-thumb{background:rgba(150,40,40,.4);border-radius:4px;}
 .mm-modal.open .mm-card{transform:none;}
-.mm-card h2{font-family:'Cinzel',serif;font-size:15px;letter-spacing:.3em;text-transform:uppercase;color:#e0a24a;margin-bottom:22px;text-align:center;}
+.mm-card h2{font-family:'Cinzel',serif;font-size:15px;letter-spacing:.3em;text-transform:uppercase;color:#e0a24a;margin-bottom:18px;text-align:center;}
+.mm-card h3{font-family:'Cinzel',serif;font-size:13px;letter-spacing:.24em;text-transform:uppercase;color:#c86b4a;margin:22px 0 12px;text-align:center;border-top:1px solid rgba(120,110,95,.16);padding-top:18px;}
+.mm-intro{font-size:14.5px;color:#9b9484;line-height:1.66;margin:0 0 18px;font-style:italic;}
+.mm-intro b{color:#c86b4a;font-style:normal;}
+.mm-tip{font-size:14px;color:#8f8776;line-height:1.6;margin:16px 0 0;padding-top:14px;border-top:1px solid rgba(120,110,95,.16);}
+.mm-tip b{color:#e0a24a;}
 .mm-card ul{list-style:none;display:grid;gap:11px;margin:0;padding:0;}
 .mm-card li{font-size:15.5px;color:#a9a294;line-height:1.5;padding-left:18px;position:relative;}
 .mm-card li::before{content:"›";position:absolute;left:0;color:#d11a1a;font-weight:700;}
 .mm-card li b{color:#e4ddce;font-weight:500;}
+.mm-brides li{font-size:14.5px;line-height:1.55;}
+.mm-brides li::before{content:"✦";color:#c86b4a;}
+.mm-brides li b{color:#efc987;}
 .mm-card kbd{font-family:'Cinzel',serif;font-size:11px;color:#e4ddce;background:linear-gradient(180deg,#2a211d,#171210);border:1px solid rgba(150,130,110,.3);border-bottom-width:2px;border-radius:4px;padding:2px 8px;margin:0 1px;display:inline-block;}
 .mm-close{position:absolute;top:16px;right:20px;font-family:'Cinzel',serif;font-size:20px;color:#6f695d;cursor:pointer;transition:color .2s;line-height:1;}
 .mm-close:hover{color:#d11a1a;}

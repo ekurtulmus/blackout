@@ -161,29 +161,31 @@ export default function Page() {
   useEffect(() => {
     const inGame =
       screen === "playing" ||
-      screen === "onlinegame" ||
       screen === "missionplay" ||
       screen === "endlessplay";
     if (inGame) {
-      // Oyun: menü + ekran müziklerini durdur, oyun-içi ıslığı başlat
+      // Oyun (tek kişilik / görev / bitmeyen gece): menü + ekran müziklerini durdur,
+      // oyun kendi müziğini (game.mp3) çalar; oyun-içi ıslığı başlat.
       sound.stopMenuMusic();
       sound.stopScreenMusic();
       sound.startWhistles();
       return;
     }
+    // Ölüm Koşusu (online): DÜKKÂN müziği (envanter.mp3) çalar + ıslık
+    if (screen === "onlinegame") {
+      sound.stopMenuMusic();
+      sound.playScreenMusic("shop");
+      sound.startWhistles();
+      return;
+    }
     sound.stopWhistles();
-    // Sırlar / Dükkân: kendi müziği çalar (menü müziği kısılır)
+    // Sırlar: kendi müziği çalar (menü müziği kısılır)
     if (screen === "secrets") {
       sound.stopMenuMusic();
       sound.playScreenMusic("secrets");
       return;
     }
-    if (screen === "shop") {
-      sound.stopMenuMusic();
-      sound.playScreenMusic("shop");
-      return;
-    }
-    // Diğer menü ekranları: ekran müziğini durdur, menü müziğine dön
+    // Dükkân + diğer menü ekranları: menü müziği DEVAM eder (dükkânın ayrı müziği yok)
     sound.stopScreenMusic();
     if (audioUnlocked.current) {
       sound.resume();
