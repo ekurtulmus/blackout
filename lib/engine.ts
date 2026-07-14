@@ -1004,6 +1004,12 @@ export class GameEngine {
     this.events.push("veil"); // hayaletimsi kalkan sesi
   }
 
+  // Envanter: duvağı aktive et — birkaç sn görünmez ol (gelinler göremez; ateş bozar)
+  activateVeil(seconds = TUNING.veilSec) {
+    this.veilUntil = this.time + seconds;
+    this.events.push("veil");
+  }
+
   // Envanter: radarı aktive et — 1.5 sn ekranda çıkışa dönük OK göster (metin yok)
   activateRadar() {
     const dir = this.computeExitDir();

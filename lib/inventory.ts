@@ -8,6 +8,7 @@ export type Inventory = {
   shields: number; // kalkan — oyunda istediğin an 3 sn dokunulmazlık (tüketilir)
   radars: number; // radar — oyunda istediğin an çıkış yönünü 1 kez gösterir (tüketilir)
   traps: number; // tuzak — oyunda yere koy, gelini yavaşlatır (tüketilir)
+  veils: number; // duvak — oyunda istediğin an birkaç sn görünmez ol (tüketilir)
   ammoPacks: number; // sonraki bölüme +3 mermi (bölüm başı otomatik tüketilir)
   healthPacks: number; // sonraki bölüme tam can + kalkan (bölüm başı otomatik tüketilir)
   permAmmo: boolean; // KALICI: her bölüm +3 mermiyle başla
@@ -22,6 +23,7 @@ const DEFAULT_INV: Inventory = {
   shields: 0,
   radars: 0,
   traps: 0,
+  veils: 0,
   ammoPacks: 0,
   healthPacks: 0,
   permAmmo: false,
@@ -74,12 +76,20 @@ export const FLASH_COLORS: Record<string, [number, number, number]> = {
   amber: [255, 200, 120], // kehribar
   crimson: [255, 120, 120], // kızıl
   toxic: [170, 255, 140], // zehir yeşili
+  ice: [150, 210, 255], // buz mavisi
+  violet: [200, 150, 255], // mor
+  rose: [255, 160, 200], // gül pembe
+  gold: [255, 225, 150], // altın
 };
 export const SKIN_RINGS: Record<string, string | undefined> = {
   default: undefined,
   cyan: "#6ee7ff",
   gold: "#ffd75a",
   violet: "#c58bff",
+  emerald: "#4ce0a0",
+  rose: "#ff8ab0",
+  ice: "#a8d8ff",
+  crimson: "#ff5a5a",
 };
 
 // --- Dükkân eşya tanımları ---
@@ -127,6 +137,16 @@ export const SHOP_ITEMS: ShopItem[] = [
     kind: "consumable",
     canBuy: () => true,
     apply: (inv) => (inv.traps += 2),
+  },
+  {
+    id: "veil",
+    title: "Duvak (x2)",
+    desc: "Oyunda kullan — birkaç sn görünmez ol; gelinler seni göremez (ateş edersen bozulur). 2 adet.",
+    icon: "🕊️",
+    price: 22,
+    kind: "consumable",
+    canBuy: () => true,
+    apply: (inv) => (inv.veils += 2),
   },
   {
     id: "ammoPack",
@@ -209,6 +229,118 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 40,
     kind: "cosmetic",
     cosmetic: { slot: "skin", value: "violet" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  // --- Bol kişiselleştirme: ek fener renkleri ---
+  {
+    id: "flash_toxic",
+    title: "Fener: Zehir Yeşili",
+    desc: "Kişiselleştirme — hastalıklı zehir yeşili fener ışığı.",
+    icon: "💡",
+    price: 30,
+    kind: "cosmetic",
+    cosmetic: { slot: "flash", value: "toxic" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "flash_ice",
+    title: "Fener: Buz Mavisi",
+    desc: "Kişiselleştirme — soğuk buz mavisi fener ışığı.",
+    icon: "💡",
+    price: 30,
+    kind: "cosmetic",
+    cosmetic: { slot: "flash", value: "ice" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "flash_violet",
+    title: "Fener: Mor",
+    desc: "Kişiselleştirme — tekinsiz mor fener ışığı.",
+    icon: "💡",
+    price: 35,
+    kind: "cosmetic",
+    cosmetic: { slot: "flash", value: "violet" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "flash_rose",
+    title: "Fener: Gül Pembe",
+    desc: "Kişiselleştirme — solgun gül pembesi fener ışığı.",
+    icon: "💡",
+    price: 35,
+    kind: "cosmetic",
+    cosmetic: { slot: "flash", value: "rose" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "flash_gold",
+    title: "Fener: Altın",
+    desc: "Kişiselleştirme — sıcak altın sarısı fener ışığı.",
+    icon: "💡",
+    price: 45,
+    kind: "cosmetic",
+    cosmetic: { slot: "flash", value: "gold" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  // --- Bol kişiselleştirme: ek görünüm (halka) renkleri ---
+  {
+    id: "skin_cyan",
+    title: "Görünüm: Camgöbeği Halka",
+    desc: "Kişiselleştirme — oyuncu camgöbeği halkayla parlar.",
+    icon: "🩸",
+    price: 35,
+    kind: "cosmetic",
+    cosmetic: { slot: "skin", value: "cyan" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "skin_emerald",
+    title: "Görünüm: Zümrüt Halka",
+    desc: "Kişiselleştirme — oyuncu zümrüt yeşili halkayla parlar.",
+    icon: "🩸",
+    price: 45,
+    kind: "cosmetic",
+    cosmetic: { slot: "skin", value: "emerald" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "skin_rose",
+    title: "Görünüm: Gül Halka",
+    desc: "Kişiselleştirme — oyuncu gül pembesi halkayla parlar.",
+    icon: "🩸",
+    price: 45,
+    kind: "cosmetic",
+    cosmetic: { slot: "skin", value: "rose" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "skin_ice",
+    title: "Görünüm: Buz Halka",
+    desc: "Kişiselleştirme — oyuncu buz mavisi halkayla parlar.",
+    icon: "🩸",
+    price: 45,
+    kind: "cosmetic",
+    cosmetic: { slot: "skin", value: "ice" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "skin_crimson",
+    title: "Görünüm: Kızıl Halka",
+    desc: "Kişiselleştirme — oyuncu kızıl halkayla parlar.",
+    icon: "🩸",
+    price: 50,
+    kind: "cosmetic",
+    cosmetic: { slot: "skin", value: "crimson" },
     canBuy: () => true,
     apply: () => {},
   },

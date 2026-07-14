@@ -9,14 +9,25 @@ const ITEM_ICON: Record<string, IconName> = {
   radar: "radar",
   shield: "shield",
   trap: "trap",
+  veil: "veil",
   ammoPack: "ammo",
   healthPack: "heart",
   permAmmo: "ammo",
   extraLife: "heart",
   flash_amber: "flame",
   flash_crimson: "flame",
+  flash_toxic: "flame",
+  flash_ice: "flame",
+  flash_violet: "flame",
+  flash_rose: "flame",
+  flash_gold: "flame",
   skin_gold: "people",
   skin_violet: "people",
+  skin_cyan: "people",
+  skin_emerald: "people",
+  skin_rose: "people",
+  skin_ice: "people",
+  skin_crimson: "people",
 };
 import {
   SHOP_ITEMS,
@@ -54,6 +65,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
     if (it.id === "radar") return `Elinde: ${inv.radars}`;
     if (it.id === "shield") return `Elinde: ${inv.shields}`;
     if (it.id === "trap") return `Elinde: ${inv.traps}`;
+    if (it.id === "veil") return `Elinde: ${inv.veils}`;
     if (it.id === "ammoPack") return `Elinde: ${inv.ammoPacks}`;
     if (it.id === "healthPack") return `Elinde: ${inv.healthPacks}`;
     if (it.id === "permAmmo") return inv.permAmmo ? "✓ Sahipsin" : "";

@@ -97,8 +97,8 @@ export default function Game({
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
-  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0 }); // kullanılabilir eşyalar
-  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | null>(null); // kuşanılan eşya (slot)
+  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0, veils: 0 }); // kullanılabilir eşyalar
+  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | "veil" | null>(null); // kuşanılan eşya (slot)
   const [stamina, setStamina] = useState(100); // koşma barı (HUD)
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
@@ -161,7 +161,7 @@ export default function Game({
       // Kişiselleştirme: fener rengi + görünüm halkası
       flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
       skinRingRef.current = SKIN_RINGS[inv.skin];
-      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
     }
     // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
     let notice = "";
@@ -1197,7 +1197,7 @@ export default function Game({
     inv.shields -= 1;
     saveInventory(inv);
     e.activateShield(3);
-    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Envanter: radarı kullan (çıkış yönünü 1 kez göster)
   const useRadar = () => {
@@ -1208,7 +1208,7 @@ export default function Game({
     inv.radars -= 1;
     saveInventory(inv);
     e.activateRadar();
-    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Envanter: bulunduğun yere tuzak koy (gelini yavaşlatır)
   const usePlaceTrap = () => {
@@ -1219,21 +1219,33 @@ export default function Game({
     if (e.placeTrap()) {
       inv.traps -= 1;
       saveInventory(inv);
-      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
     }
   };
+  // Envanter: duvağı kullan (birkaç sn görünmez ol)
+  const useVeil = () => {
+    const e = engineRef.current;
+    if (!e || e.veiled) return;
+    const inv = getInventory();
+    if (inv.veils <= 0) return;
+    inv.veils -= 1;
+    saveInventory(inv);
+    e.activateVeil();
+    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
+  };
   // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç)
-  const SLOT_ICON = { shield: "🛡️", radar: "📻", trap: "🕸️" } as const;
+  const SLOT_ICON = { shield: "🛡️", radar: "📻", trap: "🕸️", veil: "🕊️" } as const;
   const equippedCount =
-    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "trap" ? invCounts.traps : 0;
+    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "trap" ? invCounts.traps : equipped === "veil" ? invCounts.veils : 0;
   const useEquipped = () => {
     if (!equipped || equippedCount <= 0) { setInvOpen(true); return; }
     if (equipped === "shield") useShield();
     else if (equipped === "radar") useRadar();
     else if (equipped === "trap") usePlaceTrap();
+    else if (equipped === "veil") useVeil();
   };
   // Envanterden bir eşyayı KUŞAN (slot'a koy) — direkt kullanma
-  const equip = (kind: "shield" | "radar" | "trap") => {
+  const equip = (kind: "shield" | "radar" | "trap" | "veil") => {
     setEquipped(kind);
     setInvOpen(false);
   };
@@ -1420,6 +1432,7 @@ export default function Game({
               { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
               { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
               { kind: "trap", icon: "🕸️", name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
+              { kind: "veil", icon: "🕊️", name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -1436,7 +1449,7 @@ export default function Game({
                 {equipped === it.kind ? "  ✓ kuşanıldı" : ""}
               </button>
             ))}
-            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && (
+            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && invCounts.veils <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Boş — dükkândan alabilirsin.
               </div>
@@ -1589,12 +1602,12 @@ export default function Game({
           onPointerDown={(e) => e.preventDefault()}
           onClick={() => {
             const inv = getInventory();
-            setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+            setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
             setInvOpen(true);
           }}
           title="Envanter"
         >
-          📦 {invCounts.shields + invCounts.radars + invCounts.traps}
+          📦 {invCounts.shields + invCounts.radars + invCounts.traps + invCounts.veils}
         </button>
       )}
 
