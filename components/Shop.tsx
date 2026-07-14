@@ -35,6 +35,8 @@ import {
   getInventory,
   ownsCosmetic,
   equippedCosmetic,
+  FLASH_COLORS,
+  SKIN_RINGS,
   type Inventory,
   type ShopItem,
 } from "@/lib/inventory";
@@ -47,6 +49,18 @@ const GOLD_PACKS: { gold: number; price: string; tag?: string }[] = [
   { gold: 1200, price: "25₺", tag: "%15 daha çok" },
   { gold: 3000, price: "55₺", tag: "en avantajlı" },
 ];
+
+// Dükkân sıralaması — ilişkili eşyalar yan yana (cephane grubu, can grubu, sonra kozmetikler)
+const SHOP_ORDER = [
+  "shield", "radar", "veil", "trap",
+  "ammoPack", "permAmmo",
+  "healthPack", "extraLife",
+  "flash_amber", "flash_crimson", "flash_toxic", "flash_ice", "flash_violet", "flash_rose", "flash_gold",
+  "skin_cyan", "skin_gold", "skin_violet", "skin_emerald", "skin_rose", "skin_ice", "skin_crimson",
+];
+const orderedShopItems = [...SHOP_ITEMS].sort(
+  (a, b) => (SHOP_ORDER.indexOf(a.id) + 1 || 99) - (SHOP_ORDER.indexOf(b.id) + 1 || 99)
+);
 
 // Dükkân ekranı — parayla eşya al. Menüden veya bölüm arası açılır.
 export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => void; title?: string }) {
@@ -129,7 +143,7 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-          {SHOP_ITEMS.map((it) => {
+          {orderedShopItems.map((it) => {
             const owned = ownedText(it);
             const affordable = coins >= it.price;
             // Kozmetik: seçili → kapalı; sahip → "Kullan" (ücretsiz); değil → satın al
@@ -158,7 +172,31 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
                   gap: 8,
                 }}
               >
-                <div style={{ color: "#e0a24a" }}><Icon name={ITEM_ICON[it.id] ?? "box"} size={26} stroke={1.6} /></div>
+                {it.cosmetic ? (
+                  it.cosmetic.slot === "flash" ? (
+                    // Fener rengi önizleme: o renkte parlayan nokta
+                    <div
+                      title="Fener ışığı bu renkte olur"
+                      style={{
+                        width: 30, height: 30, borderRadius: "50%",
+                        background: `rgb(${FLASH_COLORS[it.cosmetic.value].join(",")})`,
+                        boxShadow: `0 0 14px 2px rgb(${FLASH_COLORS[it.cosmetic.value].join(",")})`,
+                      }}
+                    />
+                  ) : (
+                    // Görünüm önizleme: o renkte parlayan halka (oyuncu böyle görünür)
+                    <div
+                      title="Oyuncu bu renkte halkayla parlar"
+                      style={{
+                        width: 30, height: 30, borderRadius: "50%",
+                        border: `4px solid ${SKIN_RINGS[it.cosmetic.value] ?? "#888"}`,
+                        boxShadow: `0 0 12px ${SKIN_RINGS[it.cosmetic.value] ?? "#888"}`,
+                      }}
+                    />
+                  )
+                ) : (
+                  <div style={{ color: "#e0a24a" }}><Icon name={ITEM_ICON[it.id] ?? "box"} size={26} stroke={1.6} /></div>
+                )}
                 <div style={{ fontWeight: 800 }}>{it.title}</div>
                 <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{it.desc}</div>
                 {owned && <div style={{ fontSize: 12, color: "#7dffb0" }}>{owned}</div>}

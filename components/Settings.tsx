@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/audio";
+import { getMyCode } from "@/lib/friends";
 
 // Sıfırlanacak ilerleme/satın alma anahtarları (ses tercihleri KORUNUR)
 const PROGRESS_KEYS = [
@@ -60,7 +61,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
     setMusic(sound.isMusicOn());
     setMuted(sound.muted);
     try {
-      setName(localStorage.getItem(NAME_KEY) || "");
+      const saved = localStorage.getItem(NAME_KEY);
+      // Başta oyuncu kodu görünür; "Ev sahibi"/"Oyuncu" gibi otomatik varsayılanlar da kodla değiştirilir.
+      const initial = !saved || saved === "Ev sahibi" || saved === "Oyuncu" ? getMyCode() : saved;
+      setName(initial);
+      if (initial !== saved) localStorage.setItem(NAME_KEY, initial);
     } catch {
       /* geç */
     }
@@ -117,6 +122,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             }}
           />
           <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, lineHeight: 1.4 }}>
+            Başta arkadaş kodun yazılı — <b style={{ color: "#e0a24a" }}>istediğin gibi değiştirebilirsin</b>.
             Bu isim online oyunlarda, çoklu oyunda ve arkadaş listende görünür.
           </div>
         </div>

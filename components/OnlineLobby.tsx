@@ -20,7 +20,7 @@ import {
 import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
 import { getCoins, addCoins } from "@/lib/coins";
-import { getFriends, type FriendPresence } from "@/lib/friends";
+import { getFriends, getMyCode, type FriendPresence } from "@/lib/friends";
 
 type Mode = "choose" | "host" | "join";
 
@@ -61,7 +61,7 @@ export default function OnlineLobby({
   useEffect(() => {
     try {
       const saved = localStorage.getItem(NAME_KEY);
-      if (saved) setName(saved);
+      setName(saved && saved !== "Ev sahibi" && saved !== "Oyuncu" ? saved : getMyCode());
     } catch {
       /* geç */
     }
@@ -118,7 +118,7 @@ export default function OnlineLobby({
 
   function startRoom(c: string, role: NetRole) {
     roomRef.current?.leave();
-    const nm = name.trim() || (role === "host" ? "Ev sahibi" : "Oyuncu");
+    const nm = name.trim() || getMyCode();
     saveName(nm);
     const room = new NetRoom(c, role, nm);
     room.onStatus = (s) => setStatus(s);
