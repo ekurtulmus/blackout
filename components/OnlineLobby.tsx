@@ -75,6 +75,13 @@ export default function OnlineLobby({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Host isem: odamı "Online Odalar" listesine duyur (bekleme lobisinde; oyun başlayınca durur)
+  useEffect(() => {
+    if (mode !== "host" || !presence || !code) return;
+    presence.announceRoom(code, Math.max(1, players.length));
+    return () => presence.stopAnnounceRoom();
+  }, [mode, code, players.length, presence]);
+
   // Çevrimiçi arkadaş durumunu tazele (davet paneli için)
   const [, setTick] = useState(0);
   useEffect(() => {
@@ -214,9 +221,9 @@ export default function OnlineLobby({
       className="codeinput"
       style={{ letterSpacing: "normal", fontSize: "clamp(18px,4vw,26px)", textTransform: "none" }}
       value={name}
-      onChange={(e) => setName(e.target.value.slice(0, 14))}
-      placeholder="Adın"
-      maxLength={14}
+      onChange={(e) => setName(e.target.value.slice(0, 8))}
+      placeholder="Adın (max 8)"
+      maxLength={8}
     />
   );
 

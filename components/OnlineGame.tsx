@@ -1185,6 +1185,24 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
+      // Oyuncu ismini kafasının biraz üstünde, küçük ama OKUNABİLİR (dış çizgili) yaz
+      const drawNameTag = (x: number, y: number, text: string, color: string) => {
+        if (!text) return;
+        ctx!.save();
+        const fs = Math.max(11, TS * 0.3);
+        ctx!.font = `600 ${fs}px system-ui, sans-serif`;
+        ctx!.textAlign = "center";
+        ctx!.textBaseline = "bottom";
+        const ny = y - TS * 0.62;
+        ctx!.lineJoin = "round";
+        ctx!.lineWidth = Math.max(2.5, fs * 0.3);
+        ctx!.strokeStyle = "rgba(0,0,0,0.9)";
+        ctx!.strokeText(text, x, ny);
+        ctx!.fillStyle = color;
+        ctx!.fillText(text, x, ny);
+        ctx!.restore();
+      };
+
       // diğer oyuncular (görüşte) — koltuk rengiyle halkalı + isim
       const nowP = performance.now();
       for (const o of others.current.values()) {
@@ -1193,14 +1211,7 @@ export default function OnlineGame({
         if (vis.get(oc.y * cols + oc.x) === undefined) continue;
         const ox = o.pos.x * TS - camX, oy = o.pos.y * TS - camY;
         drawPlayer(ctx!, TS, ox, oy, o.dir, T, true, flicker, lvl.visionRadius, { cone: false, ring: SEAT_COLORS[o.seat % SEAT_COLORS.length] });
-        ctx!.save();
-        ctx!.font = `${Math.max(9, TS * 0.28)}px system-ui, sans-serif`;
-        ctx!.textAlign = "center";
-        ctx!.fillStyle = "rgba(0,0,0,0.6)";
-        ctx!.fillText(o.name, ox + 1, oy - TS * 0.5 + 1);
-        ctx!.fillStyle = SEAT_COLORS[o.seat % SEAT_COLORS.length];
-        ctx!.fillText(o.name, ox, oy - TS * 0.5);
-        ctx!.restore();
+        drawNameTag(ox, oy, o.name, SEAT_COLORS[o.seat % SEAT_COLORS.length]);
       }
 
       // kendi (dokunulmazlıkta camgöbeği halka)
@@ -1208,6 +1219,7 @@ export default function OnlineGame({
       const nowSelf = performance.now();
       const invuln = nowSelf < invulnUntil.current;
       drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, vEff, invuln ? { ring: "#6ee7ff" } : undefined);
+      drawNameTag(cx, cy, nameOf(mySeat), myColor); // kendi ismin de kafanın üstünde
       // Madde 8: görünmezken titreşen tül halkası
       if (veilUntil.current > nowSelf) {
         ctx!.save();

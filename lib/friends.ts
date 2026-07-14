@@ -93,6 +93,9 @@ export class FriendPresence {
   private ch: RealtimeChannel | null = null;
   private hbTimer: number | null = null;
   private online = new Map<string, number>(); // code -> son görülme (ms)
+  private players = new Map<string, { name: string; t: number }>(); // TÜM çevrimiçi oyuncular (code -> ad)
+  private rooms = new Map<string, { hostName: string; hostCode: string; count: number; t: number }>(); // açık odalar
+  private myRoom: { code: string; count: number } | null = null; // duyurduğum oda (host isem)
   code = getMyCode();
   name = getMyName();
 
@@ -111,13 +114,27 @@ export class FriendPresence {
     });
     this.ch = ch;
 
-    // "here": çevrimiçi kalp atışı (kim online)
+    // "here": çevrimiçi kalp atışı (kim online + adı)
     ch.on("broadcast", { event: "here" }, (p) => {
       const d = p.payload as { code: string; name: string };
       if (!d || d.code === this.code) return;
       const known = this.online.has(d.code);
       this.online.set(d.code, Date.now());
+      this.players.set(d.code, { name: d.name || d.code, t: Date.now() });
       if (!known) this.onPresence();
+    });
+
+    // "room": açık bir oyun odası duyurusu (host yayınlar)
+    ch.on("broadcast", { event: "room" }, (p) => {
+      const d = p.payload as { code: string; hostName: string; hostCode: string; count: number };
+      if (!d || !d.code || d.hostCode === this.code) return;
+      this.rooms.set(d.code, { hostName: d.hostName || "Oyuncu", hostCode: d.hostCode, count: d.count ?? 1, t: Date.now() });
+      this.onPresence();
+    });
+    // "roomclose": oda kapandı
+    ch.on("broadcast", { event: "roomclose" }, (p) => {
+      const d = p.payload as { code: string };
+      if (d?.code && this.rooms.delete(d.code)) this.onPresence();
     });
 
     // "invite": bana odaya davet
@@ -150,15 +167,12 @@ export class FriendPresence {
         this.beat();
         this.hbTimer = window.setInterval(() => {
           this.beat();
-          // eskiyenleri düş
+          // eskiyenleri düş (online / oyuncular / odalar)
           const now = Date.now();
           let changed = false;
-          for (const [c, t] of this.online) {
-            if (now - t > ONLINE_MS) {
-              this.online.delete(c);
-              changed = true;
-            }
-          }
+          for (const [c, t] of this.online) if (now - t > ONLINE_MS) { this.online.delete(c); changed = true; }
+          for (const [c, v] of this.players) if (now - v.t > ONLINE_MS) { this.players.delete(c); changed = true; }
+          for (const [c, v] of this.rooms) if (now - v.t > ONLINE_MS) { this.rooms.delete(c); changed = true; }
           if (changed) this.onPresence();
         }, 3000);
       }
@@ -168,11 +182,46 @@ export class FriendPresence {
   private beat() {
     this.name = getMyName();
     this.ch?.send({ type: "broadcast", event: "here", payload: { code: this.code, name: this.name } });
+    if (this.myRoom) {
+      this.ch?.send({
+        type: "broadcast",
+        event: "room",
+        payload: { code: this.myRoom.code, hostName: getMyName(), hostCode: this.code, count: this.myRoom.count },
+      });
+    }
   }
 
   isOnline(code: string): boolean {
     const t = this.online.get(code);
     return t !== undefined && Date.now() - t <= ONLINE_MS;
+  }
+
+  // Online ekranı: tüm çevrimiçi oyuncular (kendisi hariç) — {code, name}
+  getOnlinePlayers(): { code: string; name: string }[] {
+    const now = Date.now();
+    return Array.from(this.players.entries())
+      .filter(([, v]) => now - v.t <= ONLINE_MS)
+      .map(([code, v]) => ({ code, name: v.name }));
+  }
+
+  // Online ekranı: açık oyun odaları
+  getRooms(): { code: string; hostName: string; hostCode: string; count: number }[] {
+    const now = Date.now();
+    return Array.from(this.rooms.entries())
+      .filter(([, v]) => now - v.t <= ONLINE_MS)
+      .map(([code, v]) => ({ code, hostName: v.hostName, hostCode: v.hostCode, count: v.count }));
+  }
+
+  // Host: odamı herkese duyur (heartbeat'te yayınlanır). count değişince güncelle.
+  announceRoom(code: string, count: number) {
+    this.myRoom = { code, count };
+    this.beat();
+  }
+  stopAnnounceRoom() {
+    if (this.myRoom) {
+      this.ch?.send({ type: "broadcast", event: "roomclose", payload: { code: this.myRoom.code } });
+      this.myRoom = null;
+    }
   }
 
   // Bir arkadaşı odana davet et

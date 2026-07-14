@@ -107,9 +107,9 @@ export default function Settings({ onBack }: { onBack: () => void }) {
           </div>
           <input
             value={name}
-            onChange={(e) => saveName(e.target.value)}
+            onChange={(e) => saveName(e.target.value.slice(0, 8))}
             placeholder="Adını yaz…"
-            maxLength={16}
+            maxLength={8}
             style={{
               width: "100%",
               background: "rgba(0,0,0,0.35)",

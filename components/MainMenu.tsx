@@ -12,6 +12,7 @@ let introShown = false;
 export default function MainMenu({
   onSolo,
   onRace,
+  onOnline,
   onMissions,
   onModes,
   onSecrets,
@@ -31,6 +32,7 @@ export default function MainMenu({
 }: {
   onSolo: () => void;
   onRace: () => void;
+  onOnline: () => void;
   onMissions: () => void;
   onModes: () => void;
   onSecrets: () => void;
@@ -53,7 +55,8 @@ export default function MainMenu({
   const [modal, setModal] = useState(false);
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false); // dokunmatik mi (kontrol anlatımı için)
-  const animate = !introShown; // yalnız ilk açılışta giriş animasyonu
+  const [view, setView] = useState<"main" | "single" | "multi">("main");
+  const animate = !introShown && view === "main"; // yalnız ilk açılışta giriş animasyonu
   useEffect(() => {
     introShown = true;
   }, []);
@@ -355,17 +358,14 @@ export default function MainMenu({
       ))}
     </svg>
   );
-  const primary: { label: string; onClick: () => void; icon?: React.ReactNode }[] = [
+  // Tek kişilik alt-menü (Yalnız Kaçış + görevler/modlar + koleksiyonlar)
+  const singleItems: { label: string; onClick: () => void; note?: string }[] = [
     { label: "Yalnız Kaçış", onClick: onSolo },
-    { label: "Ölüm Koşusu", onClick: onRace, icon: mpIcon },
     { label: "Karanlık Görevler", onClick: onMissions },
     { label: "Modlar", onClick: onModes },
-  ];
-  const secondary: { icon: IconName; label: string; note?: string; coin?: boolean; onClick: () => void }[] = [
-    { icon: "photo", label: "Sırlar", note: `${secrets}/${secretTotal}`, onClick: onSecrets },
-    { icon: "cart", label: "Dükkân", note: `${coins}`, coin: true, onClick: onShop },
-    { icon: "trophy", label: "Başarımlar", note: `${ach}/${achTotal}`, onClick: onAchievements },
-    { icon: "book", label: "Günlük", note: `${journal}/${journalTotal}`, onClick: onJournal },
+    { label: "Sırlar", onClick: onSecrets, note: `${secrets}/${secretTotal}` },
+    { label: "Başarımlar", onClick: onAchievements, note: `${ach}/${achTotal}` },
+    { label: "Günlük", onClick: onJournal, note: `${journal}/${journalTotal}` },
   ];
 
   // Nasıl Oynanır — konu-konu bilgi (kullanıcı merak ettiğine tıklar)
@@ -502,36 +502,55 @@ export default function MainMenu({
         <h1 className="mm-title">
           BLACK<span className="mm-o">O</span>UT
         </h1>
-        <div className="mm-sub">Karanlıkta Kaçış</div>
+        <div className="mm-sub">
+          {view === "single" ? "Tek Kişilik" : view === "multi" ? "Arkadaşlarınla Oyna" : "Karanlıkta Kaçış"}
+        </div>
 
         <nav className="mm-menu">
-          {primary.map((it, i) => (
-            <div
-              key={it.label}
-              className={"mm-item mm-in" + (it.icon ? " mm-item-mp" : "")}
-              style={{ animationDelay: `${1.1 + i * 0.12}s` }}
-              onClick={it.onClick}
-            >
-              {it.icon}
-              {it.label}
-            </div>
-          ))}
+          {view === "main" && (
+            <>
+              <div className="mm-item mm-in" style={{ animationDelay: "1.1s" }} onClick={() => setView("single")}>
+                Tek Kişilik
+              </div>
+              <div className="mm-item mm-in mm-item-mp" style={{ animationDelay: "1.22s" }} onClick={() => setView("multi")}>
+                {mpIcon}
+                Arkadaşlarınla Oyna
+              </div>
+            </>
+          )}
+          {view === "single" &&
+            singleItems.map((it) => (
+              <div key={it.label} className="mm-item" onClick={it.onClick}>
+                {it.label}
+                {it.note ? <span className="mm-note" style={{ marginLeft: 8 }}>{it.note}</span> : null}
+              </div>
+            ))}
+          {view === "multi" && (
+            <>
+              <div className="mm-item mm-item-mp" onClick={onRace}>
+                {mpIcon}
+                Ölüm Koşusu
+              </div>
+              <div className="mm-item" onClick={onOnline}>Online Odalar</div>
+            </>
+          )}
+          {view !== "main" && (
+            <div className="mm-item mm-back" onClick={() => setView("main")}>← Geri</div>
+          )}
         </nav>
 
-        <div className="mm-secondary">
-          {secondary.map((it) => (
-            <button key={it.label} className="mm-schip" onClick={it.onClick}>
-              <Icon name={it.icon} size={15} className="mm-sicon" />
-              {it.label}
-              {it.note ? (
-                <span className="mm-note">
-                  {it.coin ? <Icon name="coin" size={12} style={{ margin: "0 2px -2px 0" }} /> : " "}
-                  {it.note}
-                </span>
-              ) : null}
+        {view === "main" && (
+          <div className="mm-secondary">
+            <button className="mm-schip" onClick={onShop}>
+              <Icon name="cart" size={15} className="mm-sicon" />
+              Dükkân
+              <span className="mm-note">
+                <Icon name="coin" size={12} style={{ margin: "0 2px -2px 0" }} />
+                {coins}
+              </span>
             </button>
-          ))}
-        </div>
+          </div>
+        )}
 
         <div className="mm-foot">
           <button onClick={() => { setTopic(null); setModal(true); }}>Nasıl Oynanır</button>

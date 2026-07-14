@@ -8,9 +8,10 @@ import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import Friends from "@/components/Friends";
+import Online from "@/components/Online";
 import { FriendPresence, getFriends } from "@/lib/friends";
 import { getInventory } from "@/lib/inventory";
-import { getCoins } from "@/lib/coins";
+import { getCoins, initStarterCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
@@ -46,6 +47,7 @@ type Screen =
   | "achievements"
   | "journal"
   | "friends"
+  | "online"
   | "playing"
   | "dead"
   | "levelclear"
@@ -107,6 +109,7 @@ export default function Page() {
 
   // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
+    initStarterCoins(); // yeni oyuncuya 1000 altın (bir kez)
     try {
       const raw = localStorage.getItem("blackout_missions_cleared");
       if (raw) setCleared(JSON.parse(raw));
@@ -445,6 +448,16 @@ export default function Page() {
 
   if (screen === "friends") {
     return <Friends presence={presenceRef.current} onBack={() => setScreen("menu")} />;
+  }
+
+  if (screen === "online") {
+    return (
+      <Online
+        presence={presenceRef.current}
+        onJoin={(code) => { setPendingJoin(code); setScreen("lobby"); }}
+        onBack={() => setScreen("menu")}
+      />
+    );
   }
 
   if (screen === "ayarlar") {
@@ -946,6 +959,7 @@ export default function Page() {
       <MainMenu
         onSolo={startNewGame}
         onRace={() => setScreen("lobby")}
+        onOnline={() => setScreen("online")}
         onMissions={() => setScreen("missions")}
         onModes={() => setScreen("modes")}
         onSecrets={() => setScreen("secrets")}

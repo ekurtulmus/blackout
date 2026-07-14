@@ -2,7 +2,20 @@
 // İleride dükkân/harcama için temel. Şimdilik mini-görevlerden kazanılır
 // (yüzük = +2 para); başka kaynaklar sonra eklenecek.
 const KEY = "blackout_coins";
+const STARTER = 1000; // yeni oyuncuya başlangıç altını
 let mem = 0; // localStorage yoksa (SSR/test) bellek yedeği
+
+// Uygulama açılışında BİR KEZ: hiç para kaydı yoksa (yeni oyuncu) 1000 altın ver.
+export function initStarterCoins() {
+  try {
+    if (localStorage.getItem(KEY) === null) {
+      localStorage.setItem(KEY, String(STARTER));
+      mem = STARTER;
+    }
+  } catch {
+    if (mem === 0) mem = STARTER;
+  }
+}
 
 export function getCoins(): number {
   try {
