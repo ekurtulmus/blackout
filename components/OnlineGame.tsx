@@ -82,9 +82,9 @@ export default function OnlineGame({
   // Ekonomi + envanter (online): para gelin/tur başına kazanılır (kişisel, kalıcı cüzdan);
   // kalkan/radar kişisel envanterden tüketilir (SP ile aynı depo).
   const [coins, setCoins] = useState(0);
-  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0 });
+  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, veils: 0, traps: 0 });
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
-  const [equipped, setEquipped] = useState<"shield" | "radar" | null>(null); // kuşanılan eşya (slot)
+  const [equipped, setEquipped] = useState<"shield" | "radar" | "veil" | "trap" | null>(null); // kuşanılan eşya (slot)
   const [shopOpen, setShopOpen] = useState(false); // oyun-içi dükkân (market) açık mı
   const uiOpen = useRef(false); // dükkân açıkken oyun tuşlarını kilitle (hareket etmesin)
   const radarUntil = useRef(0); // radar oku bitişi (ms, performance.now)
@@ -213,7 +213,7 @@ export default function OnlineGame({
     trapStock.current = 2;
     setTrapCount(2);
     radarUntil.current = 0;
-    { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars }); }
+    { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps }); }
     if (amHost.current) {
       const total = lvl.brideSpawns.length;
       hostBrides.current = lvl.brideSpawns.map((c, i) => ({
@@ -363,10 +363,11 @@ export default function OnlineGame({
       setOverlay({ winnerSeat, scores: scores.current.slice() });
     }
     function scheduleLoad(next: RaceLevel) {
+      // 12 sn bekleme: turlar arası dükkândan alışverişe zaman tanır
       window.setTimeout(() => {
         setOverlay(null);
         buildWorld(next);
-      }, 2600);
+      }, 12000);
     }
 
     // Bariyer koy (0.5 sn sonra aktif olur)
@@ -1373,7 +1374,7 @@ export default function OnlineGame({
     saveInventory(inv);
     invulnUntil.current = Math.max(invulnUntil.current, performance.now() + 3000);
     sound.play("veil"); // hayaletimsi kalkan sesi
-    setInvCounts({ shields: inv.shields, radars: inv.radars });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
   }
   // Envanter: radarı kullan (kişisel envanterden tüket → 1.5 sn çıkışa dönük ok)
   function activateRadarOnline() {
@@ -1406,15 +1407,47 @@ export default function OnlineGame({
     radarAngle.current = bestAng;
     radarUntil.current = performance.now() + 1500;
     sound.play("secret");
-    setInvCounts({ shields: inv.shields, radars: inv.radars });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
+  }
+  // Envanter: duvağı kullan (birkaç sn görünmez ol) — kişisel envanterden tüket
+  function activateVeilOnline() {
+    if (!ready.current || resultPending.current || veilUntil.current > performance.now()) return;
+    const inv = getInventory();
+    if (inv.veils <= 0) return;
+    const now = performance.now();
+    veilUntil.current = now + TUNING.veilSec * 1000;
+    veiledUntil.current[mySeat] = veilUntil.current;
+    inv.veils -= 1;
+    saveInventory(inv);
+    sound.play("veil");
+    room.send({ t: "veil", seat: mySeat, on: true });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
+  }
+  // Envanter: bulunduğun yere tuzak koy — kişisel envanterden tüket
+  function activateInvTrapOnline() {
+    if (!ready.current || resultPending.current) return;
+    const inv = getInventory();
+    if (inv.traps <= 0) return;
+    const c = cellOf(selfPos.current);
+    const key = c.x + "," + c.y;
+    if (onlineTraps.current.has(key)) return;
+    onlineTraps.current.set(key, { x: c.x, y: c.y, until: performance.now() + TUNING.trapSec * 1000 });
+    inv.traps -= 1;
+    saveInventory(inv);
+    sound.play("pickup");
+    room.send({ t: "trap", x: c.x, y: c.y });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
   }
   // Slot: kuşanılan eşyayı kullan (boşsa envanteri aç)
-  const SLOT_ICON_ON = { shield: "🛡️", radar: "📻" } as const;
-  const equippedCountOn = equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : 0;
+  const SLOT_ICON_ON = { shield: "🛡️", radar: "📻", veil: "🕊️", trap: "🕸️" } as const;
+  const equippedCountOn =
+    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "veil" ? invCounts.veils : equipped === "trap" ? invCounts.traps : 0;
   function useEquippedOnline() {
     if (!equipped || equippedCountOn <= 0) { setInvOpen(true); return; }
     if (equipped === "shield") activateShieldOnline();
     else if (equipped === "radar") activateRadarOnline();
+    else if (equipped === "veil") activateVeilOnline();
+    else if (equipped === "trap") activateInvTrapOnline();
   }
 
   // Dükkânı aç — hareket tuşlarını temizle (dükkânda kayıp gitmeyesin)
@@ -1429,7 +1462,7 @@ export default function OnlineGame({
     setShopOpen(false);
     setCoins(getCoins());
     const inv = getInventory();
-    setInvCounts({ shields: inv.shields, radars: inv.radars });
+    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
   }
 
   // Menüye dön — ayrıldığını hemen bildir (diğerleri anında görsün)
@@ -1521,6 +1554,8 @@ export default function OnlineGame({
             {([
               { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
               { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
+              { kind: "veil", icon: "🕊️", name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
+              { kind: "trap", icon: "🕸️", name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -1536,7 +1571,7 @@ export default function OnlineGame({
                 {it.icon} {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? "  ✓ kuşanıldı" : ""}
               </button>
             ))}
-            {invCounts.shields <= 0 && invCounts.radars <= 0 && (
+            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.veils <= 0 && invCounts.traps <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Boş — menüdeki dükkândan alabilirsin.
               </div>
@@ -1570,14 +1605,14 @@ export default function OnlineGame({
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
           <div className="big" style={{ color: "#ff9a3c" }}>Oda kapandı</div>
           <div className="subtitle">Odada 2 kişiden az kaldı — yarış sona erdi.</div>
-          <button className="btn btn-primary" onClick={quit}>← Menü</button>
+          <button className="btn btn-primary" onClick={quit}>← Geri</button>
         </div>
       )}
 
       {phase === "left" && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
           <div className="big" style={{ color: "#ff6b6b" }}>Bağlantı koptu</div>
-          <button className="btn btn-primary" onClick={quit}>← Menü</button>
+          <button className="btn btn-primary" onClick={quit}>← Geri</button>
         </div>
       )}
 
@@ -1601,7 +1636,7 @@ export default function OnlineGame({
               </span>
             ))}
           </div>
-          <div className="subtitle">Sonraki bölüm başlıyor…</div>
+          <div className="subtitle">Sonraki bölüm ~12 sn içinde — dükkâna uğrayabilirsin.</div>
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)" }}>
             🛒 Dükkâna Uğra ({coins}🪙)
           </button>
@@ -1653,10 +1688,10 @@ export default function OnlineGame({
       <button
         className="invbtn invbtn-mp"
         onPointerDown={(e) => e.preventDefault()}
-        onClick={() => { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars }); setInvOpen(true); }}
+        onClick={() => { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps }); setInvOpen(true); }}
         title="Envanter"
       >
-        📦 {invCounts.shields + invCounts.radars}
+        📦 {invCounts.shields + invCounts.radars + invCounts.veils + invCounts.traps}
       </button>
 
       {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}

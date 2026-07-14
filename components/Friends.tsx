@@ -69,7 +69,7 @@ export default function Friends({
 
   return (
     <div className="menuscreen">
-      <button className="topback" onClick={onBack}>← Menü</button>
+      <button className="topback" onClick={onBack}>← Geri</button>
       <div style={{ maxWidth: 560, margin: "0 auto", width: "100%" }}>
         <div className="big" style={{ color: "#7dffb0", display: "flex", alignItems: "center", gap: 10 }}>
           <Icon name="people" size={30} stroke={1.6} /> Arkadaşlar

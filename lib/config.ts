@@ -9,11 +9,11 @@ export const TUNING = {
   contactDps: 20,
 
   // --- Madde 3: gelin hızı tavanı = oyuncu hızının %8 altı; ASLA geçilmez ---
-  brideSpeedCapFactor: 0.92,
+  brideSpeedCapFactor: 0.82,
   get brideSpeedCap() {
     return this.playerSpeed * this.brideSpeedCapFactor; // ~3.128
   },
-  brideSpeedEase: 1.25, // hız eğrisi ease-in üssü (yumuşak artış)
+  brideSpeedEase: 1.6, // hız eğrisi ease-in üssü (erken bölümler çok yumuşak; zorluk sona yayılır)
 
   // --- Madde 0: online'da bir oyuncunun peşinde AYNI ANDA max gelin ---
   maxHuntersPerPlayer: 4,

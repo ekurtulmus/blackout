@@ -90,7 +90,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
 
   return (
     <div className="screen">
-      <button className="topback" onClick={onBack}>← Menü</button>
+      <button className="topback" onClick={onBack}>← Geri</button>
       <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
         AYARLAR
       </div>

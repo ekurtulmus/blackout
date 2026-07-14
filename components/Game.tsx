@@ -1545,7 +1545,7 @@ export default function Game({
             </button>
             {onQuit && (
               <button className="btn" onClick={onQuit}>
-                ← Menüye Dön
+                ← Geri
               </button>
             )}
           </div>

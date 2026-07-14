@@ -11,18 +11,19 @@ export function levelConfig(level: number): LevelConfig {
   const t = (L - 1) / (TOTAL_LEVELS - 1); // 0..1
 
   // Labirent adım adım büyür (tek sayı olacak) — daha büyük = daha dolambaçlı
-  const base = 13;
-  const size = base + Math.round(t * 18); // 13 -> 31
+  // Harita KISA tutulur (özellikle tek kişilikte uzamasın); nazikçe büyür.
+  const base = 11;
+  const size = base + Math.round(t * 8); // 11 -> 19 (eskiden 13 -> 31)
   const cols = size % 2 === 0 ? size + 1 : size;
   const rows = cols;
 
-  // Zombi sayısı 2× (4 -> 20)
-  const zombies = Math.round(2 + t * 8) * 2;
+  // Zombi sayısı: daha az (4 -> 16), üst uçta bunaltmasın
+  const zombies = Math.round(2 + t * 6) * 2;
 
-  // Hız: YUMUŞAK ease-in artış (sıçramalı değil). Tavan = oyuncunun %8 altı,
-  // asla geçilmez → kaçış her zaman mümkün ama gitgide zor.
-  const sT = Math.pow(t, TUNING.brideSpeedEase); // ease-in (erken bölümler daha yumuşak)
-  const rawSpeed = 2.2 + sT * 1.4; // 2.2 -> 3.6 (ease-in)
+  // Hız: YUMUŞAK ease-in artış (sıçramalı değil). Tavan = oyuncunun altında,
+  // asla geçilmez → kaçış her zaman mümkün. Üst hız DÜŞÜRÜLDÜ (bıktırmasın).
+  const sT = Math.pow(t, TUNING.brideSpeedEase); // ease-in (erken bölümler çok daha yumuşak)
+  const rawSpeed = 2.0 + sT * 0.9; // 2.0 -> 2.9 (eskiden 2.2 -> 3.6)
   const zombieSpeed = Math.min(TUNING.brideSpeedCap, rawSpeed);
 
   // Görüş bölüm ilerledikçe hafifçe daralır (gerilim artar)

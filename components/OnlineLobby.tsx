@@ -10,6 +10,7 @@ import {
 } from "@/lib/net";
 import {
   MAX_PLAYERS,
+  ROOM_COST,
   deserializeLevel,
   generateRaceLevel,
   serializeLevel,
@@ -24,8 +25,7 @@ import { getFriends, getMyCode, isSent, type FriendPresence } from "@/lib/friend
 
 type Mode = "choose" | "host" | "join";
 
-const ROOM_COST = 200; // global oda kurma maliyeti (altın)
-
+// (ROOM_COST lib/online.ts'ten import edilir; yerel tanım yok)
 const DIFFS: { key: RaceDiff; label: string; desc: string }[] = [
   { key: "kolay", label: "Kolay", desc: "az/yavaş gelin" },
   { key: "orta", label: "Orta", desc: "dengeli" },
@@ -59,6 +59,7 @@ export default function OnlineLobby({
   const [notice, setNotice] = useState("");
   const roomRef = useRef<NetRoom | null>(null);
   const handedOff = useRef(false); // oda OnlineGame'e devredildi mi
+  const didInit = useRef(false); // otomatik host/join yalnız BİR KEZ (StrictMode çift ücreti önle)
   const online = isOnlineAvailable();
 
   // İsmi hatırla
@@ -70,6 +71,9 @@ export default function OnlineLobby({
       /* geç */
     }
     setCoins(getCoins());
+    // Otomatik host/join YALNIZ BİR KEZ (StrictMode çift-mount'ta tekrar çalışmasın → çift ücret yok)
+    if (didInit.current) return;
+    didInit.current = true;
     // Davet kabul edildiyse: doğrudan o odaya katıl
     if (initialJoinCode) {
       setCode(initialJoinCode.toUpperCase());
@@ -229,6 +233,12 @@ export default function OnlineLobby({
   function back() {
     roomRef.current?.leave();
     roomRef.current = null;
+    // Online Odalar'dan gelindiyse (doğrudan oda kur/katıl) tamamen çık → geldiğin yere dön.
+    // Elle (arkadaş lobisi) seçim ekranındaysan seçim ekranına dön.
+    if (initialHost || initialJoinCode) {
+      onBack();
+      return;
+    }
     setStatus("idle");
     setCode("");
     setPlayers([]);
@@ -238,7 +248,7 @@ export default function OnlineLobby({
   if (!online) {
     return (
       <div className="screen">
-        <button className="topback" onClick={onBack}>← Menü</button>
+        <button className="topback" onClick={onBack}>← Geri</button>
         <div className="big" style={{ color: "#ff6b6b" }}>
           Online kullanılamıyor
         </div>
@@ -263,7 +273,7 @@ export default function OnlineLobby({
 
   return (
     <div className="screen">
-      <button className="topback" onClick={onBack}>← Menü</button>
+      <button className="topback" onClick={onBack}>← Geri</button>
       <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
         ÖLÜM KOŞUSU
       </div>

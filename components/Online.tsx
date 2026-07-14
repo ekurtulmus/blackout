@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import { type FriendPresence } from "@/lib/friends";
+import { getCoins } from "@/lib/coins";
+import { ROOM_COST } from "@/lib/online";
 
 // Online Odalar — arkadaş odalarından AYRI, herkese açık odalar. Buradan yeni oda
 // kurabilir ya da açık bir odaya katılabilirsin. Arkadaşlık isteği ODA İÇİNDE (lobide) atılır.
@@ -18,6 +20,16 @@ export default function Online({
   onBack: () => void;
 }) {
   const [, setTick] = useState(0);
+  const [warn, setWarn] = useState("");
+
+  function createRoom() {
+    if (getCoins() < ROOM_COST) {
+      setWarn(`Yetersiz altın — oda kurmak ${ROOM_COST} altın gerekli (elinde ${getCoins()}).`);
+      window.setTimeout(() => setWarn(""), 4000);
+      return;
+    }
+    onCreateRoom();
+  }
 
   useEffect(() => {
     if (!presence) return;
@@ -42,9 +54,12 @@ export default function Online({
           içindeki oyunculara arkadaşlık isteği gönderebilirsin.
         </div>
 
-        <div style={{ textAlign: "center", margin: "6px 0 18px" }}>
-          <button className="btn btn-primary" onClick={onCreateRoom}>🏠 Yeni Oda Kur</button>
+        <div style={{ textAlign: "center", margin: "6px 0 6px" }}>
+          <button className="btn btn-primary" onClick={createRoom}>🏠 Yeni Oda Kur ({ROOM_COST}🪙)</button>
         </div>
+        {warn && (
+          <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, margin: "0 0 12px" }}>{warn}</div>
+        )}
 
         <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", margin: "8px 0" }}>
           Açık Odalar

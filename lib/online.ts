@@ -9,6 +9,13 @@ import { themeIndexFor } from "./themes";
 import { TUNING } from "./config";
 
 export const MAX_PLAYERS = 6;
+export const ROOM_COST = 200; // oda kurma maliyeti (altın)
+
+// Ölüm Koşusu SONSUZ olduğundan zorluğu UZUN ZAMANA yay: efektif seviye yavaş artar
+// (10. tura kadar değil, ~17. tura kadar tırmanır) → oyuncu bıktırmaz.
+function raceEffLevel(level: number): number {
+  return Math.min(10, 1 + (Math.max(1, level) - 1) * 0.55);
+}
 
 export type RaceDiff = "kolay" | "orta" | "zor";
 
@@ -41,7 +48,7 @@ export function diffParams(diff: RaceDiff): {
 
 // Host'un gelin simülasyonu için zorluğa göre ayarlı config
 export function raceBrideConfig(level: number, diff: RaceDiff): BrideConfig {
-  const cfg = levelConfig(level);
+  const cfg = levelConfig(raceEffLevel(level));
   const p = diffParams(diff);
   return {
     intelligence: Math.max(0, Math.min(1, cfg.intelligence + p.intelAdd)),
@@ -72,7 +79,7 @@ export function generateRaceLevel(
   themeSeed = 0,
   playerCount = 2
 ): RaceLevel {
-  const cfg = levelConfig(level);
+  const cfg = levelConfig(raceEffLevel(level));
   const p = diffParams(diff);
   // Madde 1: kişi sayısına oranlı harita boyutu (tek sayı tut)
   const pc = Math.max(1, playerCount);

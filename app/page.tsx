@@ -81,6 +81,7 @@ export default function Page() {
   const [pendingJoin, setPendingJoin] = useState<string | null>(null); // davet kabul → lobiye taşınan oda kodu
   const [lobbyPublic, setLobbyPublic] = useState(false); // oda "Online Odalar"da listelensin mi
   const [lobbyAutoHost, setLobbyAutoHost] = useState(false); // lobiye girer girmez oda kur (Online → Oda Kur)
+  const [lobbyReturn, setLobbyReturn] = useState<Screen>("menu"); // lobiden "Geri" nereye döner
   const [friendReq, setFriendReq] = useState<{ fromCode: string; fromName: string } | null>(null);
   const [friendToast, setFriendToast] = useState("");
   // Görev modu
@@ -198,6 +199,9 @@ export default function Page() {
   function acceptInvite() {
     if (!invite) return;
     setPendingJoin(invite.room);
+    setLobbyPublic(false);
+    setLobbyAutoHost(false);
+    setLobbyReturn("menu");
     setInvite(null);
     setScreen("lobby");
   }
@@ -440,7 +444,7 @@ export default function Page() {
   if (screen === "lobby") {
     return (
       <OnlineLobby
-        onBack={() => { setPendingJoin(null); setScreen("menu"); }}
+        onBack={() => { setPendingJoin(null); setScreen(lobbyReturn); }}
         onStarted={handleStarted}
         presence={presenceRef.current}
         initialJoinCode={pendingJoin}
@@ -458,8 +462,8 @@ export default function Page() {
     return (
       <Online
         presence={presenceRef.current}
-        onJoin={(code) => { setPendingJoin(code); setLobbyPublic(true); setLobbyAutoHost(false); setScreen("lobby"); }}
-        onCreateRoom={() => { setPendingJoin(null); setLobbyPublic(true); setLobbyAutoHost(true); setScreen("lobby"); }}
+        onJoin={(code) => { setPendingJoin(code); setLobbyPublic(true); setLobbyAutoHost(false); setLobbyReturn("online"); setScreen("lobby"); }}
+        onCreateRoom={() => { setPendingJoin(null); setLobbyPublic(true); setLobbyAutoHost(true); setLobbyReturn("online"); setScreen("lobby"); }}
         onBack={() => setScreen("menu")}
       />
     );
@@ -481,7 +485,7 @@ export default function Page() {
   if (screen === "achievements") {
     return (
       <div className="menuscreen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e0a24a" }}>🏆 Başarımlar</div>
           <div className="subtitle">
@@ -527,7 +531,7 @@ export default function Page() {
   if (screen === "journal") {
     return (
       <div className="menuscreen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e9e0c4" }}>📖 Günlük</div>
           <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
@@ -556,7 +560,7 @@ export default function Page() {
     const sel = openSecret != null ? SECRETS[openSecret] : null;
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
           SIRLAR
         </div>
@@ -737,7 +741,7 @@ export default function Page() {
     const rec = arenaResult.wave >= arenaResult.best && arenaResult.wave > 1;
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("modes")}>← Modlar</button>
+        <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(28px,7vw,50px)", color: "#ff9a3c" }}>
           {arenaResult.title.toLocaleUpperCase("tr")} DÜŞTÜ
         </div>
@@ -764,7 +768,7 @@ export default function Page() {
     ];
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>MODLAR</div>
         <div className="subtitle">Ana hikâye dışı hayatta kalma modları.</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 460 }}>
@@ -788,7 +792,7 @@ export default function Page() {
     const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("modes")}>← Modlar</button>
+        <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
           DAYANAMADIN
         </div>
@@ -810,7 +814,7 @@ export default function Page() {
     const mr = missionResult;
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("missions")}>← Görevler</button>
+        <button className="topback" onClick={() => setScreen("missions")}>← Geri</button>
         <div
           className="title"
           style={{ fontSize: "clamp(30px,8vw,56px)", color: mr.ok ? "#7dffb0" : "#ff6b6b" }}
@@ -852,7 +856,7 @@ export default function Page() {
   if (screen === "missions") {
     return (
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
           KARANLIK GÖREVLER
         </div>
@@ -963,7 +967,7 @@ export default function Page() {
       {inviteBanner}
       <MainMenu
         onSolo={startNewGame}
-        onRace={() => { setPendingJoin(null); setLobbyPublic(false); setLobbyAutoHost(false); setScreen("lobby"); }}
+        onRace={() => { setPendingJoin(null); setLobbyPublic(false); setLobbyAutoHost(false); setLobbyReturn("menu"); setScreen("lobby"); }}
         onOnline={() => setScreen("online")}
         onMissions={() => setScreen("missions")}
         onModes={() => setScreen("modes")}
@@ -992,7 +996,7 @@ export default function Page() {
 
       {screen === "intro" && (
         <>
-          <button className="topback" onClick={() => setScreen("menu")}>← Menü</button>
+          <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
           <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
             {INTRO_TITLE}
           </div>
