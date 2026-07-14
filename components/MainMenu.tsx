@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
 
+// Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
+// Modül düzeyinde bayrak (sayfa reload'una kadar kalıcı; SPA içinde remount'larda korunur).
+let introShown = false;
+
 // Sinematik ana menü — kullanıcının tasarımı (tepeden-bakış labirent animasyonu +
 // kanlı vinyet + Cinzel başlık) oyuna uyarlandı. Tüm modlara + ikincil ekranlara bağlı.
 export default function MainMenu({
@@ -49,6 +53,10 @@ export default function MainMenu({
   const [modal, setModal] = useState(false);
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false); // dokunmatik mi (kontrol anlatımı için)
+  const animate = !introShown; // yalnız ilk açılışta giriş animasyonu
+  useEffect(() => {
+    introShown = true;
+  }, []);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia) {
@@ -472,7 +480,7 @@ export default function MainMenu({
   const openTopic = topic ? helpTopics.find((h) => h.key === topic) : null;
 
   return (
-    <div className="mm-root">
+    <div className={"mm-root" + (animate ? "" : " mm-instant")}>
       <style>{MM_CSS}</style>
       <canvas ref={gameRef} className="mm-game" />
       <div className="mm-scrim" />
@@ -615,7 +623,12 @@ const MM_CSS = `
   .mm-item{border-color:rgba(206,186,156,.28);background:rgba(255,255,255,.035);}
   .mm-schip{border-color:rgba(206,186,156,.32);background:rgba(255,255,255,.035);}
   .mm-foot button{border-color:rgba(206,186,156,.32);background:rgba(255,255,255,.035);}
+  /* Başlık TEK SATIR: "BLACKOUT" alt satıra kaymasın */
+  .mm-title{font-size:min(12.5vw,60px);letter-spacing:.08em;white-space:nowrap;}
 }
+/* Menüye DÖNÜŞTE giriş animasyonları oynamasın — elemanlar anında son halde görünür.
+   (Ambiyans döngüleri: .mm-o alevi ve vinyet nabzı korunur; yalnız giriş fade'i iptal.) */
+.mm-instant .mm-title,.mm-instant .mm-sub,.mm-instant .mm-menu .mm-item,.mm-instant .mm-secondary,.mm-instant .mm-lore,.mm-instant .mm-foot{opacity:1 !important;transform:none !important;animation:none !important;}
 @keyframes mm-fade{to{opacity:1;transform:none;}}
 .mm-modal{position:fixed;inset:0;z-index:20;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.74);backdrop-filter:blur(4px);opacity:0;pointer-events:none;transition:opacity .35s;}
 .mm-modal.open{opacity:1;pointer-events:auto;}
