@@ -17,7 +17,7 @@ import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
 import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
-import { MISSIONS, ENDLESS, ARENA } from "@/lib/missions";
+import { MISSIONS, ENDLESS, ARENA, KOR_GECE, HORDE, type Mission } from "@/lib/missions";
 import {
   SECRETS,
   SECRET_COUNT,
@@ -88,13 +88,17 @@ export default function Page() {
     { ok: boolean; title: string; time: number; best: number; hasNext: boolean } | null
   >(null);
   // Sonsuz mod
+  // Hayatta kalma modları (Bitmeyen Gece / Kör Gece = endless; Arena / Sürü = arena)
   const [endlessRunId, setEndlessRunId] = useState(0);
-  const [endlessBest, setEndlessBest] = useState(0);
-  const [endlessResult, setEndlessResult] = useState<{ survived: number; best: number } | null>(null);
-  // Arena (dalga hayatta kalma)
+  const [endlessMission, setEndlessMission] = useState<Mission>(ENDLESS);
+  const [endlessResult, setEndlessResult] = useState<{ survived: number; best: number; title: string } | null>(null);
   const [arenaRunId, setArenaRunId] = useState(0);
-  const [arenaBest, setArenaBest] = useState(0);
-  const [arenaResult, setArenaResult] = useState<{ wave: number; best: number } | null>(null);
+  const [arenaMission, setArenaMission] = useState<Mission>(ARENA);
+  const [arenaResult, setArenaResult] = useState<{ wave: number; best: number; title: string } | null>(null);
+  // Mod başına en iyi skor (mission.id → değer)
+  const [survBest, setSurvBest] = useState<Record<number, number>>({});
+  const bestKey = (m: Mission) =>
+    m.id === ENDLESS.id ? "blackout_endless_best" : m.id === ARENA.id ? "blackout_arena_best" : `blackout_best_${m.id}`;
   // Sırlar (görev modundan açılır) — açılan sır indeksleri
   const [unlockedSecrets, setUnlockedSecrets] = useState<number[]>([]);
   const [openSecret, setOpenSecret] = useState<number | null>(null); // popup için
@@ -108,10 +112,12 @@ export default function Page() {
       if (raw) setCleared(JSON.parse(raw));
       const best = localStorage.getItem("blackout_mission_best");
       if (best) setMissionBest(JSON.parse(best));
-      const eb = localStorage.getItem("blackout_endless_best");
-      if (eb) setEndlessBest(parseInt(eb, 10) || 0);
-      const ab = localStorage.getItem("blackout_arena_best");
-      if (ab) setArenaBest(parseInt(ab, 10) || 0);
+      const bests: Record<number, number> = {};
+      for (const m of [ENDLESS, KOR_GECE, ARENA, HORDE]) {
+        const v = localStorage.getItem(bestKey(m));
+        if (v) bests[m.id] = parseInt(v, 10) || 0;
+      }
+      setSurvBest(bests);
       const sec = localStorage.getItem("blackout_secrets");
       if (sec) setUnlockedSecrets(JSON.parse(sec));
       const sd = localStorage.getItem("blackout_sp_diff");
@@ -357,43 +363,43 @@ export default function Page() {
     setScreen("missionresult");
   }
 
-  function playEndless() {
+  function playEndless(m: Mission = ENDLESS) {
+    setEndlessMission(m);
     setEndlessRunId((r) => r + 1);
     setScreen("endlessplay");
   }
 
-  function handleEndlessEnd(r: EndResult) {
-    const survived = Math.floor(r.time ?? r.score ?? 0);
-    const best = Math.max(endlessBest, survived);
-    if (best > endlessBest) {
-      setEndlessBest(best);
+  function saveBest(m: Mission, val: number): number {
+    const prev = survBest[m.id] ?? 0;
+    const best = Math.max(prev, val);
+    if (best > prev) {
+      setSurvBest((s) => ({ ...s, [m.id]: best }));
       try {
-        localStorage.setItem("blackout_endless_best", String(best));
+        localStorage.setItem(bestKey(m), String(best));
       } catch {
         /* geç */
       }
     }
-    setEndlessResult({ survived, best });
+    return best;
+  }
+
+  function handleEndlessEnd(r: EndResult) {
+    const survived = Math.floor(r.time ?? r.score ?? 0);
+    const best = saveBest(endlessMission, survived);
+    setEndlessResult({ survived, best, title: endlessMission.title });
     setScreen("endlessresult");
   }
 
-  function playArena() {
+  function playArena(m: Mission = ARENA) {
+    setArenaMission(m);
     setArenaRunId((r) => r + 1);
     setScreen("arenaplay");
   }
 
   function handleArenaEnd(r: EndResult) {
     const wave = Math.max(1, Math.floor(r.score ?? 1)); // skor = geçilen dalga
-    const best = Math.max(arenaBest, wave);
-    if (best > arenaBest) {
-      setArenaBest(best);
-      try {
-        localStorage.setItem("blackout_arena_best", String(best));
-      } catch {
-        /* geç */
-      }
-    }
-    setArenaResult({ wave, best });
+    const best = saveBest(arenaMission, wave);
+    setArenaResult({ wave, best, title: arenaMission.title });
     setScreen("arenaresult");
   }
 
@@ -687,7 +693,7 @@ export default function Page() {
         score={0}
         lives={1}
         themeSeed={endlessRunId}
-        mission={ENDLESS}
+        mission={endlessMission}
         onEnd={handleEndlessEnd}
         onQuit={() => setScreen("modes")}
       />
@@ -702,7 +708,7 @@ export default function Page() {
         score={0}
         lives={1}
         themeSeed={arenaRunId}
-        mission={ARENA}
+        mission={arenaMission}
         onEnd={handleArenaEnd}
         onQuit={() => setScreen("modes")}
       />
@@ -714,8 +720,8 @@ export default function Page() {
     return (
       <div className="screen">
         <button className="topback" onClick={() => setScreen("modes")}>← Modlar</button>
-        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
-          ARENA DÜŞTÜ
+        <div className="title" style={{ fontSize: "clamp(28px,7vw,50px)", color: "#ff9a3c" }}>
+          {arenaResult.title.toLocaleUpperCase("tr")} DÜŞTÜ
         </div>
         <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,30px)" }}>
           <b style={{ color: "#8be9ff" }}>{arenaResult.wave}. dalgaya</b> ulaştın
@@ -723,7 +729,7 @@ export default function Page() {
         </div>
         <div className="subtitle">En iyi: <b style={{ color: "#7dffb0" }}>{arenaResult.best}. dalga</b></div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="btn btn-primary" onClick={playArena}>↻ Tekrar Dene</button>
+          <button className="btn btn-primary" onClick={() => playArena(arenaMission)}>↻ Tekrar Dene</button>
           <button className="btn" onClick={() => setScreen("modes")}>← Modlar</button>
         </div>
       </div>
@@ -731,9 +737,12 @@ export default function Page() {
   }
 
   if (screen === "modes") {
+    const sBest = (m: Mission, unit: string) => (survBest[m.id] > 0 ? `en iyi ${survBest[m.id]}${unit}` : undefined);
     const modeList: { title: string; desc: string; onClick: () => void; best?: string }[] = [
-      { title: "♾️ Bitmeyen Gece", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: playEndless, best: endlessBest > 0 ? `en iyi ${endlessBest}s` : undefined },
-      { title: "⚔️ Arena", desc: "Dalga hayatta kalma. Her 6 öldürmede dalga yükselir; skor = dalga, bol altın.", onClick: playArena, best: arenaBest > 0 ? `en iyi ${arenaBest}. dalga` : undefined },
+      { title: "♾️ Bitmeyen Gece", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: () => playEndless(ENDLESS), best: sBest(ENDLESS, "s") },
+      { title: "🌑 Kör Gece", desc: "Fenersiz, kapkaranlıkta hayatta kalma. Sesle ve refleksle dayan.", onClick: () => playEndless(KOR_GECE), best: sBest(KOR_GECE, "s") },
+      { title: "⚔️ Arena", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, ". dalga") },
+      { title: "🐝 Sürü Gecesi", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, ". dalga") },
     ];
     return (
       <div className="screen">
@@ -765,14 +774,15 @@ export default function Page() {
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
           DAYANAMADIN
         </div>
+        <div className="subtitle" style={{ color: "#c9b8d0", marginTop: -8 }}>{endlessResult.title}</div>
         <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,30px)" }}>
           <b style={{ color: "#8be9ff" }}>{endlessResult.survived} saniye</b> hayatta kaldın
           {rec && <span style={{ color: "#7dffb0" }}> · yeni rekor! 🏆</span>}
         </div>
         <div className="subtitle">En iyi: <b style={{ color: "#7dffb0" }}>{endlessResult.best}s</b></div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="btn btn-primary" onClick={playEndless}>↻ Tekrar Dene</button>
-          <button className="btn" onClick={() => setScreen("menu")}>← Menü</button>
+          <button className="btn btn-primary" onClick={() => playEndless(endlessMission)}>↻ Tekrar Dene</button>
+          <button className="btn" onClick={() => setScreen("modes")}>← Modlar</button>
         </div>
       </div>
     );

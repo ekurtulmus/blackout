@@ -170,6 +170,35 @@ export const ENDLESS: Mission = {
   escalateEvery: 18, // her 18 sn bir ekstra gelin
 };
 
+// Kör Gece — fenersiz, kapkaranlık hayatta kalma (endless türevi). Skor = süre.
+export const KOR_GECE: Mission = {
+  id: 102,
+  title: "Kör Gece",
+  brief:
+    "Fenerin söndü. Kapkaranlıkta, neredeyse hiçbir şey görmeden hayatta kalmaya çalış. Gelinlerin soğuk nefesini duyduğunda çoktan geç olabilir. Dayandığın her saniye skorundur.",
+  objectiveHint: "Fenersiz karanlıkta dayan",
+  levelBase: 4,
+  lives: 1,
+  zombies: 8,
+  endless: true,
+  escalateEvery: 20,
+  visionMul: 0.32,
+};
+
+// Sürü Gecesi — açık alanda yoğun dalga (arena türevi, çok daha kalabalık/hızlı).
+export const HORDE: Mission = {
+  id: 103,
+  title: "Sürü Gecesi",
+  brief:
+    "Açık alan bir anda beyaza kesiyor. Onlarca gelin aynı anda üstüne geliyor; sürü hiç durmadan büyüyor. Ne kadar dayanırsan o kadar dalga — ama nefes almana izin yok.",
+  objectiveHint: "Yoğun sürüye karşı dalgaları göğüsle",
+  levelBase: 3,
+  lives: 1,
+  zombies: 18,
+  arena: true,
+  escalateEvery: 8,
+};
+
 // Ayrı mod: ARENA — dalga hayatta kalma. Her 6 öldürmede dalga artar, gelinler çoğalır.
 // Skor = geçilen dalga. Öldürdükçe para + dalga bonusu kazanılır. Tek can.
 export const ARENA: Mission = {

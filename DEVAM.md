@@ -19,8 +19,14 @@
   HUD 📦 kaldırıldı. (b) mobilde HUD **sıkıştırıldı** (`pointer:coarse` küçük çip/font/hpbar) → oyun alanı büyük.
   (c) mobilde başlık artık `.topback`'in altında (`@media(max-width:640px)` üst boşluk) → örtüşme yok.
   (d) endless/mission sonuç ekranlarına da üst-buton. Doğrulandı (mobil viewport).
-- ⏳ KALAN (bu paket): dükkana yeni ürün+kozmetik, arkadaş=istek/kabul + ayarlardan kalıcı isim, çoklu=izleyici
-  lobi, yeni mod önerileri.
+- ✅ **Dükkan**: Duvak (tüketilebilir, engine.activateVeil, SP slot) + 7 fener rengi + 7 görünüm halkası.
+- ✅ **Arkadaş istek/kabul**: `friends.ts sendRequest/acceptRequest` (freq/faccept), Friends "İstek Gönder",
+  page.tsx gelen-istek bandı (Kabul/Reddet) + kabul toast. **Ayarlarda kalıcı isim** (`blackout_name`).
+- ✅ **Çoklu izleyici lobisi**: join bağlanınca host ekranı (kod+roster) ama zorluk/başlat PASİF + arkadaş isteği.
+- ✅ **Yeni modlar**: **Kör Gece** (endless+visionMul 0.32) + **Sürü Gecesi** (arena+yoğun). page.tsx endless/arena
+  akışı genelleştirildi (`endlessMission/arenaMission` state, `survBest` mod-başına en iyi, `bestKey`). Modlar 4 mod.
+  Doğrulandı: Modlar ekranı 4 mod, tsc temiz, konsol temiz.
+- ⏳ KALAN: Faz 9 oyun-içi HUD ikonları + 2-cihaz online testi + canlı deploy.
 
 ## BUG DÜZELTMELERİ (2026-07-14)
 - ✅ **Kişiselleştirme kalıcılığı**: `inventory.ts getInventory` artık sahip listelerini DAİMA yeni dizi olarak
