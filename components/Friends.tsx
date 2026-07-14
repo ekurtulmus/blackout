@@ -5,7 +5,9 @@ import Icon from "@/components/Icon";
 import {
   getMyCode,
   getFriends,
-  removeFriend,
+  getSentRequests,
+  clearSent,
+  isSent,
   type Friend,
   type FriendPresence,
 } from "@/lib/friends";
@@ -42,8 +44,10 @@ export default function Friends({
     if (c.length < 4) { flash("✗ Geçersiz kod"); return; }
     if (c === myCode) { flash("✗ Bu senin kendi kodun"); return; }
     if (friends.some((f) => f.code === c)) { flash("✗ Zaten ekli"); return; }
+    if (isSent(c)) { flash("✗ Bu koda zaten istek gönderdin"); return; }
     presence?.sendRequest(c);
     setCode("");
+    setTick((t) => t + 1);
     flash("✓ İstek gönderildi — arkadaşın çevrimiçiyse kabul edebilir");
   }
   function flash(m: string) {
@@ -131,7 +135,7 @@ export default function Friends({
                 <span style={{ fontSize: 12, color: on ? "#7dffb0" : "var(--muted)" }}>
                   {on ? "çevrimiçi" : "çevrimdışı"}
                 </span>
-                <button className="btn" style={{ padding: "5px 10px", opacity: 0.7 }} onClick={() => { removeFriend(f.code); setFriends(getFriends()); }}>
+                <button className="btn" style={{ padding: "5px 10px", opacity: 0.7 }} onClick={() => { presence?.unfriend(f.code); setFriends(getFriends()); }}>
                   Sil
                 </button>
               </div>
@@ -139,8 +143,26 @@ export default function Friends({
           })}
         </div>
 
+        {/* Gönderilen (bekleyen) istekler — kabul/iptal edilene kadar durur */}
+        {getSentRequests().length > 0 && (
+          <>
+            <div style={{ fontWeight: 800, color: "#e0a24a", margin: "16px 0 8px" }}>Gönderilen istekler</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {getSentRequests().map((c) => (
+                <div key={c} className="card-parch" style={{ padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ flex: 1, letterSpacing: "0.1em", fontWeight: 700 }}>{c}</div>
+                  <span style={{ fontSize: 12, color: "#ffd75a" }}>⏳ bekliyor</span>
+                  <button className="btn" style={{ padding: "5px 10px", opacity: 0.7 }} onClick={() => { clearSent(c); setTick((t) => t + 1); }}>
+                    İptal
+                  </button>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+
         <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 16, lineHeight: 1.5 }}>
-          Çevrimiçi bir arkadaşını oyuna çağırmak için <b>Ölüm Koşusu → Oda Kur</b> ekranındaki
+          Çevrimiçi bir arkadaşını oyuna çağırmak için <b>Arkadaşlarınla Oyna → Oda Kur</b> ekranındaki
           arkadaş butonunu kullan.
         </div>
       </div>

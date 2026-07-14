@@ -79,6 +79,8 @@ export default function Page() {
   const [friendsOnline, setFriendsOnline] = useState(0);
   const [invite, setInvite] = useState<{ fromName: string; room: string } | null>(null);
   const [pendingJoin, setPendingJoin] = useState<string | null>(null); // davet kabul → lobiye taşınan oda kodu
+  const [lobbyPublic, setLobbyPublic] = useState(false); // oda "Online Odalar"da listelensin mi
+  const [lobbyAutoHost, setLobbyAutoHost] = useState(false); // lobiye girer girmez oda kur (Online → Oda Kur)
   const [friendReq, setFriendReq] = useState<{ fromCode: string; fromName: string } | null>(null);
   const [friendToast, setFriendToast] = useState("");
   // Görev modu
@@ -442,6 +444,8 @@ export default function Page() {
         onStarted={handleStarted}
         presence={presenceRef.current}
         initialJoinCode={pendingJoin}
+        publicRoom={lobbyPublic}
+        initialHost={lobbyAutoHost}
       />
     );
   }
@@ -454,7 +458,8 @@ export default function Page() {
     return (
       <Online
         presence={presenceRef.current}
-        onJoin={(code) => { setPendingJoin(code); setScreen("lobby"); }}
+        onJoin={(code) => { setPendingJoin(code); setLobbyPublic(true); setLobbyAutoHost(false); setScreen("lobby"); }}
+        onCreateRoom={() => { setPendingJoin(null); setLobbyPublic(true); setLobbyAutoHost(true); setScreen("lobby"); }}
         onBack={() => setScreen("menu")}
       />
     );
@@ -958,7 +963,7 @@ export default function Page() {
       {inviteBanner}
       <MainMenu
         onSolo={startNewGame}
-        onRace={() => setScreen("lobby")}
+        onRace={() => { setPendingJoin(null); setLobbyPublic(false); setLobbyAutoHost(false); setScreen("lobby"); }}
         onOnline={() => setScreen("online")}
         onMissions={() => setScreen("missions")}
         onModes={() => setScreen("modes")}

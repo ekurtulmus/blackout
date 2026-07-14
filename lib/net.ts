@@ -6,6 +6,7 @@
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "./supabaseClient";
+import { getMyCode } from "./friends";
 
 export type NetRole = "host" | "guest";
 export type NetStatus =
@@ -15,7 +16,7 @@ export type NetStatus =
   | "left" // host ayrıldı / oda kapandı
   | "error";
 
-export type NetPlayer = { id: string; name: string };
+export type NetPlayer = { id: string; name: string; code?: string };
 
 // Tüm oyun mesajları { t: tür, ... } biçiminde
 export type NetMessage = { t: string; [k: string]: unknown };
@@ -47,8 +48,9 @@ export class NetRoom {
 
   private ch: RealtimeChannel | null = null;
   private started = false;
-  // Host: kimlik -> {son görülme, isim} (giriş sırası korunur)
-  private roster = new Map<string, { seen: number; name: string }>();
+  fcode = getMyCode(); // bu istemcinin kalıcı arkadaş kodu (roster'da taşınır)
+  // Host: kimlik -> {son görülme, isim, arkadaş kodu} (giriş sırası korunur)
+  private roster = new Map<string, { seen: number; name: string; fcode?: string }>();
   private rosterPlayers: NetPlayer[] = []; // guest'in bildiği sıra+isimler (host'tan gelir)
   private hsTimer: number | null = null;
   private rosterTimer: number | null = null;
@@ -81,13 +83,13 @@ export class NetRoom {
 
     // El sıkışma / varlık (presence)
     ch.on("broadcast", { event: "hs" }, (p) => {
-      const d = p.payload as { from: string; role?: NetRole; kind: string; name?: string };
+      const d = p.payload as { from: string; role?: NetRole; kind: string; name?: string; fcode?: string };
       if (!d || d.from === this.id) return;
       if (d.kind === "hello") {
         if (this.role === "host") {
           const isNew = !this.roster.has(d.from);
           if (isNew && this.roster.size >= ROOM_CAP) return; // oda dolu
-          this.roster.set(d.from, { seen: Date.now(), name: d.name || "Oyuncu" });
+          this.roster.set(d.from, { seen: Date.now(), name: d.name || "Oyuncu", fcode: d.fcode });
           if (isNew) this.broadcastRoster(); // yeni katılana hemen roster yolla
         }
       } else if (d.kind === "bye") {
@@ -130,7 +132,7 @@ export class NetRoom {
     ch.subscribe((status) => {
       if (status === "SUBSCRIBED") {
         if (this.role === "host") {
-          this.roster.set(this.id, { seen: Date.now(), name: this.name }); // host kendini ekler (sıra 0)
+          this.roster.set(this.id, { seen: Date.now(), name: this.name, fcode: this.fcode }); // host kendini ekler (sıra 0)
           this.set("connected");
           this.broadcastRoster();
           this.startRosterLoop();
@@ -173,7 +175,7 @@ export class NetRoom {
 
   private getPlayers(): NetPlayer[] {
     // Map giriş sırasını korur: host (sıra 0) önce, sonra katılanlar.
-    return Array.from(this.roster.entries()).map(([id, v]) => ({ id, name: v.name }));
+    return Array.from(this.roster.entries()).map(([id, v]) => ({ id, name: v.name, code: v.fcode }));
   }
 
   private broadcastRoster() {
@@ -187,7 +189,7 @@ export class NetRoom {
     this.ch?.send({
       type: "broadcast",
       event: "hs",
-      payload: { from: this.id, role: this.role, kind, name: this.name },
+      payload: { from: this.id, role: this.role, kind, name: this.name, fcode: this.fcode },
     });
   }
 

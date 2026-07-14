@@ -20,7 +20,7 @@ import {
 import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
 import { getCoins, addCoins } from "@/lib/coins";
-import { getFriends, getMyCode, type FriendPresence } from "@/lib/friends";
+import { getFriends, getMyCode, isSent, type FriendPresence } from "@/lib/friends";
 
 type Mode = "choose" | "host" | "join";
 
@@ -39,11 +39,15 @@ export default function OnlineLobby({
   onStarted,
   presence,
   initialJoinCode,
+  publicRoom,
+  initialHost,
 }: {
   onBack: () => void;
   onStarted: (room: NetRoom, info: StartInfo) => void;
   presence?: FriendPresence | null;
   initialJoinCode?: string | null;
+  publicRoom?: boolean;
+  initialHost?: boolean;
 }) {
   const [mode, setMode] = useState<Mode>("choose");
   const [code, setCode] = useState("");
@@ -71,16 +75,19 @@ export default function OnlineLobby({
       setCode(initialJoinCode.toUpperCase());
       setMode("join");
       startRoom(initialJoinCode.toUpperCase(), "guest");
+    } else if (initialHost) {
+      // Online Odalar → Oda Kur: doğrudan (herkese açık) oda kur
+      host();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Host isem: odamı "Online Odalar" listesine duyur (bekleme lobisinde; oyun başlayınca durur)
+  // Host isem VE oda herkese açıksa: "Online Odalar" listesine duyur (bekleme lobisinde)
   useEffect(() => {
-    if (mode !== "host" || !presence || !code) return;
+    if (mode !== "host" || !presence || !code || !publicRoom) return;
     presence.announceRoom(code, Math.max(1, players.length));
     return () => presence.stopAnnounceRoom();
-  }, [mode, code, players.length, presence]);
+  }, [mode, code, players.length, presence, publicRoom]);
 
   // Çevrimiçi arkadaş durumunu tazele (davet paneli için)
   const [, setTick] = useState(0);
@@ -98,6 +105,33 @@ export default function OnlineLobby({
     setReqMsg("✓ İstek gönderildi (arkadaşın çevrimiçiyse kabul edebilir)");
     window.setTimeout(() => setReqMsg(""), 3000);
   }
+  // Odadaki oyuncu listesi + her birine "+ Arkadaş" (kendisi/zaten arkadaş hariç; istek kalıcı)
+  const rosterList = () => {
+    const friendCodes = new Set(getFriends().map((f) => f.code));
+    const myId = roomRef.current?.id;
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 6, width: "100%", maxWidth: 420, margin: "0 auto" }}>
+        {players.map((p) => {
+          const me = p.id === myId;
+          const canAdd = !me && !!p.code && p.code !== getMyCode() && !friendCodes.has(p.code);
+          return (
+            <div key={p.id} className="how" style={{ padding: "8px 12px", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
+              <b style={{ flex: 1, textAlign: "left", color: me ? "#6ee7ff" : "#7dffb0" }}>{p.name}{me ? " (sen)" : ""}</b>
+              {canAdd &&
+                (isSent(p.code!) ? (
+                  <span style={{ fontSize: 12, color: "#ffd75a" }}>istek ⏳</span>
+                ) : (
+                  <button className="btn" style={{ padding: "4px 10px" }} onClick={() => { presence?.sendRequest(p.code!); setTick((t) => t + 1); }}>
+                    + Arkadaş
+                  </button>
+                ))}
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   const [invited, setInvited] = useState<Set<string>>(new Set());
   function inviteFriend(code: string) {
     presence?.invite(code, roomRef.current?.code || "");
@@ -282,15 +316,9 @@ export default function OnlineLobby({
           </div>
 
           <div className="subtitle" style={{ margin: "4px 0" }}>
-            Oyuncular ({count}/{MAX_PLAYERS}):{" "}
-            {players.map((p, i) => (
-              <span key={p.id}>
-                {i > 0 && ", "}
-                <b style={{ color: p.id === roomRef.current?.id ? "#6ee7ff" : "#7dffb0" }}>{p.name}</b>
-              </span>
-            ))}
-            {count < 2 ? " — en az 2 oyuncu gerekli" : ""}
+            Oyuncular ({count}/{MAX_PLAYERS}){count < 2 ? " — en az 2 oyuncu gerekli" : ""}
           </div>
+          {rosterList()}
 
           {/* Çevrimiçi arkadaşları odaya davet et */}
           {(() => {
@@ -422,14 +450,9 @@ export default function OnlineLobby({
             {code}
           </div>
           <div className="subtitle" style={{ margin: "4px 0" }}>
-            Oyuncular ({count}/{MAX_PLAYERS}):{" "}
-            {players.map((p, i) => (
-              <span key={p.id}>
-                {i > 0 && ", "}
-                <b style={{ color: p.id === roomRef.current?.id ? "#6ee7ff" : "#7dffb0" }}>{p.name}</b>
-              </span>
-            ))}
+            Oyuncular ({count}/{MAX_PLAYERS})
           </div>
+          {rosterList()}
 
           <div style={{ margin: "4px 0", opacity: 0.55 }}>
             <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk <span style={{ fontSize: 12 }}>(ev sahibi seçer)</span></div>

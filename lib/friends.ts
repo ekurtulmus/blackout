@@ -77,6 +77,36 @@ export function removeFriend(code: string) {
   saveFriends(getFriends().filter((f) => f.code !== code));
 }
 
+// --- Gönderilen arkadaşlık istekleri (KALICI): kabul/silinene kadar durur ---
+const SENT_KEY = "blackout_sent";
+export function getSentRequests(): string[] {
+  try {
+    const v = localStorage.getItem(SENT_KEY);
+    if (v) return JSON.parse(v);
+  } catch {
+    /* geç */
+  }
+  return [];
+}
+export function isSent(code: string): boolean {
+  return getSentRequests().includes(code.toUpperCase());
+}
+function saveSent(list: string[]) {
+  try {
+    localStorage.setItem(SENT_KEY, JSON.stringify(list));
+  } catch {
+    /* geç */
+  }
+}
+export function markSent(code: string) {
+  const c = code.toUpperCase();
+  const list = getSentRequests();
+  if (!list.includes(c)) saveSent([...list, c]);
+}
+export function clearSent(code: string) {
+  saveSent(getSentRequests().filter((c) => c !== code.toUpperCase()));
+}
+
 export function renameFriend(code: string, name: string) {
   const list = getFriends();
   const f = list.find((x) => x.code === code);
@@ -157,8 +187,17 @@ export class FriendPresence {
     ch.on("broadcast", { event: "faccept" }, (p) => {
       const d = p.payload as { to: string; fromCode: string; fromName: string };
       if (!d || d.to !== this.code) return;
+      clearSent(d.fromCode); // istek tamamlandı → "gönderildi" işaretini kaldır
       addFriend(d.fromCode, d.fromName);
       this.onRequestAccepted(d.fromName);
+      this.onPresence();
+    });
+
+    // "unfriend": karşı taraf beni arkadaşlıktan çıkardı → ben de onu silerim
+    ch.on("broadcast", { event: "unfriend" }, (p) => {
+      const d = p.payload as { to: string; fromCode: string };
+      if (!d || d.to !== this.code) return;
+      removeFriend(d.fromCode);
       this.onPresence();
     });
 
@@ -233,8 +272,9 @@ export class FriendPresence {
     });
   }
 
-  // Arkadaşlık isteği gönder (karşı taraf çevrimiçiyse ulaşır)
+  // Arkadaşlık isteği gönder (karşı taraf çevrimiçiyse ulaşır). Kalıcı olarak "gönderildi" işaretle.
   sendRequest(toCode: string) {
+    markSent(toCode);
     this.ch?.send({
       type: "broadcast",
       event: "freq",
@@ -242,9 +282,17 @@ export class FriendPresence {
     });
   }
 
+  // Arkadaşlıktan çıkar: yerelde sil + karşı tarafa bildir (o da beni silsin)
+  unfriend(code: string) {
+    removeFriend(code);
+    clearSent(code);
+    this.ch?.send({ type: "broadcast", event: "unfriend", payload: { to: code, fromCode: this.code } });
+  }
+
   // Gelen isteği kabul et: ben karşı tarafı eklerim + ona "kabul" yollarım (o da beni ekler)
   acceptRequest(fromCode: string, fromName: string) {
     addFriend(fromCode, fromName);
+    clearSent(fromCode);
     this.ch?.send({
       type: "broadcast",
       event: "faccept",

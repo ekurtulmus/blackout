@@ -503,7 +503,7 @@ export default function MainMenu({
           BLACK<span className="mm-o">O</span>UT
         </h1>
         <div className="mm-sub">
-          {view === "single" ? "Tek Kişilik" : view === "multi" ? "Arkadaşlarınla Oyna" : "Karanlıkta Kaçış"}
+          {view === "single" ? "Tek Kişilik" : view === "multi" ? "Çok Oyunculu" : "Karanlıkta Kaçış"}
         </div>
 
         <nav className="mm-menu">
@@ -514,7 +514,7 @@ export default function MainMenu({
               </div>
               <div className="mm-item mm-in mm-item-mp" style={{ animationDelay: "1.22s" }} onClick={() => setView("multi")}>
                 {mpIcon}
-                Arkadaşlarınla Oyna
+                Çok Oyunculu
               </div>
             </>
           )}
@@ -529,7 +529,7 @@ export default function MainMenu({
             <>
               <div className="mm-item mm-item-mp" onClick={onRace}>
                 {mpIcon}
-                Ölüm Koşusu
+                Arkadaşlarınla Oyna
               </div>
               <div className="mm-item" onClick={onOnline}>Online Odalar</div>
             </>
