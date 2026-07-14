@@ -81,6 +81,16 @@ export default function OnlineLobby({
     const iv = window.setInterval(() => setTick((t) => t + 1), 2500);
     return () => window.clearInterval(iv);
   }, []);
+  const [reqCode, setReqCode] = useState(""); // izleyici: arkadaş isteği kodu
+  const [reqMsg, setReqMsg] = useState("");
+  function sendFriendReq() {
+    const c = reqCode.trim().toUpperCase();
+    if (c.length < 4) return;
+    presence?.sendRequest(c);
+    setReqCode("");
+    setReqMsg("✓ İstek gönderildi (arkadaşın çevrimiçiyse kabul edebilir)");
+    window.setTimeout(() => setReqMsg(""), 3000);
+  }
   const [invited, setInvited] = useState<Set<string>>(new Set());
   function inviteFriend(code: string) {
     presence?.invite(code, roomRef.current?.code || "");
@@ -347,7 +357,8 @@ export default function OnlineLobby({
         </>
       )}
 
-      {mode === "join" && (
+      {/* Katılım: bağlanmadan önce kod gir */}
+      {mode === "join" && status !== "connected" && (
         <>
           <div className="subtitle" style={{ marginBottom: 2 }}>Adın:</div>
           {nameInput}
@@ -368,9 +379,7 @@ export default function OnlineLobby({
             inputMode="text"
           />
           <div className="subtitle" style={{ minHeight: 22 }}>
-            {status === "connected"
-              ? `Bağlandı! Oyuncular: ${count}. Ev sahibi başlatınca oyun başlayacak…`
-              : status === "connecting"
+            {status === "connecting"
               ? "Bağlanıyor…"
               : status === "error"
               ? "Bağlantı hatası. Kodu kontrol et."
@@ -382,7 +391,7 @@ export default function OnlineLobby({
             <button
               className="btn btn-primary"
               onClick={join}
-              disabled={code.length < 4 || status === "connected"}
+              disabled={code.length < 4}
             >
               Katıl →
             </button>
@@ -390,6 +399,63 @@ export default function OnlineLobby({
               ← Geri
             </button>
           </div>
+        </>
+      )}
+
+      {/* Katıldıktan sonra: İZLEYİCİ lobisi — host'la aynı ekran ama zorluk/başlat PASİF */}
+      {mode === "join" && status === "connected" && (
+        <>
+          <div className="subtitle" style={{ color: "#7dffb0" }}>Odaya katıldın 👀 İzleyicisin — ev sahibi başlatınca oyun başlar.</div>
+          <div
+            style={{
+              fontSize: "clamp(40px,12vw,90px)", fontWeight: 900, letterSpacing: "0.2em",
+              color: "#6ee7ff", textShadow: "0 0 24px rgba(110,231,255,0.4)",
+            }}
+          >
+            {code}
+          </div>
+          <div className="subtitle" style={{ margin: "4px 0" }}>
+            Oyuncular ({count}/{MAX_PLAYERS}):{" "}
+            {players.map((p, i) => (
+              <span key={p.id}>
+                {i > 0 && ", "}
+                <b style={{ color: p.id === roomRef.current?.id ? "#6ee7ff" : "#7dffb0" }}>{p.name}</b>
+              </span>
+            ))}
+          </div>
+
+          <div style={{ margin: "4px 0", opacity: 0.55 }}>
+            <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk <span style={{ fontSize: 12 }}>(ev sahibi seçer)</span></div>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+              {DIFFS.map((d) => (
+                <button key={d.key} className="btn" disabled style={{ cursor: "not-allowed" }}>
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <button className="btn btn-primary" disabled style={{ opacity: 0.4, cursor: "not-allowed" }}>
+            ▶ Ev sahibi başlatır…
+          </button>
+
+          {/* İzleyici de arkadaş ekleyebilir */}
+          <div className="how" style={{ maxWidth: 420, width: "100%", padding: 14 }}>
+            <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8 }}>👥 Arkadaş ekle</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>{reqMsg || "Kod gir, istek gönder."}</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <input
+                value={reqCode}
+                onChange={(e) => setReqCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
+                placeholder="Arkadaş kodu"
+                maxLength={6}
+                style={{ flex: 1, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(150,140,120,0.35)", borderRadius: 8, padding: "9px 12px", color: "#e8e0cc", fontSize: 15, letterSpacing: "0.08em", outline: "none" }}
+              />
+              <button className="btn btn-primary" onClick={sendFriendReq} disabled={reqCode.trim().length < 4}>İstek</button>
+            </div>
+          </div>
+
+          <button className="btn" onClick={back}>← Ayrıl</button>
         </>
       )}
     </div>
