@@ -12,6 +12,7 @@ import {
   bfsDistances,
   floorCells,
   generateMaze,
+  generateArena,
   isWall,
   type Maze,
 } from "./maze";
@@ -218,6 +219,13 @@ export class GameEngine {
       this.noFire = !!mission.noFire;
       this.exitOpen = !!mission.exitOpenAtStart;
       if ((mission.endless || mission.arena) && mission.escalateEvery) this.nextEscalate = mission.escalateEvery;
+      // ARENA: gepgeniş AÇIK alan + gelinler YARIM hız + geniş görüş (labirent yok)
+      if (mission.arena) {
+        cfg.cols = 25;
+        cfg.rows = 25;
+        cfg.zombieSpeed = cfg.zombieSpeed * 0.5;
+        cfg.visionRadius = Math.min(10, cfg.visionRadius + 3);
+      }
       // Faz E: kaçış görevi — çıkış baştan açık + çökme geri sayımı
       if (mission.escape) {
         this.escape = true;
@@ -237,12 +245,14 @@ export class GameEngine {
     // Dinamik fener/görüş (Madde 4,5) — dip anında ses ipucu
     this.flashlight = new Flashlight(this.config.visionRadius);
     this.flashlight.onDip = () => this.events.push("flicker");
-    this.maze = generateMaze(
-      this.config.cols,
-      this.config.rows,
-      this.config.braid,
-      this.config.openness
-    );
+    this.maze = mission?.arena
+      ? generateArena(this.config.cols, this.config.rows)
+      : generateMaze(
+          this.config.cols,
+          this.config.rows,
+          this.config.braid,
+          this.config.openness
+        );
 
     this.player = {
       pos: { x: 1.5, y: 1.5 },
@@ -306,7 +316,10 @@ export class GameEngine {
           !(c.x === exit.x && c.y === exit.y)
       )
     );
-    const ammoTotal = this.config.zombies + this.config.ammoBuffer;
+    // Arena: geniş alana BOL mermi serpiştir (sık sık bulunsun); normalde zombi+tampon
+    const ammoTotal = mission?.arena
+      ? Math.round(floors.length * 0.05)
+      : this.config.zombies + this.config.ammoBuffer;
     for (let i = 0; i < ammoTotal && i < ammoCells.length; i++) {
       const c = ammoCells[i];
       this.ammoItems.push({
@@ -326,7 +339,7 @@ export class GameEngine {
           !ammoSet.has(c.y * this.maze.cols + c.x)
       )
     );
-    const healthTotal = 2;
+    const healthTotal = mission?.arena ? Math.round(floors.length * 0.025) : 2;
     for (let i = 0; i < healthTotal && i < healthCells.length; i++) {
       const c = healthCells[i];
       this.healthItems.push({

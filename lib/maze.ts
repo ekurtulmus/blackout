@@ -11,6 +11,27 @@ function inBounds(x: number, y: number, cols: number, rows: number) {
   return x >= 0 && y >= 0 && x < cols && y < rows;
 }
 
+// AÇIK ARENA — labirent değil, gepgeniş açık alan. Yalnız kenar duvarları +
+// seyrek sütunlar (siper). Arena modu için (mission.arena).
+export function generateArena(cols: number, rows: number, pillar = 0.05): Maze {
+  if (cols % 2 === 0) cols += 1;
+  if (rows % 2 === 0) rows += 1;
+  const walls: boolean[][] = Array.from({ length: rows }, (_, y) =>
+    Array.from({ length: cols }, (_, x) => x === 0 || y === 0 || x === cols - 1 || y === rows - 1)
+  );
+  // Seyrek sütunlar (kapalı ızgara noktalarında) — siper sağlar, alan açık kalır
+  for (let y = 2; y < rows - 2; y++) {
+    for (let x = 2; x < cols - 2; x++) {
+      if (x % 2 === 0 && y % 2 === 0 && Math.random() < pillar) walls[y][x] = true;
+    }
+  }
+  // Doğuş köşesi (1,1) ve çevresi mutlaka açık
+  for (const [dx, dy] of [[0, 0], [1, 0], [0, 1], [1, 1], [2, 1], [1, 2]]) {
+    if (inBounds(1 + dx, 1 + dy, cols, rows)) walls[1 + dy][1 + dx] = false;
+  }
+  return { cols, rows, walls };
+}
+
 // Perfect maze üretir (recursive backtracker). cols/rows tek sayı olmalı.
 // openness > 0 ise labirente açık odalar/boşluklar serpiştirir (nefes alanı).
 export function generateMaze(

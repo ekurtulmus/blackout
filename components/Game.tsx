@@ -1398,20 +1398,6 @@ export default function Game({
         >
           <span className="val">{muted ? "🔇" : "🔊"}</span>
         </button>
-        {!mission && (
-          <button
-            className="chip mutebtn"
-            onClick={() => {
-              // panel açılırken envanteri kalıcı depodan TAZELE (dükkândan alınanlar görünsün)
-              const inv = getInventory();
-              setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
-              setInvOpen((v) => !v);
-            }}
-            title="Envanter (kalkan / radar / tuzak)"
-          >
-            <span className="val">📦 {invCounts.shields + invCounts.radars + invCounts.traps}</span>
-          </button>
-        )}
         <button
           className="chip mutebtn"
           onClick={togglePause}
@@ -1595,6 +1581,22 @@ export default function Game({
           KOŞ
         </button>
       </div>
+
+      {/* Envanteri aç — slotun hemen üstünde */}
+      {!mission && (
+        <button
+          className="invbtn"
+          onPointerDown={(e) => e.preventDefault()}
+          onClick={() => {
+            const inv = getInventory();
+            setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps });
+            setInvOpen(true);
+          }}
+          title="Envanter"
+        >
+          📦 {invCounts.shields + invCounts.radars + invCounts.traps}
+        </button>
+      )}
 
       {/* Kuşanılan eşya slotu (ateşin solunda; masaüstünde sağ-altta). Tıkla=kullan */}
       {!mission && (

@@ -253,6 +253,15 @@ button {
   border-color: rgba(224, 162, 74, 0.5);
   background: rgba(30, 22, 18, 0.92);
 }
+/* Mobilde başlık, sabit "← Menü" butonunun altına insin (üst üste binmesin) */
+@media (max-width: 640px) {
+  .menuscreen {
+    padding-top: 62px;
+  }
+  .screen {
+    padding-top: 60px;
+  }
+}
 
 /* Kuşanılan eşya slotu (ateşin solunda / masaüstünde sağ-altta) */
 .slotbtn {
@@ -292,6 +301,38 @@ button {
   .slotbtn.slotbtn-mp {
     right: 214px;
     bottom: 44px;
+  }
+}
+
+/* Envanteri açan buton — slotun HEMEN ÜSTÜNDE */
+.invbtn {
+  position: fixed;
+  z-index: 13;
+  right: 26px;
+  bottom: 128px;
+  width: 76px;
+  height: 36px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  color: #d7cdb4;
+  background: rgba(20, 15, 13, 0.82);
+  border: 1px solid rgba(206, 186, 156, 0.32);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+@media (pointer: coarse) {
+  .invbtn {
+    right: 134px;
+    bottom: 136px;
+  }
+  .invbtn.invbtn-mp {
+    right: 214px;
+    bottom: 128px;
   }
 }
 
@@ -416,6 +457,27 @@ button {
   }
   .chip .val {
     color: #ffffff;
+  }
+  /* Mobilde HUD'ı SIKIŞTIR — üstte az yer kaplasın, oyun alanı büyük görünsün */
+  .hud {
+    gap: 5px;
+    padding: 7px 9px;
+  }
+  .chip {
+    padding: 3px 7px;
+    border-radius: 8px;
+    gap: 4px;
+  }
+  .chip .lbl {
+    font-size: 8.5px;
+    letter-spacing: 0.03em;
+  }
+  .chip .val {
+    font-size: 12.5px;
+  }
+  .hpbar {
+    width: 78px;
+    height: 9px;
   }
 }
 

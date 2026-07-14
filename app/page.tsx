@@ -753,6 +753,7 @@ export default function Page() {
     const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
     return (
       <div className="screen">
+        <button className="topback" onClick={() => setScreen("modes")}>← Modlar</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
           DAYANAMADIN
         </div>
@@ -773,6 +774,7 @@ export default function Page() {
     const mr = missionResult;
     return (
       <div className="screen">
+        <button className="topback" onClick={() => setScreen("missions")}>← Görevler</button>
         <div
           className="title"
           style={{ fontSize: "clamp(30px,8vw,56px)", color: mr.ok ? "#7dffb0" : "#ff6b6b" }}

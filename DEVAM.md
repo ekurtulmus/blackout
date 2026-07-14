@@ -11,6 +11,17 @@
 > local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
 > için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
 
+## YENİ İSTEK PAKETİ (2026-07-14) — CANLI: blackout-plum.vercel.app
+- ✅ **Arena yeniden**: labirent DEĞİL **gepgeniş açık alan** (`maze.generateArena` 25×25, kenar duvarı + seyrek
+  sütun); gelinler **YARIM hız** (`engine` arena kolu `zombieSpeed*0.5`); geniş görüş (+3); **bol can/mermi**
+  (arena'da ammo=floors*0.05, health=floors*0.025) + mevcut respawn.
+- ✅ **Mobil/HUD**: (a) oyun-içi **envanter butonu** artık slotun HEMEN ÜSTÜNDE (`.invbtn`, SP+online); üstteki
+  HUD 📦 kaldırıldı. (b) mobilde HUD **sıkıştırıldı** (`pointer:coarse` küçük çip/font/hpbar) → oyun alanı büyük.
+  (c) mobilde başlık artık `.topback`'in altında (`@media(max-width:640px)` üst boşluk) → örtüşme yok.
+  (d) endless/mission sonuç ekranlarına da üst-buton. Doğrulandı (mobil viewport).
+- ⏳ KALAN (bu paket): dükkana yeni ürün+kozmetik, arkadaş=istek/kabul + ayarlardan kalıcı isim, çoklu=izleyici
+  lobi, yeni mod önerileri.
+
 ## BUG DÜZELTMELERİ (2026-07-14)
 - ✅ **Kişiselleştirme kalıcılığı**: `inventory.ts getInventory` artık sahip listelerini DAİMA yeni dizi olarak
   döndürür (DEFAULT_INV'in paylaşılan dizisini mutasyona uğratmaz) + **kendini onarır**: seçili fener rengi/görünüm

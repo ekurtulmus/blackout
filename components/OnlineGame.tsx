@@ -1492,17 +1492,6 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Sen</span>
           <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
-        <button
-          className="chip mutebtn"
-          onClick={() => {
-            const inv = getInventory();
-            setInvCounts({ shields: inv.shields, radars: inv.radars });
-            setInvOpen((v) => !v);
-          }}
-          title="Envanter (kalkan / radar)"
-        >
-          <span className="val">📦 {invCounts.shields + invCounts.radars}</span>
-        </button>
         <button className="chip mutebtn" onClick={openShop} title="Dükkân — parayla eşya al">
           <span className="val">🛒</span>
         </button>
@@ -1647,6 +1636,16 @@ export default function OnlineGame({
           ATEŞ
         </button>
       </div>
+
+      {/* Envanteri aç — slotun hemen üstünde */}
+      <button
+        className="invbtn invbtn-mp"
+        onPointerDown={(e) => e.preventDefault()}
+        onClick={() => { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars }); setInvOpen(true); }}
+        title="Envanter"
+      >
+        📦 {invCounts.shields + invCounts.radars}
+      </button>
 
       {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}
       <button
