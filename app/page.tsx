@@ -77,6 +77,8 @@ export default function Page() {
   const [friendsOnline, setFriendsOnline] = useState(0);
   const [invite, setInvite] = useState<{ fromName: string; room: string } | null>(null);
   const [pendingJoin, setPendingJoin] = useState<string | null>(null); // davet kabul → lobiye taşınan oda kodu
+  const [friendReq, setFriendReq] = useState<{ fromCode: string; fromName: string } | null>(null);
+  const [friendToast, setFriendToast] = useState("");
   // Görev modu
   const [missionIndex, setMissionIndex] = useState<number | null>(null);
   const [missionRunId, setMissionRunId] = useState(0);
@@ -167,6 +169,12 @@ export default function Page() {
     };
     p.onPresence = refresh;
     p.onInvite = (inv) => setInvite({ fromName: inv.fromName, room: inv.room });
+    p.onFriendRequest = (req) => setFriendReq(req);
+    p.onRequestAccepted = (name) => {
+      setFriendToast(`${name} arkadaşlık isteğini kabul etti 🤝`);
+      setFriendsOnline(getFriends().filter((f) => p.isOnline(f.code)).length);
+      window.setTimeout(() => setFriendToast(""), 3500);
+    };
     p.start();
     const iv = window.setInterval(refresh, 3000);
     return () => {
@@ -873,24 +881,53 @@ export default function Page() {
     );
   }
 
-  const inviteBanner = invite ? (
-    <div
-      style={{
-        position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 50,
-        display: "flex", alignItems: "center", gap: 12, maxWidth: "92vw",
-        background: "linear-gradient(180deg, rgba(20,40,25,0.97), rgba(10,20,12,0.97))",
-        border: "1px solid rgba(125,255,176,0.4)", borderRadius: 10, padding: "12px 16px",
-        boxShadow: "0 12px 40px rgba(0,0,0,0.6)", color: "#e6f5ea",
-      }}
-    >
-      <span style={{ fontSize: 14 }}>
-        <b style={{ color: "#7dffb0" }}>{invite.fromName}</b> seni odaya davet etti
-        <span style={{ color: "var(--muted)" }}> ({invite.room})</span>
-      </span>
-      <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={acceptInvite}>Katıl</button>
-      <button className="btn" style={{ padding: "6px 10px", opacity: 0.7 }} onClick={() => setInvite(null)}>✕</button>
-    </div>
-  ) : null;
+  const bannerBase: React.CSSProperties = {
+    position: "fixed", top: 14, left: "50%", transform: "translateX(-50%)", zIndex: 50,
+    display: "flex", alignItems: "center", gap: 12, maxWidth: "92vw",
+    border: "1px solid rgba(125,255,176,0.4)", borderRadius: 10, padding: "12px 16px",
+    boxShadow: "0 12px 40px rgba(0,0,0,0.6)", color: "#e6f5ea",
+    background: "linear-gradient(180deg, rgba(20,40,25,0.97), rgba(10,20,12,0.97))",
+  };
+  const inviteBanner = (
+    <>
+      {invite && (
+        <div style={bannerBase}>
+          <span style={{ fontSize: 14 }}>
+            <b style={{ color: "#7dffb0" }}>{invite.fromName}</b> seni odaya davet etti
+            <span style={{ color: "var(--muted)" }}> ({invite.room})</span>
+          </span>
+          <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={acceptInvite}>Katıl</button>
+          <button className="btn" style={{ padding: "6px 10px", opacity: 0.7 }} onClick={() => setInvite(null)}>✕</button>
+        </div>
+      )}
+      {friendReq && (
+        <div style={{ ...bannerBase, top: invite ? 74 : 14 }}>
+          <span style={{ fontSize: 14 }}>
+            <b style={{ color: "#7dffb0" }}>{friendReq.fromName}</b> seni arkadaş olarak eklemek istiyor
+          </span>
+          <button
+            className="btn btn-primary"
+            style={{ padding: "6px 14px" }}
+            onClick={() => {
+              presenceRef.current?.acceptRequest(friendReq.fromCode, friendReq.fromName);
+              setFriendsOnline(getFriends().filter((f) => presenceRef.current?.isOnline(f.code)).length);
+              setFriendToast(`${friendReq.fromName} arkadaşın oldu 🤝`);
+              window.setTimeout(() => setFriendToast(""), 3000);
+              setFriendReq(null);
+            }}
+          >
+            Kabul
+          </button>
+          <button className="btn" style={{ padding: "6px 10px", opacity: 0.7 }} onClick={() => setFriendReq(null)}>Reddet</button>
+        </div>
+      )}
+      {friendToast && (
+        <div style={{ ...bannerBase, top: 14, borderColor: "rgba(125,255,176,0.5)" }}>
+          <span style={{ fontSize: 14, color: "#7dffb0" }}>{friendToast}</span>
+        </div>
+      )}
+    </>
+  );
 
   if (screen === "menu") {
     return (

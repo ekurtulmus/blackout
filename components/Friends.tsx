@@ -5,7 +5,6 @@ import Icon from "@/components/Icon";
 import {
   getMyCode,
   getFriends,
-  addFriend,
   removeFriend,
   type Friend,
   type FriendPresence,
@@ -23,7 +22,6 @@ export default function Friends({
   const myCode = getMyCode();
   const [friends, setFriends] = useState<Friend[]>([]);
   const [code, setCode] = useState("");
-  const [fname, setFname] = useState("");
   const [msg, setMsg] = useState("");
   const [, setTick] = useState(0); // çevrimiçi durumu tazelemek için
 
@@ -40,16 +38,17 @@ export default function Friends({
   }, [presence]);
 
   function doAdd() {
-    const r = addFriend(code, fname);
-    if (r.ok) {
-      setFriends(getFriends());
-      setCode("");
-      setFname("");
-      setMsg("✓ Arkadaş eklendi");
-    } else {
-      setMsg("✗ " + (r.reason ?? "Eklenemedi"));
-    }
-    window.setTimeout(() => setMsg(""), 2000);
+    const c = code.trim().toUpperCase();
+    if (c.length < 4) { flash("✗ Geçersiz kod"); return; }
+    if (c === myCode) { flash("✗ Bu senin kendi kodun"); return; }
+    if (friends.some((f) => f.code === c)) { flash("✗ Zaten ekli"); return; }
+    presence?.sendRequest(c);
+    setCode("");
+    flash("✓ İstek gönderildi — arkadaşın çevrimiçiyse kabul edebilir");
+  }
+  function flash(m: string) {
+    setMsg(m);
+    window.setTimeout(() => setMsg(""), 2600);
   }
 
   function copyCode() {
@@ -88,24 +87,20 @@ export default function Friends({
 
         {/* Arkadaş ekle */}
         <div className="card-parch" style={{ padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontWeight: 800, color: "#e0a24a" }}>Arkadaş ekle</div>
+          <div style={{ fontWeight: 800, color: "#e0a24a" }}>Arkadaşlık isteği gönder</div>
+          <div style={{ fontSize: 12, color: "var(--muted)" }}>
+            Kodu gir, istek at. Karşı taraf çevrimiçiyse kabul edince arkadaş olursunuz.
+          </div>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <input
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
-              placeholder="Kod (örn. K7M2QP)"
+              placeholder="Arkadaş kodu (örn. K7M2QP)"
               maxLength={6}
-              style={inputStyle}
-            />
-            <input
-              value={fname}
-              onChange={(e) => setFname(e.target.value)}
-              placeholder="İsim (isteğe bağlı)"
-              maxLength={16}
-              style={{ ...inputStyle, flex: 1, minWidth: 120 }}
+              style={{ ...inputStyle, flex: 1, minWidth: 140 }}
             />
             <button className="btn btn-primary" onClick={doAdd} disabled={code.trim().length < 4}>
-              Ekle
+              İstek Gönder
             </button>
           </div>
         </div>

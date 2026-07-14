@@ -18,11 +18,26 @@ const PROGRESS_KEYS = [
   "blackout_journal",
 ];
 
+const NAME_KEY = "blackout_name";
+
 export default function Settings({ onBack }: { onBack: () => void }) {
   const [vol, setVol] = useState(100);
   const [music, setMusic] = useState(true);
   const [muted, setMuted] = useState(false);
   const [confirmReset, setConfirmReset] = useState(false);
+  const [name, setName] = useState("");
+  const [nameMsg, setNameMsg] = useState("");
+
+  function saveName(v: string) {
+    setName(v);
+    try {
+      localStorage.setItem(NAME_KEY, v.trim());
+    } catch {
+      /* geç */
+    }
+    setNameMsg("✓ Kaydedildi");
+    window.setTimeout(() => setNameMsg(""), 1500);
+  }
 
   function resetProgress() {
     try {
@@ -44,6 +59,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
     setVol(Math.round(sound.getVolume() * 100));
     setMusic(sound.isMusicOn());
     setMuted(sound.muted);
+    try {
+      setName(localStorage.getItem(NAME_KEY) || "");
+    } catch {
+      /* geç */
+    }
   }, []);
 
   function changeVol(v: number) {
@@ -74,6 +94,33 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         className="how"
         style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 440, width: "100%" }}
       >
+        {/* Kalıcı oyuncu adı — online/çoklu/arkadaş listesinde kullanılır */}
+        <div>
+          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
+            <b>Oyuncu Adın</b>
+            <span style={{ color: "#7dffb0", fontSize: 13 }}>{nameMsg}</span>
+          </div>
+          <input
+            value={name}
+            onChange={(e) => saveName(e.target.value)}
+            placeholder="Adını yaz…"
+            maxLength={16}
+            style={{
+              width: "100%",
+              background: "rgba(0,0,0,0.35)",
+              border: "1px solid rgba(150,140,120,0.35)",
+              borderRadius: 8,
+              padding: "10px 12px",
+              color: "#e8e0cc",
+              fontSize: 16,
+              outline: "none",
+            }}
+          />
+          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, lineHeight: 1.4 }}>
+            Bu isim online oyunlarda, çoklu oyunda ve arkadaş listende görünür.
+          </div>
+        </div>
+
         {/* Ses seviyesi */}
         <div>
           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>

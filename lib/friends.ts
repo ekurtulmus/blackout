@@ -98,6 +98,8 @@ export class FriendPresence {
 
   onPresence: () => void = () => {}; // çevrimiçi liste değişince
   onInvite: (inv: FriendInvite) => void = () => {}; // bana davet geldi
+  onFriendRequest: (req: { fromCode: string; fromName: string }) => void = () => {}; // arkadaşlık isteği geldi
+  onRequestAccepted: (name: string) => void = () => {}; // isteğim kabul edildi
 
   start() {
     if (this.ch) return;
@@ -123,6 +125,24 @@ export class FriendPresence {
       const d = p.payload as FriendInvite & { to: string };
       if (!d || d.to !== this.code) return;
       this.onInvite({ fromCode: d.fromCode, fromName: d.fromName, room: d.room });
+    });
+
+    // "freq": bana arkadaşlık isteği geldi
+    ch.on("broadcast", { event: "freq" }, (p) => {
+      const d = p.payload as { to: string; fromCode: string; fromName: string };
+      if (!d || d.to !== this.code) return;
+      // zaten arkadaşsa yok say
+      if (getFriends().some((f) => f.code === d.fromCode)) return;
+      this.onFriendRequest({ fromCode: d.fromCode, fromName: d.fromName });
+    });
+
+    // "faccept": isteğim kabul edildi → ben de karşı tarafı ekliyorum
+    ch.on("broadcast", { event: "faccept" }, (p) => {
+      const d = p.payload as { to: string; fromCode: string; fromName: string };
+      if (!d || d.to !== this.code) return;
+      addFriend(d.fromCode, d.fromName);
+      this.onRequestAccepted(d.fromName);
+      this.onPresence();
     });
 
     ch.subscribe((status) => {
@@ -161,6 +181,25 @@ export class FriendPresence {
       type: "broadcast",
       event: "invite",
       payload: { to: toCode, fromCode: this.code, fromName: getMyName(), room },
+    });
+  }
+
+  // Arkadaşlık isteği gönder (karşı taraf çevrimiçiyse ulaşır)
+  sendRequest(toCode: string) {
+    this.ch?.send({
+      type: "broadcast",
+      event: "freq",
+      payload: { to: toCode.toUpperCase(), fromCode: this.code, fromName: getMyName() },
+    });
+  }
+
+  // Gelen isteği kabul et: ben karşı tarafı eklerim + ona "kabul" yollarım (o da beni ekler)
+  acceptRequest(fromCode: string, fromName: string) {
+    addFriend(fromCode, fromName);
+    this.ch?.send({
+      type: "broadcast",
+      event: "faccept",
+      payload: { to: fromCode, fromCode: this.code, fromName: getMyName() },
     });
   }
 
