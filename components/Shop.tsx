@@ -123,6 +123,35 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
 
         <div style={{ minHeight: 22, color: "#8be9ff", fontWeight: 700, margin: "6px 0 14px" }}>{msg}</div>
 
+        {/* Envanter özeti — elindeki tüketilebilir eşyalar (satın alınca anında güncellenir) */}
+        <div className="card-parch" style={{ padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center" }}>
+          <span style={{ fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+            <Icon name="box" size={16} /> ENVANTERİN
+          </span>
+          {([
+            { icon: "shield" as IconName, n: inv.shields, label: "Kalkan" },
+            { icon: "radar" as IconName, n: inv.radars, label: "Radar" },
+            { icon: "trap" as IconName, n: inv.traps, label: "Tuzak" },
+            { icon: "veil" as IconName, n: inv.veils, label: "Duvak" },
+            { icon: "ammo" as IconName, n: inv.ammoPacks, label: "Mermi paketi" },
+            { icon: "heart" as IconName, n: inv.healthPacks, label: "Can paketi" },
+          ]).map((it) => (
+            <span key={it.label} title={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: it.n > 0 ? "#e4ddce" : "var(--muted)", opacity: it.n > 0 ? 1 : 0.5 }}>
+              <Icon name={it.icon} size={16} /> {it.n}
+            </span>
+          ))}
+          {inv.extraLives > 0 && (
+            <span title="Ekstra can" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#ff8a8a" }}>
+              <Icon name="heart" size={16} /> +{inv.extraLives} can
+            </span>
+          )}
+          {inv.permAmmo && (
+            <span title="Sürekli cephane" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>
+              <Icon name="ammo" size={16} /> Sürekli
+            </span>
+          )}
+        </div>
+
         {/* Oyun parası (altın) satın al — ilk ürün. DENEME: ödeme alınmaz. */}
         <div className="card-parch" style={{ padding: 16, marginBottom: 18, borderColor: "rgba(255,205,80,0.5)" }}>
           <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}><Icon name="coin" size={18} /> ALTIN SATIN AL</div>
@@ -154,11 +183,11 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
               const own = ownsCosmetic(inv, it.cosmetic.slot, it.cosmetic.value);
               if (eq) { label = "✓ Seçili"; canClick = false; }
               else if (own) { label = "Kullan"; canClick = true; }
-              else { label = `🪙 ${it.price} — Satın Al`; canClick = affordable; }
+              else { label = `${it.price} altın — Satın Al`; canClick = affordable; }
             } else if (!it.canBuy(inv)) {
               label = "Sahipsin"; canClick = false;
             } else {
-              label = `🪙 ${it.price} — Satın Al`; canClick = affordable;
+              label = `${it.price} altın — Satın Al`; canClick = affordable;
             }
             const buyable = canClick;
             return (

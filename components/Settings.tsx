@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/audio";
 import { getMyCode } from "@/lib/friends";
+import Icon from "@/components/Icon";
 
 // Sıfırlanacak ilerleme/satın alma anahtarları (ses tercihleri KORUNUR)
 const PROGRESS_KEYS = [
@@ -146,22 +147,22 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         {/* Müzik aç/kapa */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b>Müzik</b>
-          <button className={"btn" + (music ? " btn-primary" : "")} onClick={toggleMusic}>
-            {music ? "Açık 🎵" : "Kapalı 🔇"}
+          <button className={"btn" + (music ? " btn-primary" : "")} onClick={toggleMusic} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {music ? <>Açık <Icon name="music" size={15} /></> : <>Kapalı <Icon name="mute" size={15} /></>}
           </button>
         </div>
 
         {/* Tüm sesi aç/kapa */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <b>Tüm Sesler</b>
-          <button className={"btn" + (!muted ? " btn-primary" : "")} onClick={toggleMuted}>
-            {muted ? "Kapalı 🔇" : "Açık 🔊"}
+          <button className={"btn" + (!muted ? " btn-primary" : "")} onClick={toggleMuted} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            {muted ? <>Kapalı <Icon name="mute" size={15} /></> : <>Açık <Icon name="music" size={15} /></>}
           </button>
         </div>
 
         <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>
           <b>İpucu:</b> Oyun içinde <kbd>Esc</kbd> / <kbd>P</kbd> ile duraklat, HUD'daki
-          🔊 ile sesi hızlıca kıs. Ayarların bu cihazda saklanır.
+          ses düğmesiyle sesi hızlıca kıs. Ayarların bu cihazda saklanır.
         </div>
       </div>
 
@@ -170,7 +171,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
         className="how"
         style={{ maxWidth: 440, width: "100%", borderColor: "rgba(255,90,90,0.4)", display: "flex", flexDirection: "column", gap: 12 }}
       >
-        <b style={{ color: "#ff6b6b", letterSpacing: "0.06em" }}>⚠️ Oyunu Sıfırla</b>
+        <b style={{ color: "#ff6b6b", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="warn" size={16} /> Oyunu Sıfırla</b>
         {!confirmReset ? (
           <>
             <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>

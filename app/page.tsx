@@ -29,6 +29,23 @@ import {
 import type { Diff } from "@/lib/engine";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
+import Icon, { type IconName } from "@/components/Icon";
+
+// Başarım rozetleri → ince ikon eşlemesi (emoji yerine)
+const ACH_ICON: Record<string, IconName> = {
+  first_kill: "drop",
+  reach3: "target",
+  reach5: "map",
+  reach8: "flame",
+  flawless: "veil",
+  queenslayer: "crown",
+  savior: "handshake",
+  escapist: "bomb",
+  rich: "coin",
+  shopper: "cart",
+  collector: "book",
+  win: "trophy",
+};
 
 type Screen =
   | "menu"
@@ -487,9 +504,9 @@ export default function Page() {
       <div className="menuscreen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
-          <div className="big" style={{ color: "#e0a24a" }}>🏆 Başarımlar</div>
+          <div className="big" style={{ color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 10 }}><Icon name="trophy" size={30} /> Başarımlar</div>
           <div className="subtitle">
-            {achList.length}/{ACHIEVEMENTS.length} açıldı · Cüzdan: <b style={{ color: "#ffd75a" }}>🪙 {menuCoins}</b>
+            {achList.length}/{ACHIEVEMENTS.length} açıldı · Cüzdan: <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}><Icon name="coin" size={14} /> {menuCoins}</b>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
             {ACHIEVEMENTS.map((a) => {
@@ -497,10 +514,10 @@ export default function Page() {
               const claimed = achClaimed.includes(a.id);
               return (
                 <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 26 }}>{got ? a.icon : "🔒"}</div>
+                  <div style={{ fontSize: 26, color: got ? "#e0a24a" : "var(--muted)" }}>{got ? <Icon name={ACH_ICON[a.id] ?? "trophy"} size={26} /> : <Icon name="lock" size={24} />}</div>
                   <div style={{ fontWeight: 800 }}>{a.title}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{a.desc}</div>
-                  <div style={{ fontSize: 12, color: "#ffd75a" }}>Ödül: 🪙 {a.reward}</div>
+                  <div style={{ fontSize: 12, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}>Ödül: <Icon name="coin" size={12} /> {a.reward}</div>
                   {got && !claimed && (
                     <button
                       className="btn btn-primary"
@@ -513,11 +530,11 @@ export default function Page() {
                         }
                       }}
                     >
-                      🪙 Ödülü Al (+{a.reward})
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> Ödülü Al (+{a.reward})</span>
                     </button>
                   )}
                   {got && claimed && (
-                    <div style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700 }}>✓ Ödül alındı</div>
+                    <div style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="check" size={13} /> Ödül alındı</div>
                   )}
                 </div>
               );
@@ -533,7 +550,7 @@ export default function Page() {
       <div className="menuscreen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
-          <div className="big" style={{ color: "#e9e0c4" }}>📖 Günlük</div>
+          <div className="big" style={{ color: "#e9e0c4", display: "inline-flex", alignItems: "center", gap: 10 }}><Icon name="book" size={28} /> Günlük</div>
           <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
             {JOURNAL.map((e) => {
@@ -541,7 +558,7 @@ export default function Page() {
               return (
                 <div key={e.id} className="card-parch" style={{ padding: 16 }}>
                   <div style={{ fontWeight: 800, color: got ? "#e9e0c4" : "var(--muted)" }}>
-                    {got ? `“${e.title}”` : "🔒 Kayıp Sayfa"}
+                    {got ? `“${e.title}”` : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={15} /> Kayıp Sayfa</span>}
                   </div>
                   <div style={{ fontSize: 14, lineHeight: 1.6, color: got ? "#cfc7ad" : "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
                     {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
@@ -616,7 +633,7 @@ export default function Page() {
                       dangerouslySetInnerHTML={{ __html: s.svg }}
                     />
                   ) : (
-                    <span style={{ fontSize: 26, opacity: 0.6 }}>🔒</span>
+                    <span style={{ opacity: 0.6, color: "#efc987" }}><Icon name="lock" size={28} /></span>
                   )}
                 </div>
                 <b style={{ fontSize: 13, color: got ? "#efc987" : "var(--muted)" }}>

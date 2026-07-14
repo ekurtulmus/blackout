@@ -21,6 +21,8 @@ class SoundEngine {
   private islikAudio: HTMLAudioElement | null = null; // oyun-içi ıslık (ara sıra)
   private whistleTimer = 0; // ıslık zamanlayıcısı
   private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
+  private visibilityHooked = false; // sekme görünürlük dinleyicisi kuruldu mu
+  private pausedByHide: HTMLAudioElement[] = []; // sekme gizlenince duraklatılanlar
   muted = false;
   tension = 0; // 0..1 (Game her kare günceller)
   private lastHurt = -1;
@@ -96,7 +98,35 @@ class SoundEngine {
     this.applyLevels();
   }
 
+  // Sekme arka plana geçince (farklı sekme/uygulama) müziği duraklat; geri gelince
+  // (müzik hâlâ açık ve sessizde değilse) kaldığı yerden devam ettir.
+  private setupVisibility() {
+    if (this.visibilityHooked) return;
+    if (typeof document === "undefined") return;
+    this.visibilityHooked = true;
+    document.addEventListener("visibilitychange", () => {
+      const els = [this.menuAudio, this.gameAudio, this.secretsAudio, this.shopAudio];
+      if (document.hidden) {
+        this.pausedByHide = [];
+        for (const el of els) {
+          if (el && !el.paused) {
+            this.pausedByHide.push(el);
+            el.pause();
+          }
+        }
+        if (this.ctx && this.ctx.state === "running") this.ctx.suspend().catch(() => {});
+      } else {
+        if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+        if (this.musicOn && !this.muted) {
+          for (const el of this.pausedByHide) el.play().catch(() => {});
+        }
+        this.pausedByHide = [];
+      }
+    });
+  }
+
   init() {
+    this.setupVisibility();
     if (this.ctx) return;
     this.loadPrefs();
     const AC: typeof AudioContext =
@@ -156,6 +186,7 @@ class SoundEngine {
 
   // --- Kullanıcının verdiği ses dosyaları (public/audio/menu.mp3, game.mp3) ---
   private ensureEl(kind: "menu" | "game"): HTMLAudioElement {
+    this.setupVisibility();
     if (kind === "menu") {
       if (!this.menuAudio) {
         const a = new Audio("/audio/menu.mp3");

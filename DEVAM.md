@@ -23,6 +23,30 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #2 — 11 İSTEK + Faz 9 ilerleme (CANLI)
+Kullanıcı paketi (hepsi uygulandı, `next build` + tsc temiz):
+- ✅ **Mobil zoom**: dokunmatikte kamera daha YAKIN (`Game.tsx`/`OnlineGame.tsx` resize: coarse'ta
+  `across = vision*1.4+2`, cap 62) → harita/oyuncu büyük, göz yormaz.
+- ✅ **Sekme müziği**: `audio.ts setupVisibility` — sekme arka plana geçince müzik+AudioContext duraklar,
+  geri gelince (müzik açık & sessiz değilse) kaldığı yerden devam (`pausedByHide`). init+ensureEl'de kurulur.
+- ✅ **Geri tuşu (`.topback`)**: her ekranda sol-üst, BÜYÜK + belirgin altın çerçeve/gölge (globals.css).
+- ✅ **Ayna kehaneti CANLI ok**: tamamlanınca 8 sn `mirrorGuideUntil` — ana `update()`'te her kare
+  `computeExitDir` + radar oku tazelenir → oyuncu yürüdükçe ok DAİMA doğru çıkışı gösterir (`engine.ts`).
+- ✅ **Tek kişilik envanter = duraklat**: `invPausedRef` loop dondurur (envanter açıkken oyun durur).
+- ✅ **Mobil menü arka planı**: kaydırınca adres çubuğu yüksekliği değişince labirent YENİDEN KURULMAZ
+  (`MainMenu` onResize: yalnız genişlik ya da >160px yükseklik değişince rebuild) → animasyon sıfırlanmaz.
+- ✅ **İç görünüm hafızası**: `MainMenu savedView` (modül) — bir ekrandan menüye "← Geri"de ana menüye
+  değil çıkılan alt-menüye (Tek Kişilik/Çok Oyunculu) döner.
+- ✅ **Online odalar ortalandı**: `Online.tsx` `.menuscreen`→`.screen` (dikey ortalı).
+- ✅ **PvP modu**: oda kurarken toggle (`OnlineLobby` pvp → StartInfo/start payload → `net.ts`); OnlineGame'de
+  mermi diğer oyuncuya değince `{t:pvphit,to}` (atıcı tespit, hedef hasar uygular) → `PVP_DMG=%10 can`.
+  HUD'da "⚔️ PvP açık" çipi. İnvuln/duvak korunur.
+- ✅ **Çağıran gelin çığlığı**: SP+online çok belirgin (kızıl nabız aura + 4 kalın genişleyen halka + "!" +
+  titreşim, `screamT` boyunca). Online misafirde screamT yoksa boşta halka.
+- ✅ **Dükkanda envanter özeti**: `Shop.tsx` üstünde kalkan/radar/tuzak/duvak/mermi/can/ekstra-can şeridi (canlı).
+- 🔄 **Faz 9 ikonlar**: Game/OnlineGame HUD, Settings, page.tsx (Başarım/Günlük/Sırlar + rozetler) → line-icon.
+  Kalan: page.tsx mod başlıkları (♾️🌑⚔️🐝) + miniquest HUD ikonları (d.icon emoji).
+
 ## YENİ İSTEK PAKETİ (2026-07-14) — CANLI: blackout-plum.vercel.app
 - ✅ **Arena yeniden**: labirent DEĞİL **gepgeniş açık alan** (`maze.generateArena` 25×25, kenar duvarı + seyrek
   sütun); gelinler **YARIM hız** (`engine` arena kolu `zombieSpeed*0.5`); geniş görüş (+3); **bol can/mermi**

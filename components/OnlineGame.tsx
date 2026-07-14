@@ -40,8 +40,10 @@ import type { NetRoom, NetMessage } from "@/lib/net";
 import type { Vec, Zombie } from "@/lib/types";
 import { MQ_DEFS, MQ_KINDS_ONLINE, mulberry32, planMiniQuest, type MQPlan } from "@/lib/miniquests";
 import { ScareDirector, type ScareFx } from "@/lib/scares";
+import Icon, { type IconName } from "@/components/Icon";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
+const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
@@ -511,6 +513,24 @@ export default function OnlineGame({
         // Madde 8: bir oyuncu görünmez oldu/bozuldu → host AI hedeflemesi için sakla
         const seat = m.seat as number;
         veiledUntil.current[seat] = m.on ? performance.now() + TUNING.veilSec * 1000 : 0;
+      } else if (m.t === "pvphit") {
+        // PvP: başka bir oyuncunun mermisi bana isabet etti (atıcı tespit eder, ben hasarı uygularım).
+        if (info.pvp && (m.to as number) === mySeat) {
+          const now = performance.now();
+          if (now > invulnUntil.current && veilUntil.current <= now && !resultPending.current) {
+            hp.current -= PVP_DMG;
+            hurt.current = Math.max(hurt.current, 0.4);
+            sound.play("hurt");
+            if (hp.current <= 0) {
+              hp.current = PLAYER_MAX_HP;
+              selfPos.current = { ...mySpawn.current };
+              ammoCount.current = Math.max(ammoCount.current, 1);
+              invulnUntil.current = now + 2000;
+              hurt.current = 0.5;
+              bullets.current = [];
+            }
+          }
+        }
       }
     };
     room.onStatus = () => {}; // ayrılma tespiti pos akışıyla (aşağıda) yapılıyor
@@ -549,7 +569,13 @@ export default function OnlineGame({
       canvas!.width = Math.floor(cssW * dpr);
       canvas!.height = Math.floor(cssH * dpr);
       const vr = levelRef.current?.visionRadius ?? 6;
-      TS = Math.max(24, Math.min(46, Math.min(cssW, cssH) / (vr * 2 + 2.5)));
+      // Mobilde daha yakın kamera (bkz. Game.tsx) — göz yormasın, harita büyük görünsün.
+      const coarse =
+        typeof window !== "undefined" && window.matchMedia
+          ? window.matchMedia("(pointer: coarse)").matches
+          : false;
+      const across = coarse ? vr * 1.4 + 2 : vr * 2 + 2.5;
+      TS = Math.max(24, Math.min(coarse ? 62 : 46, Math.min(cssW, cssH) / across));
     }
     resize();
     window.addEventListener("resize", resize);
@@ -744,6 +770,18 @@ export default function OnlineGame({
             }
           }
           if (hit) break;
+          // PvP: mermim başka bir oyuncuya değdi mi? (atıcı tespit eder, hedef hasarı uygular)
+          if (info.pvp) {
+            for (const [oid, o] of others.current) {
+              if (goneIds.current.has(oid)) continue;
+              if (Math.hypot(b.pos.x - o.pos.x, b.pos.y - o.pos.y) < PLAYER_RADIUS + 0.14) {
+                b.life = 0; hit = true;
+                room.send({ t: "pvphit", to: o.seat });
+                break;
+              }
+            }
+            if (hit) break;
+          }
         }
       }
       bullets.current = bullets.current.filter((b) => b.life > 0);
@@ -1156,9 +1194,30 @@ export default function OnlineGame({
         }
         if (z.kind === "caller") {
           ctx!.save();
-          ctx!.globalAlpha = 0.35 + 0.2 * Math.sin(T * 4 + z.id);
-          ctx!.strokeStyle = "rgba(255,120,200,0.8)"; ctx!.lineWidth = 2;
-          ctx!.beginPath(); ctx!.arc(sx, sy, TS * 0.55, 0, Math.PI * 2); ctx!.stroke();
+          if (z.screamT && z.screamT > 0) {
+            // Çığlık anı: ÇOK BELİRGİN — kızıl aura + kalın genişleyen halkalar + "!"
+            const t = z.screamT / 0.7, prog = 1 - t;
+            const ar = TS * (1.4 + prog * 1.6);
+            const aura = ctx!.createRadialGradient(sx, sy, TS * 0.3, sx, sy, ar);
+            aura.addColorStop(0, `rgba(255,40,90,${0.42 * t})`);
+            aura.addColorStop(1, "rgba(255,40,90,0)");
+            ctx!.fillStyle = aura;
+            ctx!.beginPath(); ctx!.arc(sx, sy, ar, 0, Math.PI * 2); ctx!.fill();
+            ctx!.shadowColor = "rgba(255,60,110,0.9)"; ctx!.shadowBlur = 12; ctx!.lineWidth = 3.5;
+            for (let k = 0; k < 4; k++) {
+              ctx!.globalAlpha = Math.max(0, t - k * 0.12);
+              ctx!.strokeStyle = "rgba(255,70,120,0.95)";
+              ctx!.beginPath(); ctx!.arc(sx, sy, TS * (0.5 + prog * 3 + k * 0.5), 0, Math.PI * 2); ctx!.stroke();
+            }
+            ctx!.globalAlpha = t; ctx!.shadowBlur = 8; ctx!.fillStyle = "#ffd0dc";
+            ctx!.font = `900 ${Math.round(TS * 0.6)}px 'Cinzel', serif`; ctx!.textAlign = "center";
+            ctx!.fillText("!", sx + Math.sin(T * 40) * TS * 0.06, sy - TS * 0.9);
+          } else {
+            // Boşta: hafif nabız halkası (tür belli olsun)
+            ctx!.globalAlpha = 0.35 + 0.2 * Math.sin(T * 4 + z.id);
+            ctx!.strokeStyle = "rgba(255,120,200,0.8)"; ctx!.lineWidth = 2;
+            ctx!.beginPath(); ctx!.arc(sx, sy, TS * 0.55, 0, Math.PI * 2); ctx!.stroke();
+          }
           ctx!.restore();
         }
       }
@@ -1439,7 +1498,7 @@ export default function OnlineGame({
     setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
   }
   // Slot: kuşanılan eşyayı kullan (boşsa envanteri aç)
-  const SLOT_ICON_ON = { shield: "🛡️", radar: "📻", veil: "🕊️", trap: "🕸️" } as const;
+  const SLOT_ICON_ON: Record<"shield" | "radar" | "veil" | "trap", IconName> = { shield: "shield", radar: "radar", veil: "veil", trap: "trap" };
   const equippedCountOn =
     equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "veil" ? invCounts.veils : equipped === "trap" ? invCounts.traps : 0;
   function useEquippedOnline() {
@@ -1496,8 +1555,14 @@ export default function OnlineGame({
         </div>
         <div className="chip"><span className="lbl">Mermi</span><span className="val">{hud.ammo}</span></div>
         <div className="chip"><span className="lbl">Bariyer</span><span className="val">{hud.barriers}</span></div>
-        <div className="chip"><span className="lbl">Tuzak</span><span className="val">🕸️ {trapCount}</span></div>
-        <div className="chip"><span className="lbl">Para</span><span className="val" style={{ color: "#ffd75a" }}>🪙 {coins}</span></div>
+        {info.pvp && (
+          <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
+            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> PvP</span>
+            <span className="val" style={{ color: "#ff9a9a" }}>açık</span>
+          </div>
+        )}
+        <div className="chip"><span className="lbl">Tuzak</span><span className="val" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="trap" size={13} /> {trapCount}</span></div>
+        <div className="chip"><span className="lbl">Para</span><span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</span></div>
         <div className="chip">
           <span className="lbl">Çıkışın</span>
           <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
@@ -1538,7 +1603,7 @@ export default function OnlineGame({
           <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
         <button className="chip mutebtn" onClick={openShop} title="Dükkân — parayla eşya al">
-          <span className="val">🛒</span>
+          <span className="val" style={{ display: "inline-flex" }}><Icon name="cart" size={16} /></span>
         </button>
         <button className="chip mutebtn" onClick={quit} title="Menüye dön">
           <span className="val">⎋</span>
@@ -1549,13 +1614,13 @@ export default function OnlineGame({
       {invOpen && (
         <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}>
           <div className="invcard">
-            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
+            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
             {([
-              { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
-              { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
-              { kind: "veil", icon: "🕊️", name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
-              { kind: "trap", icon: "🕸️", name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
+              { kind: "shield", icon: "shield" as IconName, name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
+              { kind: "radar", icon: "radar" as IconName, name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
+              { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
+              { kind: "trap", icon: "trap" as IconName, name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -1568,7 +1633,9 @@ export default function OnlineGame({
                   textAlign: "left",
                 }}
               >
-                {it.icon} {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? "  ✓ kuşanıldı" : ""}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon name={it.icon} size={16} /> {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? <><Icon name="check" size={14} /> kuşanıldı</> : ""}
+                </span>
               </button>
             ))}
             {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.veils <= 0 && invCounts.traps <= 0 && (
@@ -1588,7 +1655,7 @@ export default function OnlineGame({
           className="warn"
           style={{ top: 70, background: "rgba(20,10,10,0.85)", color: "#ffd0d0", borderColor: "rgba(255,120,120,0.4)" }}
         >
-          🚪 {toast}
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="key" size={15} /> {toast}</span>
         </div>
       )}
 
@@ -1623,7 +1690,7 @@ export default function OnlineGame({
             style={{ color: overlay.winnerSeat === mySeat ? "#7dffb0" : "#ff6b6b" }}
           >
             {overlay.winnerSeat === mySeat
-              ? "Bu bölümü KAZANDIN! 🏆"
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>Bu bölümü KAZANDIN! <Icon name="trophy" size={26} /></span>
               : `${nameOf(overlay.winnerSeat)} kazandı`}
           </div>
           <div className="subtitle" style={{ fontSize: "clamp(18px,4.5vw,28px)" }}>
@@ -1637,8 +1704,8 @@ export default function OnlineGame({
             ))}
           </div>
           <div className="subtitle">Sonraki bölüm ~12 sn içinde — dükkâna uğrayabilirsin.</div>
-          <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)" }}>
-            🛒 Dükkâna Uğra ({coins}🪙)
+          <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
+            <Icon name="cart" size={16} /> Dükkâna Uğra ({coins} <Icon name="coin" size={13} />)
           </button>
         </div>
       )}
@@ -1649,7 +1716,7 @@ export default function OnlineGame({
       )}
 
       <div className="hint">
-        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · <b>T</b> tuzak · <b>Q</b> kalkan · <b>R</b> radar · 📦 envanter · çıkışın için 1 gelin öldür
+        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · <b>T</b> tuzak · <b>Q</b> kalkan · <b>R</b> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter · çıkışın için 1 gelin öldür
       </div>
 
       <div className="touch">
@@ -1671,7 +1738,7 @@ export default function OnlineGame({
           onPointerLeave={() => (input.current.trap = false)}
           onPointerCancel={() => (input.current.trap = false)}
         >
-          🕸️{trapCount}
+          <Icon name="trap" size={20} />{trapCount}
         </button>
         <button
           className="fire"
@@ -1691,7 +1758,7 @@ export default function OnlineGame({
         onClick={() => { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps }); setInvOpen(true); }}
         title="Envanter"
       >
-        📦 {invCounts.shields + invCounts.radars + invCounts.veils + invCounts.traps}
+        <Icon name="box" size={18} /> {invCounts.shields + invCounts.radars + invCounts.veils + invCounts.traps}
       </button>
 
       {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}
@@ -1703,7 +1770,7 @@ export default function OnlineGame({
       >
         {equipped ? (
           <>
-            <span className="si">{SLOT_ICON_ON[equipped]}</span>
+            <span className="si"><Icon name={SLOT_ICON_ON[equipped]} size={22} /></span>
             <span className="sc">{equippedCountOn}</span>
           </>
         ) : (

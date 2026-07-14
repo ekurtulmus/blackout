@@ -45,7 +45,7 @@ export default function Online({
   const rooms = presence?.getRooms() ?? [];
 
   return (
-    <div className="menuscreen">
+    <div className="screen">
       <button className="topback" onClick={onBack}>← Geri</button>
       <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
         <div className="big" style={{ color: "#6ee7ff" }}>Online Odalar</div>
@@ -55,7 +55,7 @@ export default function Online({
         </div>
 
         <div style={{ textAlign: "center", margin: "6px 0 6px" }}>
-          <button className="btn btn-primary" onClick={createRoom}>🏠 Yeni Oda Kur ({ROOM_COST}🪙)</button>
+          <button className="btn btn-primary" onClick={createRoom} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Icon name="home" size={16} /> Yeni Oda Kur ({ROOM_COST} <Icon name="coin" size={13} />)</button>
         </div>
         {warn && (
           <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, margin: "0 0 12px" }}>{warn}</div>

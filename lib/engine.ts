@@ -137,6 +137,7 @@ export class GameEngine {
   private mqMirrorNear = 0; // ayna: yanında kesintisiz geçirilen süre (sn)
   mqHintDir = ""; // ayna kehaneti: çıkışa giden yön ("Sağ/Sol/Yukarı/Aşağı")
   private mqHintUntil = 0; // yön ipucunun HUD'da kalacağı ana kadar (sn)
+  private mirrorGuideUntil = 0; // ayna kehaneti sonrası CANLI ok rehberi bu ana kadar (sn)
   radarUntil = 0; // radar oku: bu ana kadar ekranda ok gösterilir (sn)
   radarAngle = 0; // radar oku yönü (radyan)
 
@@ -597,6 +598,7 @@ export class GameEngine {
     this.pickupVeil();
     this.updateMucus(dt);
     this.updateMiniQuest(dt);
+    this.updateMirrorGuide();
     this.updateSoldiers(dt);
     this.computeVision();
     this.checkExit();
@@ -1013,13 +1015,7 @@ export class GameEngine {
   // Envanter: radarı aktive et — 1.5 sn ekranda çıkışa dönük OK göster (metin yok)
   activateRadar() {
     const dir = this.computeExitDir();
-    const map: Record<string, number> = {
-      "Sağ": 0,
-      "Sol": Math.PI,
-      "Yukarı": -Math.PI / 2,
-      "Aşağı": Math.PI / 2,
-    };
-    this.radarAngle = map[dir] ?? 0;
+    this.radarAngle = this.dirToAngle(dir);
     this.radarUntil = this.time + 1.5;
     this.events.push("secret");
   }
@@ -1141,9 +1137,12 @@ export class GameEngine {
         // Aynanın yanında KESİNTİSİZ 5 sn bekle → kehanet: çıkış yönü belirir.
         if (dp <= 1.7) {
           this.mqMirrorNear += dt;
-          if (this.mqMirrorNear >= 5) {
+          if (this.mqMirrorNear >= 5 && !this.mqDone) {
+            // Kehanet: 8 sn boyunca CANLI ok — oyuncu yürüdükçe her karede çıkış yönü
+            // yeniden hesaplanır (ana update'te), böylece ok DAİMA doğru çıkışı gösterir.
+            this.mirrorGuideUntil = this.time + 8;
             this.mqHintDir = this.computeExitDir();
-            this.mqHintUntil = this.time + 3; // yön HUD'da 3 sn kalır (ekranı meşgul etmesin)
+            this.mqHintUntil = this.time + 8;
             this.grantMQReward();
           }
         } else {
@@ -1178,6 +1177,28 @@ export class GameEngine {
       }
     }
     return best || "?";
+  }
+
+  // Yön etiketi → ekran oku açısı (radyan). Radar ve ayna kehaneti ortak kullanır.
+  private dirToAngle(dir: string): number {
+    const map: Record<string, number> = {
+      "Sağ": 0,
+      "Sol": Math.PI,
+      "Yukarı": -Math.PI / 2,
+      "Aşağı": Math.PI / 2,
+    };
+    return map[dir] ?? 0;
+  }
+
+  // Ayna kehaneti sonrası: rehber penceresi boyunca her karede çıkış yönünü yeniden
+  // hesaplayıp ekran okunu ve yön metnini tazele → oyuncu yürüdükçe ok doğru kalır.
+  private updateMirrorGuide() {
+    if (this.time >= this.mirrorGuideUntil) return;
+    const dir = this.computeExitDir();
+    this.mqHintDir = dir;
+    this.mqHintUntil = this.time + 0.3;
+    this.radarAngle = this.dirToAngle(dir);
+    this.radarUntil = this.time + 0.3;
   }
 
   private grantMQReward() {
@@ -1215,7 +1236,7 @@ export class GameEngine {
   // Ayna kehaneti aktifse HUD'da gösterilecek yön metni ("" = yok)
   exitHintText(): string {
     if (this.mqHintDir && this.time < this.mqHintUntil) {
-      return `🪞 Çıkış: ${this.mqHintDir}`;
+      return `Çıkış: ${this.mqHintDir}`;
     }
     return "";
   }

@@ -35,6 +35,8 @@ export type IconName =
   | "bomb"
   | "handshake"
   | "check"
+  | "moon"
+  | "swarm"
   | "ammo";
 
 // Her ikon: viewBox 0 0 24 24 içinde stroke tabanlı yollar.
@@ -176,6 +178,15 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   handshake: <path d="M3 12l4-4 5 4 5-4 4 4-4 4-3-2-2 2-3-2-3 2-3-4z" />,
   check: <path d="M5 12l4 4 10-10" />,
+  moon: <path d="M20 14.5A8 8 0 0 1 9.5 4a7 7 0 1 0 10.5 10.5z" />,
+  swarm: (
+    <>
+      <circle cx="8" cy="8" r="2.4" />
+      <circle cx="16" cy="9" r="2.1" />
+      <circle cx="11" cy="15" r="2.6" />
+      <circle cx="17.5" cy="16" r="1.7" />
+    </>
+  ),
   ammo: <path d="M10 4h4v6l1 3v5a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-5l1-3V4z" />,
 };
 

@@ -55,6 +55,7 @@ export default function OnlineLobby({
   const [status, setStatus] = useState<NetStatus>("idle");
   const [players, setPlayers] = useState<NetPlayer[]>([]);
   const [diff, setDiff] = useState<RaceDiff>("orta");
+  const [pvp, setPvp] = useState(false); // PvP: oyuncular birbirini vurabilir (%10 hasar)
   const [coins, setCoins] = useState(0);
   const [notice, setNotice] = useState("");
   const roomRef = useRef<NetRoom | null>(null);
@@ -181,6 +182,7 @@ export default function OnlineLobby({
         diff: payload.diff as RaceDiff,
         themeSeed: payload.themeSeed ?? 0,
         initialLevel: deserializeLevel(payload.level as SerializedLevel),
+        pvp: !!payload.pvp,
       });
     };
     roomRef.current = room;
@@ -217,7 +219,7 @@ export default function OnlineLobby({
     const themeSeed = randomThemeSeed();
     const pls = room.players();
     const lvl = generateRaceLevel(1, diff, themeSeed, pls.length);
-    room.startGame({ diff, level: serializeLevel(lvl), themeSeed });
+    room.startGame({ diff, level: serializeLevel(lvl), themeSeed, pvp });
     handedOff.current = true;
     onStarted(room, {
       role: "host",
@@ -227,6 +229,7 @@ export default function OnlineLobby({
       diff,
       themeSeed,
       initialLevel: lvl,
+      pvp,
     });
   }
 
@@ -379,6 +382,21 @@ export default function OnlineLobby({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* PvP modu: oyuncular birbirini de vurabilir (mermi %10 hasar) */}
+          <div style={{ margin: "2px 0 6px" }}>
+            <button
+              className={"btn" + (pvp ? " btn-primary" : "")}
+              onClick={() => setPvp((v) => !v)}
+              style={{ opacity: pvp ? 1 : 0.75 }}
+              title="Açıkça: oyuncular birbirine de mermi işletir (her isabet %10 can)"
+            >
+              ⚔️ Oyuncular Birbirini Vurabilsin: {pvp ? "AÇIK" : "KAPALI"}
+              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+                Mermi rakibe de değer — her isabet canının %10'u
+              </span>
+            </button>
           </div>
 
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>

@@ -21,6 +21,7 @@ import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS } from "@/lib/inv
 import { TUNING } from "@/lib/config";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
+import Icon, { type IconName } from "@/components/Icon";
 
 export type EndResult = {
   status: GameStatus; // "dead" | "levelclear" | "gameover" | "win"
@@ -107,6 +108,7 @@ export default function Game({
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
+  const invPausedRef = useRef(false); // envanter paneli açıkken oyunu dondur (tek kişilik)
   const startMission = () => {
     briefRef.current = false;
     setBrief(false);
@@ -129,6 +131,11 @@ export default function Game({
     warn: false,
     veil: 0,
   });
+
+  // Envanter paneli açık/kapalı → oyun döngüsü donsun/devam etsin (tek kişilik)
+  useEffect(() => {
+    invPausedRef.current = invOpen;
+  }, [invOpen]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -166,9 +173,9 @@ export default function Game({
     // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
     let notice = "";
     if (engine.escape) {
-      notice = "🧨 ÇIKIŞ ÇÖKÜYOR! Çıkış baştan açık — geri sayım bitmeden gizli kapıya ulaş, yoksa altında kalırsın.";
+      notice = "ÇIKIŞ ÇÖKÜYOR! Çıkış baştan açık — geri sayım bitmeden gizli kapıya ulaş, yoksa altında kalırsın.";
     } else if (engine.soldiers.length > 0) {
-      notice = "🪖 Karanlıkta zincirli asker(ler) var. Yanına git, zincirini çöz — arkanda gelir ve gelinlere ateş eder. Ölürse başka yerde doğar.";
+      notice = "Karanlıkta zincirli asker(ler) var. Yanına git, zincirini çöz — arkanda gelir ve gelinlere ateş eder. Ölürse başka yerde doğar.";
     } else if (!mission && engine.miniQuest?.kind === "markedkill") {
       notice = "⊚ Çıkış KİLİTLİ: işaretli çemberin içinde bir gelin öldürünce açılır.";
     }
@@ -226,10 +233,15 @@ export default function Game({
       canvas!.width = Math.floor(cssW * dpr);
       canvas!.height = Math.floor(cssH * dpr);
       const minDim = Math.min(cssW, cssH);
-      TS = Math.max(
-        24,
-        Math.min(46, minDim / (engine.config.visionRadius * 2 + 2.5))
-      );
+      // Mobilde (dokunmatik) daha YAKIN kamera: daha az hücre göster → oyuncu/harita büyük görünür.
+      const coarse =
+        typeof window !== "undefined" && window.matchMedia
+          ? window.matchMedia("(pointer: coarse)").matches
+          : false;
+      const across = coarse
+        ? engine.config.visionRadius * 1.4 + 2
+        : engine.config.visionRadius * 2 + 2.5;
+      TS = Math.max(24, Math.min(coarse ? 62 : 46, minDim / across));
     }
     resize();
     window.addEventListener("resize", resize);
@@ -797,18 +809,41 @@ export default function Game({
           ctx!.restore();
         }
 
-        // Caller: çığlık anında genişleyen ses halkaları
+        // Caller: çığlık anında ÇOK BELİRGİN — parlayan kızıl aura + kalın genişleyen
+        // ses halkaları + titreşim + "çığlık" işareti. Karanlıkta bile fark edilir.
         if (z.kind === "caller" && z.screamT && z.screamT > 0) {
-          const prog = 1 - z.screamT / 0.7;
+          const t = z.screamT / 0.7; // 1 → 0
+          const prog = 1 - t;
           ctx!.save();
-          ctx!.globalAlpha = z.screamT / 0.7;
-          ctx!.strokeStyle = "rgba(255,120,200,0.9)";
-          ctx!.lineWidth = 2;
-          for (let k = 0; k < 2; k++) {
+          // 1) nabız gibi kızıl aura (uzaktan bile göze çarpar)
+          const ar = TS * (1.4 + prog * 1.6);
+          const aura = ctx!.createRadialGradient(s.sx, s.sy, TS * 0.3, s.sx, s.sy, ar);
+          aura.addColorStop(0, `rgba(255,40,90,${0.42 * t})`);
+          aura.addColorStop(1, "rgba(255,40,90,0)");
+          ctx!.fillStyle = aura;
+          ctx!.beginPath();
+          ctx!.arc(s.sx, s.sy, ar, 0, Math.PI * 2);
+          ctx!.fill();
+          // 2) kalın, parlayan genişleyen halkalar (4 dalga)
+          ctx!.shadowColor = "rgba(255,60,110,0.9)";
+          ctx!.shadowBlur = 12;
+          ctx!.lineWidth = 3.5;
+          for (let k = 0; k < 4; k++) {
+            const rr = TS * (0.5 + prog * 3 + k * 0.5);
+            ctx!.globalAlpha = Math.max(0, t - k * 0.12);
+            ctx!.strokeStyle = "rgba(255,70,120,0.95)";
             ctx!.beginPath();
-            ctx!.arc(s.sx, s.sy, TS * (0.5 + prog * 2 + k * 0.4), 0, Math.PI * 2);
+            ctx!.arc(s.sx, s.sy, rr, 0, Math.PI * 2);
             ctx!.stroke();
           }
+          // 3) baş üstünde titreyen çığlık işareti (!)
+          ctx!.globalAlpha = t;
+          ctx!.shadowBlur = 8;
+          ctx!.fillStyle = "#ffd0dc";
+          ctx!.font = `900 ${Math.round(TS * 0.6)}px 'Cinzel', serif`;
+          ctx!.textAlign = "center";
+          const jitter = Math.sin(engine.time * 40) * TS * 0.06;
+          ctx!.fillText("!", s.sx + jitter, s.sy - TS * 0.9);
           ctx!.restore();
         }
       }
@@ -1058,8 +1093,8 @@ export default function Game({
 
     // --- Ana döngü ---
     function loop(now: number) {
-      // Duraklatıldıysa ya da görev brifingi açıksa dünyayı dondur
-      if (pausedRef.current || briefRef.current) {
+      // Duraklatıldıysa, görev brifingi ya da envanter paneli açıksa dünyayı dondur
+      if (pausedRef.current || briefRef.current || invPausedRef.current) {
         last = now;
         raf = requestAnimationFrame(loop);
         return;
@@ -1163,7 +1198,7 @@ export default function Game({
       if (engine.noteTaken && !noteReported) {
         noteReported = true;
         onNote?.(engine.noteId);
-        setMqToast("📖 Günlük sayfası bulundu — menüden okuyabilirsin");
+        setMqToast("Günlük sayfası bulundu — menüden okuyabilirsin");
         window.setTimeout(() => setMqToast(""), 3500);
       }
     }, 100);
@@ -1234,7 +1269,7 @@ export default function Game({
     setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç)
-  const SLOT_ICON = { shield: "🛡️", radar: "📻", trap: "🕸️", veil: "🕊️" } as const;
+  const SLOT_ICON: Record<"shield" | "radar" | "trap" | "veil", IconName> = { shield: "shield", radar: "radar", trap: "trap", veil: "veil" };
   const equippedCount =
     equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "trap" ? invCounts.traps : equipped === "veil" ? invCounts.veils : 0;
   const useEquipped = () => {
@@ -1324,7 +1359,7 @@ export default function Game({
         {!mission && (
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
             <span className="lbl">Para</span>
-            <span className="val" style={{ color: "#ffd75a" }}>🪙 {coins}</span>
+            <span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={14} /> {coins}</span>
           </div>
         )}
         <div className="chip">
@@ -1367,7 +1402,7 @@ export default function Game({
         )}
         {escapeSec && (
           <div className="chip" style={{ borderColor: "rgba(255,90,90,0.8)" }}>
-            <span className="lbl">🧨 Çöküyor</span>
+            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="bomb" size={13} /> Çöküyor</span>
             <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
           </div>
         )}
@@ -1408,7 +1443,7 @@ export default function Game({
           }}
           title={muted ? "Sesi aç" : "Sesi kapat"}
         >
-          <span className="val">{muted ? "🔇" : "🔊"}</span>
+          <span className="val" style={{ display: "inline-flex" }}><Icon name={muted ? "mute" : "music"} size={16} /></span>
         </button>
         <button
           className="chip mutebtn"
@@ -1426,13 +1461,13 @@ export default function Game({
           onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
         >
           <div className="invcard">
-            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em" }}>📦 ENVANTER</div>
+            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
             {([
-              { kind: "shield", icon: "🛡️", name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
-              { kind: "radar", icon: "📻", name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
-              { kind: "trap", icon: "🕸️", name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
-              { kind: "veil", icon: "🕊️", name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
+              { kind: "shield", icon: "shield" as IconName, name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
+              { kind: "radar", icon: "radar" as IconName, name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
+              { kind: "trap", icon: "trap" as IconName, name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
+              { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -1445,8 +1480,10 @@ export default function Game({
                   textAlign: "left",
                 }}
               >
-                {it.icon} {it.name} ({it.n}) — {it.desc}
-                {equipped === it.kind ? "  ✓ kuşanıldı" : ""}
+                <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon name={it.icon} size={16} /> {it.name} ({it.n}) — {it.desc}
+                  {equipped === it.kind ? <><Icon name="check" size={14} /> kuşanıldı</> : ""}
+                </span>
               </button>
             ))}
             {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && invCounts.veils <= 0 && (
@@ -1501,7 +1538,7 @@ export default function Game({
           )}
           <div className="how" style={{ maxWidth: 460, lineHeight: 1.7, fontSize: 13, color: "var(--muted)" }}>
             <b>Kontroller:</b> WASD/ok hareket · Boşluk ateş · <kbd>Shift</kbd> koş ·{" "}
-            <kbd>E</kbd> tuzak · <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · 📦 envanter
+            <kbd>E</kbd> tuzak · <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter
           </div>
           <button className="btn btn-primary" onClick={closeHelp}>
             {hud.time > 0.1 ? "Devam →" : "Başla →"}
@@ -1607,7 +1644,7 @@ export default function Game({
           }}
           title="Envanter"
         >
-          📦 {invCounts.shields + invCounts.radars + invCounts.traps + invCounts.veils}
+          <Icon name="box" size={18} /> {invCounts.shields + invCounts.radars + invCounts.traps + invCounts.veils}
         </button>
       )}
 
@@ -1621,7 +1658,7 @@ export default function Game({
         >
           {equipped ? (
             <>
-              <span className="si">{SLOT_ICON[equipped]}</span>
+              <span className="si"><Icon name={SLOT_ICON[equipped]} size={22} /></span>
               <span className="sc">{equippedCount}</span>
             </>
           ) : (

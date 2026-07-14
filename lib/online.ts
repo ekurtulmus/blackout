@@ -28,6 +28,7 @@ export type StartInfo = {
   diff: RaceDiff;
   themeSeed: number; // rastgele tema başlangıcı (herkes aynı)
   initialLevel: RaceLevel;
+  pvp: boolean; // PvP: oyuncular birbirini vurabilir (mermi %10 hasar)
 };
 
 // Zorluk modifikatörleri (gelin sayısı / hız / zekâ)

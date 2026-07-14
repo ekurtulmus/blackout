@@ -6,6 +6,9 @@ import Icon, { type IconName } from "@/components/Icon";
 // Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
 // Modül düzeyinde bayrak (sayfa reload'una kadar kalıcı; SPA içinde remount'larda korunur).
 let introShown = false;
+// Son açık alt-görünüm (main/single/multi) — bir ekrandan (Online/Modlar…) menüye
+// "← Geri" ile dönünce ana menüye değil, çıkılan alt-menüye dönsün diye kalıcı tutulur.
+let savedView: "main" | "single" | "multi" = "main";
 
 // Sinematik ana menü — kullanıcının tasarımı (tepeden-bakış labirent animasyonu +
 // kanlı vinyet + Cinzel başlık) oyuna uyarlandı. Tüm modlara + ikincil ekranlara bağlı.
@@ -55,11 +58,15 @@ export default function MainMenu({
   const [modal, setModal] = useState(false);
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false); // dokunmatik mi (kontrol anlatımı için)
-  const [view, setView] = useState<"main" | "single" | "multi">("main");
+  const [view, setView] = useState<"main" | "single" | "multi">(savedView);
   const animate = !introShown && view === "main"; // yalnız ilk açılışta giriş animasyonu
   useEffect(() => {
     introShown = true;
   }, []);
+  // Alt-görünümü kalıcı tut → başka bir ekrandan menüye dönüşte aynı alt-menü açılır.
+  useEffect(() => {
+    savedView = view;
+  }, [view]);
 
   useEffect(() => {
     if (typeof window !== "undefined" && window.matchMedia) {
@@ -315,14 +322,26 @@ export default function MainMenu({
       g!.fill();
     }
 
-    function sizeGame() {
+    function sizeGame(rebuild: boolean) {
       cv!.width = W();
       cv!.height = H();
-      buildMaze();
+      if (rebuild) buildMaze();
     }
-    sizeGame();
+    sizeGame(true);
+    let lastW = W(), lastH = H();
     let rt: ReturnType<typeof setTimeout>;
-    const onResize = () => { clearTimeout(rt); rt = setTimeout(sizeGame, 200); };
+    // Mobilde sayfa kaydırınca adres çubuğu gizlenip/görünüp yüksekliği DEĞİŞTİRİR →
+    // resize tetiklenir. Bunu labirenti yeniden kurmak için kullanmayalım (animasyon sıfırlanır).
+    // Yalnız GENİŞLİK değişince ya da yükseklik BÜYÜK değişince (yön dönüşü) yeniden kur.
+    const onResize = () => {
+      clearTimeout(rt);
+      rt = setTimeout(() => {
+        const w = W(), h = H();
+        const rebuild = w !== lastW || Math.abs(h - lastH) > 160;
+        lastW = w; lastH = h;
+        sizeGame(rebuild);
+      }, 200);
+    };
     window.addEventListener("resize", onResize);
 
     let raf = 0, last = 0;

@@ -43,7 +43,7 @@ export class NetRoom {
   onStatus: (s: NetStatus) => void = () => {};
   onMessage: (m: NetMessage, fromId: string) => void = () => {};
   onRoster: (players: NetPlayer[]) => void = () => {};
-  onStart: (payload: { diff: string; order: string[]; names: string[]; themeSeed: number; level: unknown }) => void =
+  onStart: (payload: { diff: string; order: string[]; names: string[]; themeSeed: number; level: unknown; pvp?: boolean }) => void =
     () => {};
 
   private ch: RealtimeChannel | null = null;
@@ -115,7 +115,7 @@ export class NetRoom {
 
     // Başlat (host -> herkes)
     ch.on("broadcast", { event: "start" }, (p) => {
-      const d = p.payload as { diff: string; order: string[]; names: string[]; themeSeed: number; level: unknown };
+      const d = p.payload as { diff: string; order: string[]; names: string[]; themeSeed: number; level: unknown; pvp?: boolean };
       if (!d || this.role === "host") return;
       this.started = true;
       this.stopTimers();
@@ -194,7 +194,7 @@ export class NetRoom {
   }
 
   // Host oyunu başlatır: sıra + isimler + zorluk + tema + ilk seviye herkese yollanır.
-  startGame(payload: { diff: string; level: unknown; themeSeed: number }) {
+  startGame(payload: { diff: string; level: unknown; themeSeed: number; pvp?: boolean }) {
     if (this.role !== "host") return;
     this.started = true;
     this.stopTimers();
