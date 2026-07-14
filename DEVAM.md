@@ -2,14 +2,26 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-13**
+> Son güncelleme: **2026-07-14**
 >
-> **NEREDE KALDIK (özet):** Bu oturumda **online ekonomi/envanter + müzik yönlendirme + Nasıl
-> Oynanır zenginleştirme + ıslık dengesi** yapıldı (aşağıda "MÜZİK & ONLINE EKONOMİ OTURUMU").
-> Doğrulama: `tsc` temiz + canlı duman-testi (3007'de HMR tüm dosyaları hatasız derledi, konsol
-> temiz, Nasıl Oynanır modalı yeni gelin içeriğiyle render oldu, Dükkân açılıyor). Commit'ler
-> local'de (push edilmedi — istersen `git push origin main`). Canvas rAF gizli panelde donduğu
-> için müzik/online oynanışı **gerçek tarayıcıda + 2 cihazla** dinle/oyna.
+> **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main, her push→Vercel).
+> Deploy: `git push origin main`. Kullanıcı tercihi: **küçük düzeltmeleri sormadan canlıya al** (commit+push).
+>
+> **NEREDE KALDIK (özet, 2026-07-14):** Bu oturumda çok iş girdi ve HEPSİ CANLIDA:
+> - **Menü 2 buton**: TEK KİŞİLİK (Yalnız Kaçış/Görevler/Modlar/Sırlar/Başarım/Günlük) + ÇOK OYUNCULU
+>   (Arkadaşlarınla Oyna=eski Ölüm Koşusu + Online Odalar). `MainMenu` iç `view` state; giriş animasyonu yalnız ilk açılışta.
+> - **Arkadaş sistemi** (`lib/friends.ts` FriendPresence, hesapsız, Supabase broadcast `blackout:friends`): arkadaş kodu,
+>   istek GÖNDER/KABUL (kalıcı `blackout_sent`, kabul/iptale kadar durur), arkadaşlıktan çıkarma senkronu (unfriend broadcast),
+>   davet→odaya katıl. **Online Odalar** (`components/Online.tsx`): herkese açık odalar (`announceRoom`), "Yeni Oda Kur"
+>   (200 altın, parasız→uyarı), oda-içi lobide her oyuncuya "+ Arkadaş" (net roster'a arkadaş kodu eklendi).
+> - **Ekonomi**: yeni oyuncu **1000 altın** (`coins.initStarterCoins`); dükkanda "Altın Satın Al" (sembolik); başarım ödülü.
+> - **Yeni modlar**: Kör Gece + Sürü Gecesi (Bitmeyen Gece/Arena ile Modlar ekranında). Arena=açık alan+yarım hız+bol pickup.
+> - **Denge**: zorluk YUMUŞADI (kısa harita 11-19, gelin üst hız 2.9, cap %82, ease 1.6; MP `raceEffLevel` uzun rampa).
+> - **Diğer**: online envanter tam (duvak+tuzak), MP bekleme 12sn, isim max 8 (başta oyuncu kodu, Ayarlar'dan değişir),
+>   çok-oyunculuda isim kafanın üstünde, tüm geri butonları "← Geri" (bir önceki ekrana), Faz 9 ikonlar (menü/dükkan/friends).
+> Doğrulama: **production build ✓ temiz** + tsc temiz + canlı DOM testleri. **UYARI:** dev-server Turbopack/OneDrive cache
+> bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
+> **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
 ## YENİ İSTEK PAKETİ (2026-07-14) — CANLI: blackout-plum.vercel.app
 - ✅ **Arena yeniden**: labirent DEĞİL **gepgeniş açık alan** (`maze.generateArena` 25×25, kenar duvarı + seyrek
