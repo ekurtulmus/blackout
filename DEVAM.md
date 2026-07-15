@@ -23,6 +23,27 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #3 — 10 İSTEK (güzelleştirme) (CANLI)
+`next build` + tsc temiz. Hepsi uygulandı:
+- ✅ **Online Arena modu**: oda kurarken host toggle (`OnlineLobby` arena → StartInfo/net → `online.generateArenaLevel`
+  açık alan, ÇIKIŞ YOK). `OnlineGame` arenaMode: çıkış açılmaz/kazanma yok, host **dalga dalga** gelin ekler
+  (`ARENA_WAVE_MS=16sn`, üst sınır kişiye göre), HUD "Dalga N · Süre", co-op respawn. Yarış modu değişmedi (gated).
+- ✅ **Hareket + özellik aynı anda (mobil)**: slot/özellik butonu `onClick`→`onPointerDown` (Game+OnlineGame) →
+  joystick basılıyken 2. parmakla eşya kullanılır (onClick aktif dokunuşta tetiklenmiyordu).
+- ✅ **50 başarım (10 kolay/30 orta/10 zor)**: `achievements.ts` yeniden — `tier` + kümülatif **istatistik sistemi**
+  (`getStats/bumpStat/setStatMax`) + koşul tablosu + `evaluateAll(ctx)`. page.tsx: bitişlerde stat bump + değerlendir,
+  menüye dönüşte de değerlendir. Game.tsx: kalkan/radar/tuzak/duvak kullanımı sayaç. Ekranda **zorluk rozeti** + sıralı.
+- ✅ **Günlük açıklaması**: günlük ekranına atmosferik giriş (oyuncunun karaladığı kâğıtlar).
+- ✅ **Çıkış çöküyor**: süre dolunca "ÇIKIŞ ÇÖKTÜ" (engine `crushed`→EndResult→dead ekranı) + süre **%10** arttı.
+- ✅ **Tek kişilik devam**: `blackout_sp_progress` — play()'de kaydet, gameover/win'de temizle; intro'da
+  "Devam Et → Bölüm N" + "Baştan Başla".
+- ✅ **Menüye Dön**: dead/levelclear/gameover/win ekranlarına "← Menüye Dön".
+- ✅ **Ayna düzeltildi**: artık çıkışın GERÇEK (mutlak) yönünü gösterir (`exitBearing`), ok **1.5 sn**
+  (önceki 8sn canlı-ok/BFS ilk-adım kaldırıldı). Radar da mutlak yöne geçti.
+- ✅ **Kuşanılan eşya kalıcı**: `blackout_equipped` localStorage — bölüm geçince slot boşalmaz.
+- ✅ **Mobil geri tuşu**: `page.tsx` popstate + ekran geri-yığını → uygulamadan çıkmaz, bir önceki ekrana döner.
+NOT: Online arena + PvP **2 gerçek cihaz** ister (panelde rAF durur, presence tek kimlik).
+
 ## OTURUM 2026-07-14 #2 — 11 İSTEK + Faz 9 ilerleme (CANLI)
 Kullanıcı paketi (hepsi uygulandı, `next build` + tsc temiz):
 - ✅ **Mobil zoom**: dokunmatikte kamera daha YAKIN (`Game.tsx`/`OnlineGame.tsx` resize: coarse'ta

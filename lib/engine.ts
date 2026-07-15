@@ -135,9 +135,8 @@ export class GameEngine {
   mqDone = false;
   mqRewardMsg = ""; // tamamlanınca gösterilecek toast (Game okuyup temizler)
   private mqMirrorNear = 0; // ayna: yanında kesintisiz geçirilen süre (sn)
-  mqHintDir = ""; // ayna kehaneti: çıkışa giden yön ("Sağ/Sol/Yukarı/Aşağı")
+  mqHintDir = ""; // ayna kehaneti: çıkışın bulunduğu yön ("Sağ/Sol/Yukarı/Aşağı")
   private mqHintUntil = 0; // yön ipucunun HUD'da kalacağı ana kadar (sn)
-  private mirrorGuideUntil = 0; // ayna kehaneti sonrası CANLI ok rehberi bu ana kadar (sn)
   radarUntil = 0; // radar oku: bu ana kadar ekranda ok gösterilir (sn)
   radarAngle = 0; // radar oku yönü (radyan)
 
@@ -151,6 +150,7 @@ export class GameEngine {
   // Faz E: kaçış bölümü (çıkış çöküyor — geri sayımla kaç)
   escape = false;
   escapeTime = 0; // bu ana kadar çıkışa ulaşmalısın (sn)
+  crushed = false; // süre dolup çıkış çöktüğü için mi öldün (mesaj ayrımı)
   // Asker (kurtarılabilir müttefik): zincirini çöz → seni takip eder + 3 sn'de bir
   // gelinlere ateş eder. Harita boyutuna göre 1-2 asker; AYNI ANDA tek asker kurtarabilirsin,
   // o ölünce başka yerde doğar ve bir başkasını (varsa) kurtarabilirsin.
@@ -227,11 +227,11 @@ export class GameEngine {
         cfg.zombieSpeed = cfg.zombieSpeed * 0.5;
         cfg.visionRadius = Math.min(10, cfg.visionRadius + 3);
       }
-      // Faz E: kaçış görevi — çıkış baştan açık + çökme geri sayımı
+      // Faz E: kaçış görevi — çıkış baştan açık + çökme geri sayımı (%10 daha bol süre)
       if (mission.escape) {
         this.escape = true;
         this.exitOpen = true;
-        this.escapeTime = mission.escapeSeconds ?? mission.timeLimit ?? 60;
+        this.escapeTime = (mission.escapeSeconds ?? mission.timeLimit ?? 60) * 1.1;
       }
     } else if (diff !== "orta") {
       // Tek kişilik zorluk: gelin sayısı/hız/görüş ölçekle
@@ -411,10 +411,10 @@ export class GameEngine {
     if (!mission) {
       // Faz E: bölüm başına EN FAZLA bir özel durum — kaçış > rehin > mini-görev.
       if (this.level >= 3 && Math.random() < 0.22) {
-        // Kaçış bölümü: çıkış baştan açık, çökme geri sayımı
+        // Kaçış bölümü: çıkış baştan açık, çökme geri sayımı (%10 daha bol süre)
         this.escape = true;
         this.exitOpen = true;
-        this.escapeTime = (best / PLAYER_SPEED) * 1.7 + 5;
+        this.escapeTime = ((best / PLAYER_SPEED) * 1.7 + 5) * 1.1;
       } else if (this.level >= 2 && Math.random() < 0.28) {
         // Askerler: harita büyükse 2, değilse 1 — çıkışa/başlangıca uzak hücrelerde kilitli
         const count = this.maze.cols >= 21 ? 2 : 1;
@@ -598,7 +598,6 @@ export class GameEngine {
     this.pickupVeil();
     this.updateMucus(dt);
     this.updateMiniQuest(dt);
-    this.updateMirrorGuide();
     this.updateSoldiers(dt);
     this.computeVision();
     this.checkExit();
@@ -1014,8 +1013,8 @@ export class GameEngine {
 
   // Envanter: radarı aktive et — 1.5 sn ekranda çıkışa dönük OK göster (metin yok)
   activateRadar() {
-    const dir = this.computeExitDir();
-    this.radarAngle = this.dirToAngle(dir);
+    // Radar da çıkışın GERÇEK yönünü (mutlak açı) gösterir — 1.5 sn ok.
+    this.radarAngle = this.exitBearing();
     this.radarUntil = this.time + 1.5;
     this.events.push("secret");
   }
@@ -1138,11 +1137,13 @@ export class GameEngine {
         if (dp <= 1.7) {
           this.mqMirrorNear += dt;
           if (this.mqMirrorNear >= 5 && !this.mqDone) {
-            // Kehanet: 8 sn boyunca CANLI ok — oyuncu yürüdükçe her karede çıkış yönü
-            // yeniden hesaplanır (ana update'te), böylece ok DAİMA doğru çıkışı gösterir.
-            this.mirrorGuideUntil = this.time + 8;
-            this.mqHintDir = this.computeExitDir();
-            this.mqHintUntil = this.time + 8;
+            // Kehanet: çıkışın GERÇEK yönü (oyuncudan çıkışa doğru mutlak açı). Ok + yön
+            // metni 1.5 sn görünür. (Labirent ilk-adımı değil; "çıkış şu yönde".)
+            const a = this.exitBearing();
+            this.radarAngle = a;
+            this.radarUntil = this.time + 1.5;
+            this.mqHintDir = this.dirLabelFromAngle(a);
+            this.mqHintUntil = this.time + 1.5;
             this.grantMQReward();
           }
         } else {
@@ -1153,52 +1154,21 @@ export class GameEngine {
     }
   }
 
-  // Ayna kehaneti: oyuncunun bulunduğu hücreden çıkışa giden İLK adımın yönü
-  // (labirenti hesaba katar; en kısa yol yönü). "Sağ/Sol/Yukarı/Aşağı".
-  private computeExitDir(): string {
-    const distToExit = bfsDistances(this.maze, this.exit);
-    const pc = cellOf(this.player.pos);
-    const here = distToExit[pc.y]?.[pc.x] ?? -1;
-    const opts: { dx: number; dy: number; label: string }[] = [
-      { dx: 1, dy: 0, label: "Sağ" },
-      { dx: -1, dy: 0, label: "Sol" },
-      { dx: 0, dy: -1, label: "Yukarı" },
-      { dx: 0, dy: 1, label: "Aşağı" },
-    ];
-    let best = "";
-    let bestD = here >= 0 ? here : Infinity;
-    for (const o of opts) {
-      const nx = pc.x + o.dx;
-      const ny = pc.y + o.dy;
-      const d = distToExit[ny]?.[nx];
-      if (d !== undefined && d >= 0 && d < bestD) {
-        bestD = d;
-        best = o.label;
-      }
-    }
-    return best || "?";
+  // Oyuncudan çıkışa doğru MUTLAK açı (ekran koordinatı: +x sağ, +y aşağı).
+  private exitBearing(): number {
+    return Math.atan2(
+      this.exit.y + 0.5 - this.player.pos.y,
+      this.exit.x + 0.5 - this.player.pos.x
+    );
   }
 
-  // Yön etiketi → ekran oku açısı (radyan). Radar ve ayna kehaneti ortak kullanır.
-  private dirToAngle(dir: string): number {
-    const map: Record<string, number> = {
-      "Sağ": 0,
-      "Sol": Math.PI,
-      "Yukarı": -Math.PI / 2,
-      "Aşağı": Math.PI / 2,
-    };
-    return map[dir] ?? 0;
-  }
-
-  // Ayna kehaneti sonrası: rehber penceresi boyunca her karede çıkış yönünü yeniden
-  // hesaplayıp ekran okunu ve yön metnini tazele → oyuncu yürüdükçe ok doğru kalır.
-  private updateMirrorGuide() {
-    if (this.time >= this.mirrorGuideUntil) return;
-    const dir = this.computeExitDir();
-    this.mqHintDir = dir;
-    this.mqHintUntil = this.time + 0.3;
-    this.radarAngle = this.dirToAngle(dir);
-    this.radarUntil = this.time + 0.3;
+  // Mutlak açı → en yakın 4 yön etiketi ("Sağ/Aşağı/Sol/Yukarı").
+  private dirLabelFromAngle(a: number): string {
+    const deg = (a * 180) / Math.PI;
+    if (deg >= -45 && deg < 45) return "Sağ";
+    if (deg >= 45 && deg < 135) return "Aşağı";
+    if (deg >= -135 && deg < -45) return "Yukarı";
+    return "Sol";
   }
 
   private grantMQReward() {
@@ -1363,6 +1333,7 @@ export class GameEngine {
     if (this.time > this.escapeTime) {
       this.player.hp = 0; // çıkış çöktü → ezildin (checkDeath can düşürür)
       this.escape = false; // tekrar tetiklenmesin
+      this.crushed = true; // ölüm sebebi: çıkış çöktü ("seni buldular" değil)
     }
   }
 

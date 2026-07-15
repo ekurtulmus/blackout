@@ -18,6 +18,7 @@ import { themeFor } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { getCoins, addCoins } from "@/lib/coins";
 import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS } from "@/lib/inventory";
+import { bumpStat } from "@/lib/achievements";
 import { TUNING } from "@/lib/config";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
@@ -38,6 +39,7 @@ export type EndResult = {
   killedQueen?: boolean;
   hostageRescued?: boolean;
   wasEscape?: boolean;
+  crushed?: boolean; // ölüm sebebi: kaçış süresi doldu, çıkış çöktü ("seni buldular" değil)
 };
 
 type Hud = {
@@ -99,7 +101,16 @@ export default function Game({
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
   const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0, veils: 0 }); // kullanılabilir eşyalar
-  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | "veil" | null>(null); // kuşanılan eşya (slot)
+  // Kuşanılan eşya (slot) — bölümler arası KALICI (localStorage): bölüm geçince slot boşalmasın,
+  // biz değiştirene kadar aynı eşya kuşanılı kalsın.
+  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | "veil" | null>(() => {
+    try {
+      const v = localStorage.getItem("blackout_equipped");
+      return v === "shield" || v === "radar" || v === "trap" || v === "veil" ? v : null;
+    } catch {
+      return null;
+    }
+  });
   const [stamina, setStamina] = useState(100); // koşma barı (HUD)
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
@@ -1131,6 +1142,7 @@ export default function Game({
           killedQueen: engine.killedQueen,
           hostageRescued: engine.soldierRescued,
           wasEscape: engine.escape || engine.escapeTime > 0,
+          crushed: engine.crushed,
         });
         return; // döngüyü durdur
       }
@@ -1232,6 +1244,7 @@ export default function Game({
     inv.shields -= 1;
     saveInventory(inv);
     e.activateShield(3);
+    bumpStat("shieldUses"); // başarım: use_shield
     setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Envanter: radarı kullan (çıkış yönünü 1 kez göster)
@@ -1243,6 +1256,7 @@ export default function Game({
     inv.radars -= 1;
     saveInventory(inv);
     e.activateRadar();
+    bumpStat("radarUses"); // başarım: use_radar
     setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Envanter: bulunduğun yere tuzak koy (gelini yavaşlatır)
@@ -1254,6 +1268,7 @@ export default function Game({
     if (e.placeTrap()) {
       inv.traps -= 1;
       saveInventory(inv);
+      bumpStat("trapUses"); // başarım: use_trap
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
     }
   };
@@ -1266,6 +1281,7 @@ export default function Game({
     inv.veils -= 1;
     saveInventory(inv);
     e.activateVeil();
+    bumpStat("veilUses"); // başarım: use_veil
     setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
   };
   // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç)
@@ -1282,6 +1298,7 @@ export default function Game({
   // Envanterden bir eşyayı KUŞAN (slot'a koy) — direkt kullanma
   const equip = (kind: "shield" | "radar" | "trap" | "veil") => {
     setEquipped(kind);
+    try { localStorage.setItem("blackout_equipped", kind); } catch { /* geç */ }
     setInvOpen(false);
   };
 
@@ -1652,8 +1669,9 @@ export default function Game({
       {!mission && (
         <button
           className="slotbtn"
-          onPointerDown={(e) => e.preventDefault()}
-          onClick={useEquipped}
+          // onPointerDown ile tetikle → joystick basılıyken (2. parmak) da çalışır;
+          // onClick mobilde aktif dokunuş varken güvenilir tetiklenmiyordu (hareket+özellik aynı anda).
+          onPointerDown={(e) => { e.preventDefault(); useEquipped(); }}
           title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
         >
           {equipped ? (

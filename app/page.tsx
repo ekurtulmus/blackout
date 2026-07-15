@@ -12,7 +12,7 @@ import Online from "@/components/Online";
 import { FriendPresence, getFriends } from "@/lib/friends";
 import { getInventory } from "@/lib/inventory";
 import { getCoins, initStarterCoins } from "@/lib/coins";
-import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed } from "@/lib/achievements";
+import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed, bumpStat, setStatMax, evaluateAll, type AchCtx } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
 import { sound } from "@/lib/audio";
@@ -31,20 +31,58 @@ import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
 
+// Tek kişilik (Yalnız Kaçış) ilerleme kaydı — çıkıp tekrar girince kaldığı bölümden devam.
+const SP_PROGRESS_KEY = "blackout_sp_progress";
+function loadSpProgress(): { level: number; score: number; lives: number } | null {
+  try {
+    const s = localStorage.getItem(SP_PROGRESS_KEY);
+    if (!s) return null;
+    const o = JSON.parse(s);
+    if (o && typeof o.level === "number" && o.level > 1) {
+      return { level: o.level, score: o.score ?? 0, lives: o.lives ?? 1 };
+    }
+  } catch {
+    /* geç */
+  }
+  return null;
+}
+function saveSpProgress(level: number, score: number, lives: number) {
+  try {
+    localStorage.setItem(SP_PROGRESS_KEY, JSON.stringify({ level, score, lives }));
+  } catch {
+    /* geç */
+  }
+}
+function clearSpProgress() {
+  try {
+    localStorage.removeItem(SP_PROGRESS_KEY);
+  } catch {
+    /* geç */
+  }
+}
+
 // Başarım rozetleri → ince ikon eşlemesi (emoji yerine)
 const ACH_ICON: Record<string, IconName> = {
-  first_kill: "drop",
-  reach3: "target",
-  reach5: "map",
-  reach8: "flame",
-  flawless: "veil",
-  queenslayer: "crown",
-  savior: "handshake",
-  escapist: "bomb",
-  rich: "coin",
-  shopper: "cart",
-  collector: "book",
-  win: "trophy",
+  first_kill: "drop", reach3: "target", first_coin: "coin", shopper: "cart",
+  collector: "book", taste_dark: "skull", use_shield: "shield", use_radar: "radar",
+  use_trap: "trap", kills10: "swords",
+  reach5: "map", reach8: "flame", flawless: "veil", queenslayer: "crown",
+  savior: "handshake", escapist: "bomb", rich: "coin", kills50: "swords",
+  kills100: "swords", deaths5: "skull", games10: "infinity", clears20: "map",
+  coins500: "coin", coins1500: "coin", journal7: "book", secrets6: "photo",
+  missions3: "target", missions6: "target", endless60: "infinity", endless180: "infinity",
+  arena5: "swords", arena10: "swords", kor60: "moon", horde5: "swarm",
+  use_veil: "veil", flawless3: "veil", queen3: "crown", escapes3: "bomb",
+  buy_perm: "ammo", buy_life: "heart",
+  win: "trophy", win_hard: "crown", kills300: "swords", missions_all: "target",
+  secrets_all: "photo", journal_all: "book", endless300: "infinity", arena20: "swords",
+  queen5: "crown", rich5000: "coin",
+};
+// Zorluk kademesi → renk/etiket (başarım kartında rozet)
+const TIER_STYLE: Record<string, { label: string; color: string }> = {
+  kolay: { label: "Kolay", color: "#7dffb0" },
+  orta: { label: "Orta", color: "#ffd75a" },
+  zor: { label: "Zor", color: "#ff8a8a" },
 };
 
 type Screen =
@@ -83,6 +121,7 @@ export default function Page() {
   const [coinInfo, setCoinInfo] = useState({ gained: 0, bonus: 0, total: 0 });
   const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
+  const [deadCrushed, setDeadCrushed] = useState(false); // ölüm sebebi: çıkış çöktü (mesaj ayrımı)
   const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
   const [achClaimed, setAchClaimed] = useState<string[]>([]); // ödülü alınan başarımlar
   const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
@@ -154,14 +193,46 @@ export default function Page() {
     }
   }, []);
 
+  // --- Telefon/tarayıcı GERİ tuşu: uygulamadan ÇIKMA, bir önceki ekrana dön ---
+  const backStack = useRef<Screen[]>([]);
+  const lastScreen = useRef<Screen>("menu");
+  const poppingRef = useRef(false);
+  // Ekran değiştikçe geri yığınını güncelle (pop kaynaklı değişim yığına eklenmez)
+  useEffect(() => {
+    if (poppingRef.current) {
+      poppingRef.current = false;
+    } else if (lastScreen.current !== screen) {
+      backStack.current.push(lastScreen.current);
+      if (backStack.current.length > 40) backStack.current.shift();
+    }
+    lastScreen.current = screen;
+  }, [screen]);
+  // Geri tuşu → önceki ekran; yığın boşsa uygulamada kal (çıkma). Her pop'ta tampon bırak.
+  useEffect(() => {
+    window.history.pushState({ blackout: true }, "");
+    const onPop = () => {
+      window.history.pushState({ blackout: true }, ""); // her zaman bir tampon → geri = çıkış olmasın
+      const prev = backStack.current.pop();
+      if (prev !== undefined) {
+        poppingRef.current = true;
+        setScreen(prev);
+      }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
   // Menüye her dönüşte istatistikleri tazele (dükkân/başarım/günlük sonrası güncel görünsün)
   useEffect(() => {
     if (screen === "menu") {
       setMenuCoins(getCoins());
+      // Anlık verilere bağlı başarımları (para/görev/sır/günlük/skor) burada da değerlendir
+      evaluateAll(buildAchCtx());
       setAchList(getUnlocked());
       setAchClaimed(getClaimed());
       setJournalGot(getCollected());
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [screen]);
 
   function unlockSecret(missionId: number) {
@@ -284,6 +355,7 @@ export default function Page() {
   }, [screen]);
 
   function play(lv: number, sc: number, lv3: number) {
+    saveSpProgress(lv, sc, lv3); // kaldığı bölümden devam edebilsin
     setLevel(lv);
     setScore(sc);
     setLives(lv3);
@@ -297,6 +369,9 @@ export default function Page() {
   }
 
   function handleEnd(r: EndResult) {
+    setDeadCrushed(!!r.crushed);
+    // Oyun tamamen bitti (öldün ve can kalmadı / tüm bölümler bitti) → devam kaydını sıfırla
+    if (r.status === "gameover" || r.status === "win") clearSpProgress();
     setScore(r.score);
     setLives(r.lives);
     setLevel(r.level);
@@ -305,37 +380,56 @@ export default function Page() {
       bonus: r.levelClearBonus ?? 0,
       total: r.coins ?? 0,
     });
-    // Faz F: başarım kontrolleri
-    const newly: string[] = [];
-    const tryU = (id: string) => {
-      if (unlock(id)) newly.push(id);
-    };
-    if ((r.kills ?? 0) >= 1) tryU("first_kill");
-    if (r.level >= 3) tryU("reach3");
-    if (r.level >= 5) tryU("reach5");
-    if (r.level >= 8) tryU("reach8");
-    if (r.killedQueen) tryU("queenslayer");
-    if ((r.coins ?? 0) >= 100) tryU("rich");
+    // Başarım istatistiklerini güncelle (kümülatif) + değerlendir
+    if (r.kills) bumpStat("kills", r.kills);
+    setStatMax("maxLevel", r.level);
+    if (r.status === "dead" || r.status === "gameover") { bumpStat("deaths"); bumpStat("games"); }
+    if (r.status === "win") { bumpStat("wins"); bumpStat("games"); }
     if (r.status === "levelclear" || r.status === "win") {
-      if (r.flawless) tryU("flawless");
-      if (r.hostageRescued) tryU("savior");
-      if (r.wasEscape) tryU("escapist");
+      if (r.status === "levelclear") bumpStat("clears");
+      if (r.flawless) bumpStat("flawless");
+      if (r.killedQueen) bumpStat("queen");
+      if (r.hostageRescued) bumpStat("hostages");
+      if (r.wasEscape) bumpStat("escapes");
     }
-    if (r.status === "win") tryU("win");
-    if (newly.length) {
-      setNewAch(newly);
-      setAchList(getUnlocked());
-    } else {
-      setNewAch([]);
-    }
+    const wonHard = r.status === "win" && spDiff === "zor";
+    const newly = refreshAch({ wonHard, coins: r.coins ?? getCoins() });
+    setNewAch(newly);
     setScreen(r.status);
+  }
+
+  // Başarım değerlendirme bağlamını güncel state'ten kur (overrides ile taze değer geç)
+  function buildAchCtx(overrides: Partial<AchCtx> = {}): AchCtx {
+    const inv = getInventory();
+    return {
+      coins: getCoins(),
+      journal: getCollected().length,
+      secrets: unlockedSecrets.length,
+      missions: cleared.length,
+      endlessBest: survBest[ENDLESS.id] ?? 0,
+      korBest: survBest[KOR_GECE.id] ?? 0,
+      arenaBest: survBest[ARENA.id] ?? 0,
+      hordeBest: survBest[HORDE.id] ?? 0,
+      permAmmo: inv.permAmmo,
+      extraLives: inv.extraLives,
+      wonHard: false,
+      ...overrides,
+    };
+  }
+  // Koşulları değerlendir; yeni açılanların id listesini döndür + menü listesini tazele.
+  function refreshAch(overrides: Partial<AchCtx> = {}): string[] {
+    const newly = evaluateAll(buildAchCtx(overrides));
+    if (newly.length) setAchList(getUnlocked());
+    return newly;
   }
 
   // Faz F: günlük sayfası toplandı
   function handleNote(id: number) {
     collectNote(id);
-    setJournalGot(getCollected());
+    const got = getCollected();
+    setJournalGot(got);
     if (unlock("collector")) setAchList(getUnlocked());
+    refreshAch({ journal: got.length }); // journal7 / journal_all
   }
 
   function playMission(i: number) {
@@ -375,6 +469,10 @@ export default function Page() {
         });
       }
     }
+    // Başarım: tamamlanan görev sayısı (bu koşuyu da say) + genel değerlendirme
+    if (r.kills) bumpStat("kills", r.kills);
+    const missionsDone = ok && m ? (cleared.includes(m.id) ? cleared.length : cleared.length + 1) : cleared.length;
+    refreshAch({ missions: missionsDone });
     setMissionResult(
       m
         ? {
@@ -412,6 +510,8 @@ export default function Page() {
   function handleEndlessEnd(r: EndResult) {
     const survived = Math.floor(r.time ?? r.score ?? 0);
     const best = saveBest(endlessMission, survived);
+    if (r.kills) bumpStat("kills", r.kills);
+    refreshAch(endlessMission.id === KOR_GECE.id ? { korBest: best } : { endlessBest: best });
     setEndlessResult({ survived, best, title: endlessMission.title });
     setScreen("endlessresult");
   }
@@ -425,6 +525,8 @@ export default function Page() {
   function handleArenaEnd(r: EndResult) {
     const wave = Math.max(1, Math.floor(r.score ?? 1)); // skor = geçilen dalga
     const best = saveBest(arenaMission, wave);
+    if (r.kills) bumpStat("kills", r.kills);
+    refreshAch(arenaMission.id === HORDE.id ? { hordeBest: best } : { arenaBest: best });
     setArenaResult({ wave, best, title: arenaMission.title });
     setScreen("arenaresult");
   }
@@ -509,12 +611,16 @@ export default function Page() {
             {achList.length}/{ACHIEVEMENTS.length} açıldı · Cüzdan: <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}><Icon name="coin" size={14} /> {menuCoins}</b>
           </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
-            {ACHIEVEMENTS.map((a) => {
+            {[...ACHIEVEMENTS].sort((a, b) => ({ kolay: 0, orta: 1, zor: 2 })[a.tier] - ({ kolay: 0, orta: 1, zor: 2 })[b.tier]).map((a) => {
               const got = achList.includes(a.id);
               const claimed = achClaimed.includes(a.id);
+              const ts = TIER_STYLE[a.tier];
               return (
                 <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ fontSize: 26, color: got ? "#e0a24a" : "var(--muted)" }}>{got ? <Icon name={ACH_ICON[a.id] ?? "trophy"} size={26} /> : <Icon name="lock" size={24} />}</div>
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: 26, color: got ? "#e0a24a" : "var(--muted)" }}>{got ? <Icon name={ACH_ICON[a.id] ?? "trophy"} size={26} /> : <Icon name="lock" size={24} />}</div>
+                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: ts.color, border: `1px solid ${ts.color}`, borderRadius: 6, padding: "2px 7px", opacity: 0.85 }}>{ts.label}</span>
+                  </div>
                   <div style={{ fontWeight: 800 }}>{a.title}</div>
                   <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{a.desc}</div>
                   <div style={{ fontSize: 12, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}>Ödül: <Icon name="coin" size={12} /> {a.reward}</div>
@@ -551,7 +657,12 @@ export default function Page() {
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
           <div className="big" style={{ color: "#e9e0c4", display: "inline-flex", alignItems: "center", gap: 10 }}><Icon name="book" size={28} /> Günlük</div>
-          <div className="subtitle">{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
+          <div className="subtitle" style={{ fontStyle: "italic", lineHeight: 1.7, maxWidth: 560, margin: "6px auto 2px" }}>
+            Karanlıkta yürürken kâğıt parçalarına bir şeyler karaladım — korkumu, gördüklerimi,
+            aklımdan geçenleri. Sayfalar bölümlere dağıldı. Onları bulup üstünden geçtikçe buraya eklenir;
+            hepsini toplarsan bu gecenin gerçek hikâyesi ortaya çıkar.
+          </div>
+          <div className="subtitle" style={{ marginTop: 4 }}>{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
             {JOURNAL.map((e) => {
               const got = journalGot.includes(e.id);
@@ -1045,8 +1156,19 @@ export default function Page() {
             </div>
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={() => play(1, 0, 3 + getInventory().extraLives)}>
-              Karanlığa Gir →
+            {(() => {
+              const rp = loadSpProgress();
+              return rp ? (
+                <button className="btn btn-primary" onClick={() => play(rp.level, rp.score, rp.lives)}>
+                  Devam Et → Bölüm {rp.level}
+                </button>
+              ) : null;
+            })()}
+            <button
+              className={"btn" + (loadSpProgress() ? "" : " btn-primary")}
+              onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}
+            >
+              {loadSpProgress() ? "Baştan Başla" : "Karanlığa Gir →"}
             </button>
           </div>
         </>
@@ -1055,16 +1177,23 @@ export default function Page() {
       {screen === "dead" && (
         <>
           <div className="big" style={{ color: "#ff6b6b" }}>
-            SENİ BULDULAR
+            {deadCrushed ? "ÇIKIŞ ÇÖKTÜ" : "SENİ BULDULAR"}
           </div>
           <div className="subtitle">
-            Soğuk eller ensende… bir canın söndü. Bölüm {level} yeniden başlıyor.
+            {deadCrushed
+              ? <>Süre doldu — tünel üstüne çöktü. Bir canın söndü. Bölüm {level} yeniden başlıyor.</>
+              : <>Soğuk eller ensende… bir canın söndü. Bölüm {level} yeniden başlıyor.</>}
             <br />
             Kalan can: {"♥".repeat(lives)}
           </div>
-          <button className="btn btn-primary" onClick={() => play(level, score, lives)}>
-            Tekrar Dene
-          </button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={() => play(level, score, lives)}>
+              Tekrar Dene
+            </button>
+            <button className="btn" onClick={() => setScreen("menu")}>
+              ← Menüye Dön
+            </button>
+          </div>
         </>
       )}
 
@@ -1104,6 +1233,9 @@ export default function Page() {
             >
               🛒 Dükkâna Uğra
             </button>
+            <button className="btn" onClick={() => setScreen("menu")}>
+              ← Menüye Dön
+            </button>
           </div>
         </>
       )}
@@ -1117,9 +1249,14 @@ export default function Page() {
             Gelinlerin arasında kayboldun. Son bölüm: <b>{level}</b> · Skor:{" "}
             <b>{score}</b>
           </div>
-          <button className="btn btn-primary" onClick={startNewGame}>
-            Baştan Başla
-          </button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={startNewGame}>
+              Baştan Başla
+            </button>
+            <button className="btn" onClick={() => setScreen("menu")}>
+              ← Menüye Dön
+            </button>
+          </div>
         </>
       )}
 
@@ -1140,9 +1277,14 @@ export default function Page() {
               🏆 Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
-          <button className="btn btn-primary" onClick={startNewGame}>
-            Yeniden Oyna
-          </button>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+            <button className="btn btn-primary" onClick={startNewGame}>
+              Yeniden Oyna
+            </button>
+            <button className="btn" onClick={() => setScreen("menu")}>
+              ← Menüye Dön
+            </button>
+          </div>
         </>
       )}
 

@@ -2,7 +2,7 @@
 // AYRIK N doğuş (2-6 oyuncu). Host üretir, serileştirip herkese yollar.
 import type { Vec } from "./types";
 import { levelConfig } from "./levels";
-import { bfsDistances, floorCells, generateMaze, type Maze } from "./maze";
+import { bfsDistances, floorCells, generateArena, generateMaze, type Maze } from "./maze";
 import type { BrideConfig } from "./brides";
 import type { NetRole } from "./net";
 import { themeIndexFor } from "./themes";
@@ -29,6 +29,7 @@ export type StartInfo = {
   themeSeed: number; // rastgele tema başlangıcı (herkes aynı)
   initialLevel: RaceLevel;
   pvp: boolean; // PvP: oyuncular birbirini vurabilir (mermi %10 hasar)
+  arena: boolean; // Arena: açık alan dalga hayatta kalma (çıkış yok)
 };
 
 // Zorluk modifikatörleri (gelin sayısı / hız / zekâ)
@@ -166,6 +167,47 @@ export function generateRaceLevel(
     health,
     veils,
     theme: themeIndexFor(level, themeSeed),
+    brideSpawns,
+  };
+}
+
+// ARENA (çok oyunculu): açık alan, ÇIKIŞ YOK — dalga hayatta kalma (host dalga ekler).
+// exit alanı doldurulur ama OnlineGame arena modunda çıkış açmaz/kullanmaz.
+export function generateArenaLevel(themeSeed = 0, playerCount = 2): RaceLevel {
+  const pc = Math.max(1, playerCount);
+  const size = 21 + Math.floor((pc - 1) * 2); // kişi sayısıyla biraz büyür
+  const maze = generateArena(size, size, 0.05);
+  const cols = maze.cols, rows = maze.rows;
+  const floors = floorCells(maze);
+  const center: Vec = { x: (cols / 2) | 0, y: (rows / 2) | 0 };
+  const dCenter = bfsDistances(maze, center);
+  const reach = floors.filter((c) => dCenter[c.y][c.x] >= 0);
+  // Doğuşlar: birbirinden en ayrık (açık alanda köşelere yayılır)
+  const spawns = pickSpread(reach, dCenter, MAX_PLAYERS);
+  // Gelinler oyunculardan uzakta başlasın
+  const farFromPlayers = (c: Vec) => spawns.every((s) => Math.hypot(c.x - s.x, c.y - s.y) >= 4);
+  let brideCand = reach.filter(farFromPlayers);
+  if (brideCand.length === 0) brideCand = reach.slice();
+  const brideCount = Math.max(3, Math.round(3 + pc * 1.5)); // başlangıç dalgası
+  const brideSpawns = shuffle(brideCand).slice(0, brideCount);
+  // Bol mermi + can (arena açık ve yoğun)
+  const onSpawn = (c: Vec) => spawns.some((s) => s.x === c.x && s.y === c.y);
+  const cells = shuffle(reach.filter((c) => !onSpawn(c)));
+  const ammoN = Math.floor(floors.length * 0.08) + MAX_PLAYERS;
+  const healthN = Math.max(3, Math.floor(floors.length * 0.03));
+  const veilN = Math.max(1, Math.floor(pc / 3));
+  const ammo = cells.slice(0, ammoN);
+  const health = cells.slice(ammoN, ammoN + healthN);
+  const veils = cells.slice(ammoN + healthN, ammoN + healthN + veilN);
+  return {
+    level: 1,
+    cols, rows,
+    walls: maze.walls,
+    exit: center, // arena'da kullanılmaz
+    spawns,
+    visionRadius: 9, // açık alan → geniş görüş
+    ammo, health, veils,
+    theme: themeIndexFor(1, themeSeed),
     brideSpawns,
   };
 }

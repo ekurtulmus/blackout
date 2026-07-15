@@ -12,6 +12,7 @@ import {
   MAX_PLAYERS,
   ROOM_COST,
   deserializeLevel,
+  generateArenaLevel,
   generateRaceLevel,
   serializeLevel,
   type RaceDiff,
@@ -56,6 +57,7 @@ export default function OnlineLobby({
   const [players, setPlayers] = useState<NetPlayer[]>([]);
   const [diff, setDiff] = useState<RaceDiff>("orta");
   const [pvp, setPvp] = useState(false); // PvP: oyuncular birbirini vurabilir (%10 hasar)
+  const [arena, setArena] = useState(false); // Arena: açık alan dalga hayatta kalma (çıkış yok)
   const [coins, setCoins] = useState(0);
   const [notice, setNotice] = useState("");
   const roomRef = useRef<NetRoom | null>(null);
@@ -183,6 +185,7 @@ export default function OnlineLobby({
         themeSeed: payload.themeSeed ?? 0,
         initialLevel: deserializeLevel(payload.level as SerializedLevel),
         pvp: !!payload.pvp,
+        arena: !!payload.arena,
       });
     };
     roomRef.current = room;
@@ -218,8 +221,10 @@ export default function OnlineLobby({
     if (players.length < 2) return;
     const themeSeed = randomThemeSeed();
     const pls = room.players();
-    const lvl = generateRaceLevel(1, diff, themeSeed, pls.length);
-    room.startGame({ diff, level: serializeLevel(lvl), themeSeed, pvp });
+    const lvl = arena
+      ? generateArenaLevel(themeSeed, pls.length)
+      : generateRaceLevel(1, diff, themeSeed, pls.length);
+    room.startGame({ diff, level: serializeLevel(lvl), themeSeed, pvp, arena });
     handedOff.current = true;
     onStarted(room, {
       role: "host",
@@ -230,6 +235,7 @@ export default function OnlineLobby({
       themeSeed,
       initialLevel: lvl,
       pvp,
+      arena,
     });
   }
 
@@ -382,6 +388,21 @@ export default function OnlineLobby({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Arena modu: açık alan dalga hayatta kalma (çıkış yok) */}
+          <div style={{ margin: "2px 0 6px" }}>
+            <button
+              className={"btn" + (arena ? " btn-primary" : "")}
+              onClick={() => setArena((v) => !v)}
+              style={{ opacity: arena ? 1 : 0.75 }}
+              title="Açıkça: labirent yerine açık arena; çıkış yok, dalga dalga gelen gelinlere karşı hayatta kal"
+            >
+              ⚔️ Arena Modu: {arena ? "AÇIK" : "KAPALI"}
+              <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
+                Açık alan · çıkış yok · dalga hayatta kalma (skor = süre)
+              </span>
+            </button>
           </div>
 
           {/* PvP modu: oyuncular birbirini de vurabilir (mermi %10 hasar) */}

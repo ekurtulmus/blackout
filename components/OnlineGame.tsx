@@ -44,6 +44,8 @@ import Icon, { type IconName } from "@/components/Icon";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
+const ARENA_WAVE_MS = 16000; // arena: her ~16 sn'de bir yeni dalga (host gelin ekler)
+const ARENA_WAVE_ADD = 3; // her dalgada eklenen gelin sayısı (kişi başına biraz artar)
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
@@ -76,7 +78,7 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false, trap: false });
   const [phase, setPhase] = useState<Phase>("playing");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0 });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0, wave: 1, surv: 0 });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
   const [mqHud, setMqHud] = useState(""); // aktif mini-görev etiketi (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev ödül bildirimi
@@ -93,6 +95,7 @@ export default function OnlineGame({
   const radarAngle = useRef(0); // radar oku yönü (radyan)
 
   const mySeat = info.seat;
+  const arenaMode = info.arena; // açık alan dalga hayatta kalma (çıkış yok)
   const diff = info.diff;
   const order = info.order; // oyuncu id sırası (seat = index)
   const myColor = SEAT_COLORS[mySeat % SEAT_COLORS.length];
@@ -138,6 +141,10 @@ export default function OnlineGame({
   const fireCd = useRef(0);
   const kills = useRef(0);
   const exitOpen = useRef(false);
+  // Arena: dalga sayacı + hayatta kalma süresi (host dalga ekler; skor = süre)
+  const arenaWave = useRef(1);
+  const arenaStartMs = useRef(0);
+  const arenaNextWaveAt = useRef(0);
   const invulnUntil = useRef(0);
   const hurt = useRef(0);
   const hp = useRef(PLAYER_MAX_HP);
@@ -272,6 +279,12 @@ export default function OnlineGame({
     resultPending.current = false;
     sentReach.current = false;
     ready.current = true;
+    // Arena: hayatta kalma süresi + dalga zamanlayıcısını bir kez başlat
+    if (arenaMode && arenaStartMs.current === 0) {
+      arenaStartMs.current = performance.now();
+      arenaNextWaveAt.current = performance.now() + ARENA_WAVE_MS;
+      arenaWave.current = 1;
+    }
     setPhase("playing");
     setHud((h) => ({ ...h, level: lvl.level, ammo: 0, exitOpen: false, kills: 0 }));
   }
@@ -441,7 +454,8 @@ export default function OnlineGame({
       if (local) {
         kills.current++;
         setCoins(addCoins(COIN_PER_KILL)); // gelin başına para (kişisel, kalıcı cüzdan)
-        if (kills.current >= 1 && !exitOpen.current) {
+        // Arena'da çıkış YOK — sadece yarışta 1 öldürünce çıkış açılır
+        if (!arenaMode && kills.current >= 1 && !exitOpen.current) {
           exitOpen.current = true;
           sound.play("dooropen");
         }
@@ -733,6 +747,27 @@ export default function OnlineGame({
             } else remain.push(t);
           }
           brideRespawnQueue.current = remain;
+        }
+        // Arena: dalga dalga gelin ekle (host-otoriter). Her dalga biraz daha kalabalık.
+        if (arenaMode && now >= arenaNextWaveAt.current) {
+          arenaWave.current += 1;
+          arenaNextWaveAt.current = now + ARENA_WAVE_MS;
+          const cap = 14 + order.length * 8; // toplam gelin üst sınırı (kontrolden çıkmasın)
+          const add = ARENA_WAVE_ADD + Math.floor(arenaWave.current / 3) + Math.floor(order.length / 2);
+          for (let i = 0; i < add; i++) {
+            if (hostBrides.current.length >= cap) break;
+            const cell = spawnBrideFarOnline();
+            if (!cell) break;
+            const total = hostBrides.current.length + 1;
+            hostBrides.current.push({
+              id: ++brideIdCounter.current,
+              pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
+              hp: 1, aware: false, lastSeen: null, seenTimer: 4,
+              wanderDir: randomDir(), wanderTimer: 0, path: null, repathTimer: 0,
+              kind: assignBrideKind(total - 1, total),
+            });
+          }
+          sound.play("warn"); // yeni dalga uyarısı
         }
       }
 
@@ -1402,7 +1437,7 @@ export default function OnlineGame({
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0 });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0, wave: arenaWave.current, surv: arenaMode && arenaStartMs.current ? Math.floor((performance.now() - arenaStartMs.current) / 1000) : 0 });
           setMqHud(miniQuest.current && !mqDone.current ? `${MQ_DEFS[miniQuest.current.kind].icon} ${MQ_DEFS[miniQuest.current.kind].hud}` : "");
         }
         render();
@@ -1563,12 +1598,25 @@ export default function OnlineGame({
         )}
         <div className="chip"><span className="lbl">Tuzak</span><span className="val" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="trap" size={13} /> {trapCount}</span></div>
         <div className="chip"><span className="lbl">Para</span><span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</span></div>
-        <div className="chip">
-          <span className="lbl">Çıkışın</span>
-          <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
-            {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
-          </span>
-        </div>
+        {arenaMode ? (
+          <>
+            <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
+              <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> Dalga</span>
+              <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
+            </div>
+            <div className="chip">
+              <span className="lbl">Süre</span>
+              <span className="val">{hud.surv}s</span>
+            </div>
+          </>
+        ) : (
+          <div className="chip">
+            <span className="lbl">Çıkışın</span>
+            <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
+              {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
+            </span>
+          </div>
+        )}
         {hud.veil > 0 && (
           <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
             <span className="lbl">Görünmez</span>
@@ -1764,8 +1812,8 @@ export default function OnlineGame({
       {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}
       <button
         className="slotbtn slotbtn-mp"
-        onPointerDown={(e) => e.preventDefault()}
-        onClick={useEquippedOnline}
+        // onPointerDown → joystick basılıyken (2. parmak) da kullanılabilir (bkz. Game.tsx)
+        onPointerDown={(e) => { e.preventDefault(); useEquippedOnline(); }}
         title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
       >
         {equipped ? (
