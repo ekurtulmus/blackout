@@ -621,7 +621,7 @@ const MM_CSS = `
 .mm-root{position:fixed;inset:0;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;background:#000;font-family:'EB Garamond',Georgia,serif;color:#e4ddce;z-index:0;}
 .mm-game{position:fixed;inset:0;width:100%;height:100%;z-index:0;}
 .mm-grain{position:fixed;inset:0;width:100%;height:100%;z-index:2;opacity:.05;mix-blend-mode:overlay;pointer-events:none;}
-.mm-scrim{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(closest-side 46vw 44vh at 50% 46%, rgba(4,3,3,.82), rgba(4,3,3,.5) 55%, rgba(4,3,3,0) 100%);}
+.mm-scrim{position:fixed;inset:0;z-index:1;pointer-events:none;background:radial-gradient(closest-side 50vw 48vh at 50% 46%, rgba(4,3,3,.9), rgba(4,3,3,.64) 55%, rgba(4,3,3,.12) 100%);}
 .mm-vignette{position:fixed;inset:0;z-index:3;pointer-events:none;background:radial-gradient(130% 120% at 50% 50%, transparent 42%, rgba(40,8,8,.5) 82%, rgba(20,3,3,.85) 100%);box-shadow:inset 0 0 260px 120px #000;animation:mm-beat 3.4s ease-in-out infinite;}
 @keyframes mm-beat{0%,100%{box-shadow:inset 0 0 260px 120px #000;}50%{box-shadow:inset 0 0 300px 140px #000;}}
 .mm-wrap{position:relative;z-index:5;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:44px 20px 48px;}
@@ -630,9 +630,9 @@ const MM_CSS = `
 @keyframes mm-titleIn{from{opacity:0;letter-spacing:.5em;filter:blur(10px);}to{opacity:1;letter-spacing:.2em;filter:blur(0);}}
 @keyframes mm-flame{from{opacity:.85;}to{opacity:1;}}
 @keyframes mm-flicker{0%,18%,20%,54%,56%,100%{opacity:1;}19%{opacity:.55;}55%{opacity:.7;}81%{opacity:.4;}82%{opacity:1;}}
-.mm-sub{margin-top:22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.6em;color:#6f695d;text-transform:uppercase;opacity:0;animation:mm-fade .9s ease-out .9s forwards;text-shadow:0 0 10px #000;}
+.mm-sub{margin-top:22px;font-family:'Cinzel',serif;font-size:13px;letter-spacing:.55em;color:#b3aa93;text-transform:uppercase;opacity:0;animation:mm-fade .9s ease-out .9s forwards;text-shadow:0 1px 6px #000;}
 .mm-menu{margin-top:54px;display:flex;flex-direction:column;align-items:center;gap:20px;}
-.mm-item{font-family:'Cinzel',serif;font-weight:400;font-size:clamp(17px,2.4vw,21px);letter-spacing:.22em;color:#a49d8e;cursor:pointer;position:relative;padding:13px 46px;min-width:min(320px,84vw);text-align:center;border-radius:8px;background:rgba(255,255,255,.015);border:1px solid rgba(200,180,150,.06);transition:color .25s,background .25s,border-color .25s,text-shadow .25s;opacity:0;transform:translateY(8px);text-shadow:0 0 12px #000,0 0 24px #000;}
+.mm-item{font-family:'Cinzel',serif;font-weight:600;font-size:clamp(18px,2.5vw,22px);letter-spacing:.2em;color:#efe7d6;cursor:pointer;position:relative;padding:14px 46px;min-width:min(320px,84vw);text-align:center;border-radius:8px;background:rgba(14,10,9,.62);border:1px solid rgba(206,186,156,.34);transition:color .25s,background .25s,border-color .25s,text-shadow .25s;opacity:0;transform:translateY(8px);text-shadow:0 2px 6px #000,0 0 18px rgba(0,0,0,.9);}
 .mm-item.mm-in{animation:mm-fade .7s ease-out forwards;}
 .mm-item::after{content:"";position:absolute;left:50%;bottom:7px;width:0;height:1px;background:#d11a1a;transform:translateX(-50%);transition:width .3s;box-shadow:0 0 6px #d11a1a;}
 .mm-item:hover{color:#fff;background:rgba(209,26,26,.07);border-color:rgba(209,26,26,.4);text-shadow:0 0 18px rgba(209,26,26,.6),0 0 6px #000;}
@@ -640,18 +640,18 @@ const MM_CSS = `
 .mm-item-mp{display:inline-flex;align-items:center;justify-content:center;gap:13px;}
 .mm-mp{fill:currentColor;opacity:.9;filter:drop-shadow(0 0 8px rgba(209,26,26,.4));flex:none;}
 .mm-secondary{margin-top:38px;display:flex;flex-wrap:wrap;justify-content:center;gap:10px 12px;opacity:0;animation:mm-fade 1s ease-out 1.7s forwards;}
-.mm-schip{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.015);border:1px solid rgba(200,180,150,.08);border-radius:6px;font-family:'Cinzel',serif;font-size:12.5px;letter-spacing:.16em;color:#8a8474;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 0 10px #000;padding:9px 15px;}
+.mm-schip{display:inline-flex;align-items:center;gap:8px;background:rgba(14,10,9,.6);border:1px solid rgba(206,186,156,.34);border-radius:6px;font-family:'Cinzel',serif;font-size:13px;font-weight:600;letter-spacing:.14em;color:#e0d6c0;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 1px 5px #000;padding:10px 16px;}
 .mm-schip:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.4);}
 .mm-sicon{font-size:15px;line-height:1;}
-.mm-note{color:#6f695d;letter-spacing:.05em;}
-.mm-lore{position:relative;z-index:5;margin-top:30px;pointer-events:none;width:min(620px,86vw);text-align:center;font-style:italic;font-size:15px;line-height:1.75;color:#8f8776;letter-spacing:.03em;text-shadow:0 0 14px #000,0 0 30px rgba(139,13,13,.25);opacity:0;animation:mm-loreIn 1.6s ease-out 2s forwards, mm-lorePulse 6s 3.6s ease-in-out infinite;}
+.mm-note{color:#c2b79e;letter-spacing:.05em;}
+.mm-lore{position:relative;z-index:5;margin-top:30px;pointer-events:none;width:min(620px,86vw);text-align:center;font-style:italic;font-size:15.5px;line-height:1.75;color:#a89f8a;letter-spacing:.03em;text-shadow:0 1px 8px #000,0 0 24px rgba(0,0,0,.9);opacity:0;animation:mm-loreIn 1.6s ease-out 2s forwards, mm-lorePulse 6s 3.6s ease-in-out infinite;}
 .mm-lore::before,.mm-lore::after{content:"";display:block;width:44px;height:1px;margin:0 auto;background:linear-gradient(90deg,transparent,rgba(209,26,26,.5),transparent);}
 .mm-lore::before{margin-bottom:14px;}.mm-lore::after{margin-top:14px;}
 .mm-lore .mm-r{color:#c86b4a;}
 @keyframes mm-loreIn{to{opacity:.9;}}
 @keyframes mm-lorePulse{0%,100%{opacity:.62;}50%{opacity:.92;}}
 .mm-foot{position:relative;z-index:5;margin-top:34px;display:flex;justify-content:center;gap:14px;flex-wrap:wrap;opacity:0;animation:mm-fade 1s ease-out 1.6s forwards;}
-.mm-foot button{background:rgba(255,255,255,.02);border:1px solid rgba(200,180,150,.16);border-radius:6px;padding:10px 22px;font-family:'Cinzel',serif;font-size:12px;letter-spacing:.24em;color:#8a8474;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 0 10px #000;}
+.mm-foot button{background:rgba(14,10,9,.6);border:1px solid rgba(206,186,156,.34);border-radius:6px;padding:11px 22px;font-family:'Cinzel',serif;font-size:12.5px;font-weight:600;letter-spacing:.22em;color:#e0d6c0;cursor:pointer;text-transform:uppercase;transition:color .25s,background .25s,border-color .25s;text-shadow:0 1px 5px #000;}
 .mm-foot button:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.42);}
 .mm-friends{position:fixed;top:14px;right:14px;z-index:8;width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(20,15,13,.7);border:1px solid rgba(206,186,156,.28);color:#c9bfa8;cursor:pointer;backdrop-filter:blur(3px);transition:color .2s,border-color .2s,background .2s;}
 .mm-friends:hover{color:#e0a24a;border-color:rgba(224,162,74,.5);background:rgba(30,22,18,.85);}

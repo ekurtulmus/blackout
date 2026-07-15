@@ -14,6 +14,7 @@ const ITEM_ICON: Record<string, IconName> = {
   healthPack: "heart",
   permAmmo: "ammo",
   extraLife: "heart",
+  soldier: "people",
   flash_amber: "flame",
   flash_crimson: "flame",
   flash_toxic: "flame",
@@ -67,6 +68,9 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
   const [coins, setCoins] = useState(() => getCoins());
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
+  const [tab, setTab] = useState<"features" | "cosmetics">("features"); // özellikler / kişiselleştirme ayrımı
+  const featureItems = orderedShopItems.filter((it) => !it.cosmetic);
+  const cosmeticItems = orderedShopItems.filter((it) => it.cosmetic);
 
   function buyGold(gold: number) {
     // Deneme: ödeme alınmaz, altın doğrudan verilir.
@@ -123,56 +127,80 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
 
         <div style={{ minHeight: 22, color: "#8be9ff", fontWeight: 700, margin: "6px 0 14px" }}>{msg}</div>
 
-        {/* Envanter özeti — elindeki tüketilebilir eşyalar (satın alınca anında güncellenir) */}
-        <div className="card-parch" style={{ padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center" }}>
-          <span style={{ fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-            <Icon name="box" size={16} /> ENVANTERİN
-          </span>
-          {([
-            { icon: "shield" as IconName, n: inv.shields, label: "Kalkan" },
-            { icon: "radar" as IconName, n: inv.radars, label: "Radar" },
-            { icon: "trap" as IconName, n: inv.traps, label: "Tuzak" },
-            { icon: "veil" as IconName, n: inv.veils, label: "Duvak" },
-            { icon: "ammo" as IconName, n: inv.ammoPacks, label: "Mermi paketi" },
-            { icon: "heart" as IconName, n: inv.healthPacks, label: "Can paketi" },
-          ]).map((it) => (
-            <span key={it.label} title={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: it.n > 0 ? "#e4ddce" : "var(--muted)", opacity: it.n > 0 ? 1 : 0.5 }}>
-              <Icon name={it.icon} size={16} /> {it.n}
-            </span>
-          ))}
-          {inv.extraLives > 0 && (
-            <span title="Ekstra can" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#ff8a8a" }}>
-              <Icon name="heart" size={16} /> +{inv.extraLives} can
-            </span>
-          )}
-          {inv.permAmmo && (
-            <span title="Sürekli cephane" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>
-              <Icon name="ammo" size={16} /> Sürekli
-            </span>
-          )}
-        </div>
-
-        {/* Oyun parası (altın) satın al — ilk ürün. DENEME: ödeme alınmaz. */}
-        <div className="card-parch" style={{ padding: 16, marginBottom: 18, borderColor: "rgba(255,205,80,0.5)" }}>
-          <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}><Icon name="coin" size={18} /> ALTIN SATIN AL</div>
-          <div style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 12px" }}>
-            Deneme sürümü — ödeme alınmaz, altın anında hesabına eklenir.
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
-            {GOLD_PACKS.map((p) => (
-              <div key={p.gold} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", background: "rgba(255,215,90,0.06)", border: "1px solid rgba(255,205,80,0.3)", borderRadius: 8, padding: 12 }}>
-                <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="coin" size={18} /> {p.gold}</div>
-                {p.tag && <div style={{ fontSize: 11, color: "#7dffb0" }}>{p.tag}</div>}
-                <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => buyGold(p.gold)}>
-                  {p.price}
-                </button>
+        {tab === "features" ? (
+          <>
+            {/* Oyun parası (altın) satın al — DENEME: ödeme alınmaz. */}
+            <div className="card-parch" style={{ padding: 16, marginBottom: 14, borderColor: "rgba(255,205,80,0.5)" }}>
+              <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}><Icon name="coin" size={18} /> ALTIN SATIN AL</div>
+              <div style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 12px" }}>
+                Deneme sürümü — ödeme alınmaz, altın anında hesabına eklenir.
               </div>
-            ))}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
+                {GOLD_PACKS.map((p) => (
+                  <div key={p.gold} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", background: "rgba(255,215,90,0.06)", border: "1px solid rgba(255,205,80,0.3)", borderRadius: 8, padding: 12 }}>
+                    <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="coin" size={18} /> {p.gold}</div>
+                    {p.tag && <div style={{ fontSize: 11, color: "#7dffb0" }}>{p.tag}</div>}
+                    <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => buyGold(p.gold)}>
+                      {p.price}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Kişiselleştirme'ye geç — Altın satın al'ın ALTINDA */}
+            <div style={{ margin: "0 0 16px", textAlign: "center" }}>
+              <button className="btn" onClick={() => setTab("cosmetics")} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                <Icon name="people" size={16} /> Kişiselleştirme →
+              </button>
+            </div>
+
+            {/* Envanter özeti — elindeki tüketilebilir eşyalar */}
+            <div className="card-parch" style={{ padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center" }}>
+              <span style={{ fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
+                <Icon name="box" size={16} /> ENVANTERİN
+              </span>
+              {([
+                { icon: "shield" as IconName, n: inv.shields, label: "Kalkan" },
+                { icon: "radar" as IconName, n: inv.radars, label: "Radar" },
+                { icon: "trap" as IconName, n: inv.traps, label: "Tuzak" },
+                { icon: "veil" as IconName, n: inv.veils, label: "Duvak" },
+                { icon: "ammo" as IconName, n: inv.ammoPacks, label: "Mermi paketi" },
+                { icon: "heart" as IconName, n: inv.healthPacks, label: "Can paketi" },
+              ]).map((it) => (
+                <span key={it.label} title={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: it.n > 0 ? "#e4ddce" : "var(--muted)", opacity: it.n > 0 ? 1 : 0.5 }}>
+                  <Icon name={it.icon} size={16} /> {it.n}
+                </span>
+              ))}
+              {inv.hiredSoldier && (
+                <span title="Asker müttefiki" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>🪖 Asker</span>
+              )}
+              {inv.extraLives > 0 && (
+                <span title="Ekstra can" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#ff8a8a" }}>
+                  <Icon name="heart" size={16} /> +{inv.extraLives} can
+                </span>
+              )}
+              {inv.permAmmo && (
+                <span title="Sürekli cephane" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>
+                  <Icon name="ammo" size={16} /> Sürekli
+                </span>
+              )}
+            </div>
+          </>
+        ) : (
+          // Kişiselleştirme sekmesi: geri tuşuyla değil, "Özellikler" butonuyla dönülür
+          <div style={{ margin: "0 0 16px" }}>
+            <button className="btn btn-primary" onClick={() => setTab("features")} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+              ← Özellikler
+            </button>
+            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
+              Fener rengi ve görünüm halkası. Sahip olduğunu tekrar para vermeden kuşanırsın.
+            </div>
           </div>
-        </div>
+        )}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-          {orderedShopItems.map((it) => {
+          {(tab === "features" ? featureItems : cosmeticItems).map((it) => {
             const owned = ownedText(it);
             const affordable = coins >= it.price;
             // Kozmetik: seçili → kapalı; sahip → "Kullan" (ücretsiz); değil → satın al

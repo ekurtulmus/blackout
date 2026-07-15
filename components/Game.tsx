@@ -154,8 +154,14 @@ export default function Game({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const engine = new GameEngine(level, score, lives, mission, withPhoto, diff);
+    // Dükkan askeri: sahipsen (ölene dek) her bölümde yanında bir müttefik doğar
+    const hiredSoldier = !mission && getInventory().hiredSoldier;
+    const engine = new GameEngine(level, score, lives, mission, withPhoto, diff, hiredSoldier);
     engineRef.current = engine;
+    // Kiralık asker çizimi için: senin görünüm halka rengin + ismin (çerçeve + üstünde yazı)
+    const mySoldierRing = SKIN_RINGS[getInventory().skin] ?? "#7dffb0";
+    let mySoldierName = "SEN";
+    try { const n = localStorage.getItem("blackout_name"); if (n && n.trim()) mySoldierName = n.trim().slice(0, 10); } catch { /* geç */ }
     setCoins(getCoins()); // kalıcı parayı yükle
     // Envanter (Faz B): yalnız normal tek kişilikte başlangıç eşyalarını uygula
     if (!mission) {
@@ -750,6 +756,21 @@ export default function Game({
           ctx!.fillRect(s.sx - bw / 2, s.sy - TS * 0.4, bw, TS * 0.07);
           ctx!.fillStyle = hpFrac > 0.35 ? "#7dffb0" : "#ff9a3c";
           ctx!.fillRect(s.sx - bw / 2, s.sy - TS * 0.4, bw * hpFrac, TS * 0.07);
+          // Kiralık asker: SENİN görünüm rengin halka + üstünde ismin (müttefik belli olsun)
+          if (sd.hired) {
+            ctx!.shadowBlur = 0;
+            ctx!.strokeStyle = mySoldierRing;
+            ctx!.lineWidth = Math.max(2, TS * 0.06);
+            ctx!.beginPath();
+            ctx!.arc(s.sx, s.sy, TS * 0.34, 0, Math.PI * 2);
+            ctx!.stroke();
+            ctx!.fillStyle = mySoldierRing;
+            ctx!.font = `700 ${Math.round(TS * 0.24)}px 'Cinzel', serif`;
+            ctx!.textAlign = "center";
+            ctx!.shadowColor = "#000";
+            ctx!.shadowBlur = 4;
+            ctx!.fillText(mySoldierName, s.sx, s.sy - TS * 0.5);
+          }
         } else {
           // kilit/zincir halkası (kurtar!)
           ctx!.globalAlpha = 0.4 + 0.3 * Math.sin(engine.time * 4);
@@ -1124,6 +1145,11 @@ export default function Game({
 
       if (!ended && engine.status !== "playing") {
         ended = true;
+        // Öldüysen (bir can gitti / oyun bitti) → kiralık askeri kaybet (yeniden alınabilir)
+        if (engine.status === "dead" || engine.status === "gameover") {
+          const inv = getInventory();
+          if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
+        }
         // Son para senkronu (bölüm bonusu / son öldürmeler kalıcı cüzdana geçsin)
         const finalGain = engine.coinsEarned - coinSyncRef.current;
         const total = finalGain > 0 ? addCoins(finalGain) : getCoins();

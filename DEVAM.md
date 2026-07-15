@@ -23,6 +23,22 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #4 — Dükkan/menü paketi (CANLI)
+`next build` + tsc temiz:
+- ✅ **Kozmetik kırpma**: fener 4 (crimson/toxic/violet/gold) + görünüm 4 (gold/violet/emerald/crimson).
+  **Mor (violet) her ikisinde de** var. Kaldırılan shop item'ları (amber/ice/rose/cyan) — palet map'i durur (eski seçim korunur).
+- ✅ **Asker müttefiki** (`inventory.hiredSoldier`, shop "soldier" 120 altın, `canBuy: !hiredSoldier`):
+  - **SP**: `GameEngine(...hiredSoldier)` — oyuncunun yanında ESCORT asker doğar; takip + gelinlere ateş
+    (mevcut `updateSoldiers`), ölünce YANINDA dirilir. Çizim: **senin görünüm halka rengin** + üstünde **ismin**
+    (`blackout_name`). Sen ölünce (dead/gameover) bayrak temizlenir → yeniden alınabilir.
+  - **ONLINE**: her istemci kendi askerini yerel simüle eder (takip + ortak mermi sistemiyle gelin öldürür),
+    `pos`'a `sx/sy` eklenip yayınlanır → herkes birbirinin askerini **koltuk renginde + isimle** görür.
+    Sen ölünce (respawn) asker gider + bayrak sıfırlanır.
+- ✅ **Dükkan sekmeleri**: önce **Özellikler**; Altın-satın-al'ın ALTINDA **"Kişiselleştirme →"** butonu → kozmetik
+  sekmesi. Kozmetikte **"← Özellikler"** butonuyla dönülür (geri tuşuyla değil). `Shop.tsx` `tab` state.
+- ✅ **Menü okunabilirliği**: `.mm-item/.mm-schip/.mm-foot/.mm-sub/.mm-note/.mm-lore` daha parlak renk + koyu
+  panel + kalın font + güçlü gölge; `.mm-scrim` merkez karartması arttı (yazı kontrastı).
+
 ## OTURUM 2026-07-14 #3 — 10 İSTEK (güzelleştirme) (CANLI)
 `next build` + tsc temiz. Hepsi uygulandı:
 - ✅ **Online Arena modu**: oda kurarken host toggle (`OnlineLobby` arena → StartInfo/net → `online.generateArenaLevel`

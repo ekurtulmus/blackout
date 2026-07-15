@@ -162,6 +162,7 @@ export class GameEngine {
     respawnAt: number;
     path?: Vec[] | null;
     repath?: number;
+    hired?: boolean; // dükkandan kiralanan müttefik (senin renk/isminle; yanında dirilir)
   }[] = [];
   soldierRescued = false; // bu bölümde en az bir asker kurtarıldı mı (başarım/bonus)
   get hasEscort(): boolean {
@@ -199,7 +200,8 @@ export class GameEngine {
     lives: number,
     mission: Mission | null = null,
     withPhoto = false,
-    diff: Diff = "orta"
+    diff: Diff = "orta",
+    hiredSoldier = false // dükkandan asker kiralandıysa yanında escort olarak başla
   ) {
     this.level = level;
     this.score = score;
@@ -490,6 +492,26 @@ export class GameEngine {
           respawnAt: 0,
         });
       }
+    }
+
+    // Dükkan askeri (kiralık müttefik): oyuncunun hemen yanında ESCORT olarak başlar,
+    // seni takip eder + gelinlere ateş eder. Ölürse yanında yeniden doğar (sen ölene dek).
+    if (hiredSoldier) {
+      const near = this.shuffle(
+        floors.filter((c) => {
+          const d = Math.abs(c.x - spawnCell.x) + Math.abs(c.y - spawnCell.y);
+          return d >= 1 && d <= 3 && !(c.x === exit.x && c.y === exit.y);
+        })
+      );
+      const cell = near[0] ?? spawnCell;
+      this.soldiers.push({
+        pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
+        state: "escort",
+        hp: TUNING.soldierMaxHp,
+        fireCd: 1,
+        respawnAt: 0,
+        hired: true,
+      });
     }
   }
 
@@ -1231,12 +1253,22 @@ export class GameEngine {
     for (const s of this.soldiers) {
       if (s.state === "dead") {
         if (this.time >= s.respawnAt) {
-          const cell = this.farCellFromPlayer(6);
-          if (cell) {
+          if (s.hired) {
+            // Kiralık asker: oyuncunun yakınında ESCORT olarak yeniden doğar (kilitli değil)
+            const cell = this.farCellFromPlayer(2) ?? cellOf(this.player.pos);
             s.pos = { x: cell.x + 0.5, y: cell.y + 0.5 };
-            s.state = "locked";
-            s.hp = TUNING.soldierMaxHp; // yeniden doğunca tam can
+            s.state = "escort";
+            s.hp = TUNING.soldierMaxHp;
+            s.fireCd = 1;
             s.path = null;
+          } else {
+            const cell = this.farCellFromPlayer(6);
+            if (cell) {
+              s.pos = { x: cell.x + 0.5, y: cell.y + 0.5 };
+              s.state = "locked";
+              s.hp = TUNING.soldierMaxHp; // yeniden doğunca tam can
+              s.path = null;
+            }
           }
         }
         continue;

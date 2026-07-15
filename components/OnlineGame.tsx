@@ -64,7 +64,7 @@ const KIND_CODE: Record<BKind, number> = {
   normal: 0, dark: 1, mucus: 2, caller: 3, splitter: 4, climber: 5, queen: 6,
 };
 const CODE_KIND: BKind[] = ["normal", "dark", "mucus", "caller", "splitter", "climber", "queen"];
-type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean };
+type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null };
 
 export default function OnlineGame({
   room,
@@ -101,6 +101,13 @@ export default function OnlineGame({
   const myColor = SEAT_COLORS[mySeat % SEAT_COLORS.length];
   const nameOf = (seat: number) =>
     info.names[seat] || (seat === 0 ? "Ev sahibi" : `Oyuncu ${seat + 1}`);
+
+  // Sen ölünce dükkan askeri gider (yeniden satın alınabilir)
+  const loseHiredSoldier = () => {
+    soldierPos.current = null;
+    const inv = getInventory();
+    if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
+  };
 
   // Dünya
   const levelRef = useRef<RaceLevel | null>(null);
@@ -141,6 +148,9 @@ export default function OnlineGame({
   const fireCd = useRef(0);
   const kills = useRef(0);
   const exitOpen = useRef(false);
+  // Dükkan askeri (online müttefik): yerel simüle, pos'la yayınlanır (herkes görsün)
+  const soldierPos = useRef<Vec | null>(null);
+  const soldierFireCd = useRef(0);
   // Arena: dalga sayacı + hayatta kalma süresi (host dalga ekler; skor = süre)
   const arenaWave = useRef(1);
   const arenaStartMs = useRef(0);
@@ -285,6 +295,9 @@ export default function OnlineGame({
       arenaNextWaveAt.current = performance.now() + ARENA_WAVE_MS;
       arenaWave.current = 1;
     }
+    // Dükkan askeri: sahipsen her bölümde yanında doğar (ölene dek)
+    soldierPos.current = getInventory().hiredSoldier ? { ...mySpawn.current } : null;
+    soldierFireCd.current = 1;
     setPhase("playing");
     setHud((h) => ({ ...h, level: lvl.level, ammo: 0, exitOpen: false, kills: 0 }));
   }
@@ -482,6 +495,8 @@ export default function OnlineGame({
         o.dir = { x: m.dx as number, y: m.dy as number };
         o.seenAt = performance.now();
         o.everSeen = true;
+        // Dükkan askeri pozisyonu (varsa) — diğer oyuncunun müttefikini çizmek için
+        o.sPos = m.sx != null && m.sy != null ? { x: m.sx as number, y: m.sy as number } : null;
       } else if (m.t === "brides" && !amHost.current) {
         const arr = m.b as [number, number, number, number, number][];
         const map = guestBrides.current;
@@ -542,6 +557,7 @@ export default function OnlineGame({
               invulnUntil.current = now + 2000;
               hurt.current = 0.5;
               bullets.current = [];
+              loseHiredSoldier();
             }
           }
         }
@@ -773,6 +789,32 @@ export default function OnlineGame({
 
       const brides = renderBrides();
 
+      // Dükkan askeri (online): seni takip eder + gelinlere ateş eder (mermi ortak sistemden).
+      if (soldierPos.current) {
+        const sp = soldierPos.current;
+        const dx = selfPos.current.x - sp.x, dy = selfPos.current.y - sp.y;
+        const d = Math.hypot(dx, dy);
+        if (d > 1.1) {
+          const spd = PLAYER_SPEED * 0.95 * dt;
+          const nx = sp.x + (dx / d) * spd, ny = sp.y + (dy / d) * spd;
+          if (!maze.walls[Math.floor(ny)]?.[Math.floor(nx)]) { sp.x = nx; sp.y = ny; }
+        }
+        soldierFireCd.current -= dt;
+        if (soldierFireCd.current <= 0) {
+          let tgt: RBride | null = null, td = Infinity;
+          for (const z of brides) {
+            const dz = Math.hypot(z.pos.x - sp.x, z.pos.y - sp.y);
+            if (dz <= 7 && dz < td) { td = dz; tgt = z; }
+          }
+          if (tgt) {
+            soldierFireCd.current = 0.9;
+            const ex = tgt.pos.x - sp.x, ey = tgt.pos.y - sp.y, el = Math.hypot(ex, ey) || 1;
+            bullets.current.push({ pos: { ...sp }, vel: { x: (ex / el) * BULLET_SPEED, y: (ey / el) * BULLET_SPEED }, life: BULLET_LIFE });
+            sound.play("shot");
+          }
+        }
+      }
+
       // Dinamik görüş/fener: menzilde gelin var mı? (Madde 4,5)
       const fl = flashlight.current;
       if (fl) {
@@ -905,6 +947,7 @@ export default function OnlineGame({
             invulnUntil.current = now + 2000;
             hurt.current = 0.5;
             bullets.current = [];
+            loseHiredSoldier();
           }
         }
       }
@@ -924,6 +967,7 @@ export default function OnlineGame({
                 ammoCount.current = Math.max(ammoCount.current, 1);
                 invulnUntil.current = now + 2000;
                 hurt.current = 0.5;
+                loseHiredSoldier();
               }
               break;
             }
@@ -1298,6 +1342,25 @@ export default function OnlineGame({
         ctx!.restore();
       };
 
+      // Dükkan askeri işaretçisi (müttefik): koltuk renginde çerçeve + üstünde oyuncu ismi
+      const drawSoldierMarker = (wx: number, wy: number, color: string, name: string) => {
+        const sx = wx * TS - camX, sy = wy * TS - camY;
+        if (sx < -TS || sy < -TS || sx > cssW + TS || sy > cssH + TS) return;
+        ctx!.save();
+        ctx!.shadowColor = color; ctx!.shadowBlur = 8;
+        // gövde + baş (asker)
+        ctx!.fillStyle = "#39423a";
+        ctx!.beginPath(); ctx!.ellipse(sx, sy + TS * 0.06, TS * 0.18, TS * 0.24, 0, 0, Math.PI * 2); ctx!.fill();
+        ctx!.fillStyle = "#cfe9d6";
+        ctx!.beginPath(); ctx!.arc(sx, sy - TS * 0.15, TS * 0.1, 0, Math.PI * 2); ctx!.fill();
+        // senin renk çerçeven
+        ctx!.shadowBlur = 0;
+        ctx!.strokeStyle = color; ctx!.lineWidth = Math.max(2, TS * 0.06);
+        ctx!.beginPath(); ctx!.arc(sx, sy, TS * 0.32, 0, Math.PI * 2); ctx!.stroke();
+        ctx!.restore();
+        drawNameTag(sx, sy, name, color);
+      };
+
       // diğer oyuncular (görüşte) — koltuk rengiyle halkalı + isim
       const nowP = performance.now();
       for (const o of others.current.values()) {
@@ -1307,7 +1370,11 @@ export default function OnlineGame({
         const ox = o.pos.x * TS - camX, oy = o.pos.y * TS - camY;
         drawPlayer(ctx!, TS, ox, oy, o.dir, T, true, flicker, lvl.visionRadius, { cone: false, ring: SEAT_COLORS[o.seat % SEAT_COLORS.length] });
         drawNameTag(ox, oy, o.name, SEAT_COLORS[o.seat % SEAT_COLORS.length]);
+        // o oyuncunun dükkan askeri (varsa)
+        if (o.sPos) drawSoldierMarker(o.sPos.x, o.sPos.y, SEAT_COLORS[o.seat % SEAT_COLORS.length], o.name);
       }
+      // kendi dükkan askerin (senin koltuk renginde + ismin)
+      if (soldierPos.current) drawSoldierMarker(soldierPos.current.x, soldierPos.current.y, myColor, nameOf(mySeat));
 
       // kendi (dokunulmazlıkta camgöbeği halka)
       const cx = cssW / 2, cy = cssH / 2;
@@ -1432,7 +1499,7 @@ export default function OnlineGame({
         posAcc += dt;
         if (posAcc >= 0.05) {
           posAcc = 0;
-          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y });
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null });
         }
         hudAcc += dt;
         if (hudAcc >= 0.15) {

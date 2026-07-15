@@ -13,6 +13,7 @@ export type Inventory = {
   healthPacks: number; // sonraki bölüme tam can + kalkan (bölüm başı otomatik tüketilir)
   permAmmo: boolean; // KALICI: her bölüm +3 mermiyle başla
   extraLives: number; // KALICI: +1 başlangıç can hakkı (adet)
+  hiredSoldier: boolean; // asker müttefiki: yanında savaşır; ölene dek durur, ölünce sıfırlanır
   flashColor: string; // kişiselleştirme: SEÇİLİ fener rengi
   skin: string; // kişiselleştirme: SEÇİLİ oyuncu görünümü
   ownedFlash: string[]; // sahip olunan fener renkleri (tekrar para verilmez)
@@ -28,6 +29,7 @@ const DEFAULT_INV: Inventory = {
   healthPacks: 0,
   permAmmo: false,
   extraLives: 0,
+  hiredSoldier: false,
   flashColor: "default",
   skin: "default",
   ownedFlash: ["default"],
@@ -189,15 +191,14 @@ export const SHOP_ITEMS: ShopItem[] = [
     apply: (inv) => (inv.extraLives += 1),
   },
   {
-    id: "flash_amber",
-    title: "Fener: Kehribar",
-    desc: "Kişiselleştirme — sıcak kehribar fener ışığı.",
-    icon: "💡",
-    price: 30,
-    kind: "cosmetic",
-    cosmetic: { slot: "flash", value: "amber" },
-    canBuy: () => true,
-    apply: () => {},
+    id: "soldier",
+    title: "Asker Müttefiki",
+    desc: "Yanında savaşan bir asker: seni takip eder, gelinlere ateş eder (senin renk çerçeven + ismin). Bir kez alınır; ölene dek yanında kalır (sen ölünce gider, tekrar alınabilir). Çok oyunculuda da geçerli.",
+    icon: "🪖",
+    price: 120,
+    kind: "perm",
+    canBuy: (inv) => !inv.hiredSoldier,
+    apply: (inv) => (inv.hiredSoldier = true),
   },
   {
     id: "flash_crimson",
@@ -245,17 +246,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     apply: () => {},
   },
   {
-    id: "flash_ice",
-    title: "Fener: Buz Mavisi",
-    desc: "Kişiselleştirme — soğuk buz mavisi fener ışığı.",
-    icon: "💡",
-    price: 30,
-    kind: "cosmetic",
-    cosmetic: { slot: "flash", value: "ice" },
-    canBuy: () => true,
-    apply: () => {},
-  },
-  {
     id: "flash_violet",
     title: "Fener: Mor",
     desc: "Kişiselleştirme — tekinsiz mor fener ışığı.",
@@ -263,17 +253,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 35,
     kind: "cosmetic",
     cosmetic: { slot: "flash", value: "violet" },
-    canBuy: () => true,
-    apply: () => {},
-  },
-  {
-    id: "flash_rose",
-    title: "Fener: Gül Pembe",
-    desc: "Kişiselleştirme — solgun gül pembesi fener ışığı.",
-    icon: "💡",
-    price: 35,
-    kind: "cosmetic",
-    cosmetic: { slot: "flash", value: "rose" },
     canBuy: () => true,
     apply: () => {},
   },
@@ -290,17 +269,6 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   // --- Bol kişiselleştirme: ek görünüm (halka) renkleri ---
   {
-    id: "skin_cyan",
-    title: "Görünüm: Camgöbeği Halka",
-    desc: "Kişiselleştirme — oyuncu camgöbeği halkayla parlar.",
-    icon: "🩸",
-    price: 35,
-    kind: "cosmetic",
-    cosmetic: { slot: "skin", value: "cyan" },
-    canBuy: () => true,
-    apply: () => {},
-  },
-  {
     id: "skin_emerald",
     title: "Görünüm: Zümrüt Halka",
     desc: "Kişiselleştirme — oyuncu zümrüt yeşili halkayla parlar.",
@@ -308,28 +276,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     price: 45,
     kind: "cosmetic",
     cosmetic: { slot: "skin", value: "emerald" },
-    canBuy: () => true,
-    apply: () => {},
-  },
-  {
-    id: "skin_rose",
-    title: "Görünüm: Gül Halka",
-    desc: "Kişiselleştirme — oyuncu gül pembesi halkayla parlar.",
-    icon: "🩸",
-    price: 45,
-    kind: "cosmetic",
-    cosmetic: { slot: "skin", value: "rose" },
-    canBuy: () => true,
-    apply: () => {},
-  },
-  {
-    id: "skin_ice",
-    title: "Görünüm: Buz Halka",
-    desc: "Kişiselleştirme — oyuncu buz mavisi halkayla parlar.",
-    icon: "🩸",
-    price: 45,
-    kind: "cosmetic",
-    cosmetic: { slot: "skin", value: "ice" },
     canBuy: () => true,
     apply: () => {},
   },
