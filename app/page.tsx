@@ -32,6 +32,12 @@ import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
 import MenuShell from "@/components/MenuShell";
 
+// OYUN ekranları: kabuk kullanmaz VE geri yığınına hedef olarak girmez
+// (sonuç ekranından "geri" oyunu yeniden başlatmasın → döngü olmasın).
+function isPlayScreen(s: string): boolean {
+  return s === "playing" || s === "onlinegame" || s === "missionplay" || s === "endlessplay" || s === "arenaplay";
+}
+
 // Tek kişilik (Yalnız Kaçış) ilerleme kaydı — çıkıp tekrar girince kaldığı bölümden devam.
 const SP_PROGRESS_KEY = "blackout_sp_progress";
 function loadSpProgress(): { level: number; score: number; lives: number } | null {
@@ -197,16 +203,21 @@ export default function Page() {
     }
   }, []);
 
-  // --- Telefon/tarayıcı GERİ tuşu: uygulamadan ÇIKMA, bir önceki ekrana dön ---
+  // --- GERİ (kabuk butonu + telefon geri tuşu): bir önceki ekrana dön ---
   const backStack = useRef<Screen[]>([]);
   const lastScreen = useRef<Screen>("menu");
   const poppingRef = useRef(false);
-  // Ekran değiştikçe geri yığınını güncelle (pop kaynaklı değişim yığına eklenmez)
+  // Ekran değiştikçe geri yığınını güncelle (pop kaynaklı değişim yığına eklenmez).
+  // ÖNEMLİ: OYUN ekranları geri hedefi OLAMAZ — yoksa sonuç ekranından "geri" oyunu
+  // yeniden başlatır ve döngüye girer (modlar → arena → sonuç → geri → arena → …).
   useEffect(() => {
     if (poppingRef.current) {
       poppingRef.current = false;
-    } else if (lastScreen.current !== screen) {
-      backStack.current.push(lastScreen.current);
+    } else if (lastScreen.current !== screen && !isPlayScreen(lastScreen.current)) {
+      // aynı ekranı üst üste iki kez yığına koyma
+      if (backStack.current[backStack.current.length - 1] !== lastScreen.current) {
+        backStack.current.push(lastScreen.current);
+      }
       if (backStack.current.length > 40) backStack.current.shift();
     }
     lastScreen.current = screen;
@@ -342,8 +353,8 @@ export default function Page() {
       return;
     }
     sound.stopWhistles();
-    // Sırlar: kendi müziği çalar (menü müziği kısılır)
-    if (screen === "secrets") {
+    // Sırlar + Günlük: hikâye ekranları — "sirlar" müziği çalar (menü müziği kısılır)
+    if (screen === "secrets" || screen === "journal") {
       sound.stopMenuMusic();
       sound.playScreenMusic("secrets");
       return;
@@ -558,11 +569,8 @@ export default function Page() {
   // ORTAK KABUK: oyun ekranları hariç TÜM ekranlar MenuShell içinde render edilir.
   // Kökte hep aynı <MenuShell> tipi döndüğü için React onu mount'ta tutar →
   // labirent/grain canvas'ı ekranlar arası KESİNTİSİZ akar (tasarım gereği).
-  const isGameScreen =
-    screen === "playing" || screen === "onlinegame" ||
-    screen === "missionplay" || screen === "endlessplay" || screen === "arenaplay";
   const chrome = (body: React.ReactNode): React.ReactNode =>
-    isGameScreen ? body : (
+    isPlayScreen(screen) ? body : (
       <MenuShell
         menu={screen === "menu"}
         onBack={screen === "menu" ? undefined : goBack}
@@ -834,7 +842,6 @@ export default function Page() {
     const rec = arenaResult.wave >= arenaResult.best && arenaResult.wave > 1;
     return chrome(
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(28px,7vw,50px)", color: "#ff9a3c" }}>
           {arenaResult.title.toLocaleUpperCase("tr")} DÜŞTÜ
         </div>
@@ -888,7 +895,6 @@ export default function Page() {
     const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
     return chrome(
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
           DAYANAMADIN
         </div>
@@ -910,7 +916,6 @@ export default function Page() {
     const mr = missionResult;
     return chrome(
       <div className="screen">
-        <button className="topback" onClick={() => setScreen("missions")}>← Geri</button>
         <div
           className="title"
           style={{ fontSize: "clamp(30px,8vw,56px)", color: mr.ok ? "#7dffb0" : "#ff6b6b" }}
