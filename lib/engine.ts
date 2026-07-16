@@ -1206,7 +1206,7 @@ export class GameEngine {
     this.events.push("secret");
   }
 
-  // HUD için mini-görev metni (aktifken)
+  // HUD için mini-görev metni (aktifken). Emoji YOK — HUD çipi kendi line-icon'unu çizer.
   miniQuestText(): string {
     const q = this.miniQuest;
     const d = this.mqDef;
@@ -1214,14 +1214,14 @@ export class GameEngine {
     switch (q.kind) {
       case "candles": {
         const lit = q.markers.filter((m) => m.litUntil && m.litUntil > this.time).length;
-        return `${d.icon} ${d.hud} ${lit}/${q.markers.length}`;
+        return `${d.hud} ${lit}/${q.markers.length}`;
       }
       case "mirror":
         return this.mqMirrorNear > 0.2
-          ? `${d.icon} Bekle... ${Math.max(0, Math.ceil(5 - this.mqMirrorNear))}s`
-          : `${d.icon} ${d.hud}`;
+          ? `Bekle... ${Math.max(0, Math.ceil(5 - this.mqMirrorNear))}s`
+          : d.hud;
       default:
-        return `${d.icon} ${d.hud}`;
+        return d.hud;
     }
   }
 

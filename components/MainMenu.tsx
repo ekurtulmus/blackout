@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
 let introShown = false;
@@ -19,6 +19,8 @@ export default function MainMenu({
   onSecrets,
   continueLabel,
   onContinue,
+  help = false,
+  onHelpClose,
 }: {
   onSolo: () => void;
   onMulti: () => void;
@@ -30,8 +32,11 @@ export default function MainMenu({
   onSecrets: () => void;
   continueLabel?: string | null; // "Bölüm 4" — yoksa Devam Et gizli
   onContinue?: () => void;
+  // Nasıl Oynanır düğmesi kabuğun sağ üstünde (MenuShell) — açık/kapalı durumu page.tsx'te tutulur,
+  // modalın kendisi burada. Bu yüzden dışarıdan kontrol edilir.
+  help?: boolean;
+  onHelpClose?: () => void;
 }) {
-  const [help, setHelp] = useState(false);
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false);
   const anim = !introShown;
@@ -43,11 +48,16 @@ export default function MainMenu({
       setIsTouch(window.matchMedia("(pointer: coarse)").matches);
     }
   }, []);
+  // Modal kapanınca açık konu da sıfırlanır (bir dahaki açılış konu listesinden başlasın)
+  const closeHelp = useCallback(() => {
+    setTopic(null);
+    onHelpClose?.();
+  }, [onHelpClose]);
   useEffect(() => {
-    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") setHelp(false); };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === "Escape") closeHelp(); };
     window.addEventListener("keydown", onEsc);
     return () => window.removeEventListener("keydown", onEsc);
-  }, []);
+  }, [closeHelp]);
 
   // Giriş animasyonu yardımcıları (menüye dönüşte anında görünsün)
   const fx = (delay: string): React.CSSProperties =>
@@ -254,22 +264,11 @@ export default function MainMenu({
         ))}
       </div>
 
-      <div className="mm-foot" style={fx("1.65s")}>
-        <button className="mm-ghost" onClick={() => setHelp(true)}>
-          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" />
-            <path d="M9.4 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.4 2.2-2.4 3.7" />
-            <circle cx="12" cy="17" r=".6" fill="currentColor" />
-          </svg>
-          Nasıl Oynanır
-        </button>
-      </div>
-
-      {/* Nasıl Oynanır modalı — konu-bazlı (tıkla → detay) */}
+      {/* Nasıl Oynanır modalı — konu-bazlı (tıkla → detay). Açan düğme kabuğun sağ üstünde. */}
       {help && (
         <div
           className="mm-modal"
-          onClick={(e) => { if (e.target === e.currentTarget) { setHelp(false); setTopic(null); } }}
+          onClick={(e) => { if (e.target === e.currentTarget) closeHelp(); }}
         >
           <div className="mm-modal-card">
             {openTopic ? (
@@ -295,7 +294,7 @@ export default function MainMenu({
                 </div>
               </>
             )}
-            <button className="mm-modal-close" onClick={() => { setHelp(false); setTopic(null); }}>Kapat</button>
+            <button className="mm-modal-close" onClick={closeHelp}>Kapat</button>
           </div>
         </div>
       )}

@@ -47,12 +47,8 @@ const featureItems = SHOP_ITEMS.filter((i) => !i.cosmetic).sort(
 const flashItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "flash");
 const skinItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "skin");
 
-// Küçük altın ikonu (fiyat/cüzdan)
-const Coin = ({ size = 13 }: { size?: number }) => (
-  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
-    <circle cx="12" cy="12" r="8.2" />
-  </svg>
-);
+// Küçük altın ikonu (fiyat/cüzdan) — ortak sikke ikonu
+const Coin = ({ size = 13 }: { size?: number }) => <Icon name="coin" size={size} stroke={1.5} />;
 
 // DÜKKÂN (tasarım handoff).
 // standalone=false → MenuShell içinde (kabuk zemini + geri butonu sağlar)
@@ -192,8 +188,11 @@ export default function Shop({
                 return (
                   <div key={it.id} className={"item-card" + (perm ? " is-perm" : "")}>
                     {perm && <span className="perm-badge">KALICI</span>}
-                    <div className="item-ico"><Icon name={ITEM_ICON[it.id] ?? "box"} size={22} stroke={1.6} /></div>
-                    <div className="item-name">{it.title}</div>
+                    {/* Eşya adı ikonun ALTINDA değil YANINDA */}
+                    <div className="card-head">
+                      <div className="item-ico"><Icon name={ITEM_ICON[it.id] ?? "box"} size={22} stroke={1.6} /></div>
+                      <div className="item-name">{it.title}</div>
+                    </div>
                     <div className="item-desc">{it.desc}</div>
                     {own && <div className="item-own">{own}</div>}
                     {can ? (

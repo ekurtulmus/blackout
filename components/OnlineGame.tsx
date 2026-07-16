@@ -1619,7 +1619,7 @@ export default function OnlineGame({
         if (hudAcc >= 0.15) {
           hudAcc = 0;
           setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0, wave: roundNum.current, surv: arenaMode && roundEndsAt.current ? Math.max(0, Math.ceil((roundEndsAt.current - performance.now()) / 1000)) : 0, rk: roundKills.current });
-          setMqHud(miniQuest.current && !mqDone.current ? `${MQ_DEFS[miniQuest.current.kind].icon} ${MQ_DEFS[miniQuest.current.kind].hud}` : "");
+          setMqHud(miniQuest.current && !mqDone.current ? MQ_DEFS[miniQuest.current.kind].hud : "");
         }
         render();
       }
@@ -1755,132 +1755,132 @@ export default function OnlineGame({
       <canvas ref={canvasRef} />
 
       <div className="hud">
-        <div className="chip"><span className="lbl">Mod</span><span className="val">Yarış {info.diff}</span></div>
-        <div className="chip"><span className="lbl">Bölüm</span><span className="val">{hud.level}</span></div>
-        <div className="chip">
-          <span className="lbl">Can</span>
-          <div className="hpbar">
-            <div
-              className="hpfill"
-              style={{
-                width: `${(hud.hp / PLAYER_MAX_HP) * 100}%`,
-                background: hud.hp / PLAYER_MAX_HP > 0.35 ? "var(--hp)" : "var(--hp-low)",
-              }}
-            />
-          </div>
-        </div>
-        <div className="chip"><span className="lbl">Mermi</span><span className="val">{hud.ammo}</span></div>
-        <div className="chip"><span className="lbl">Bariyer</span><span className="val">{hud.barriers}</span></div>
-        {info.pvp && (
-          <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
-            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> PvP</span>
-            <span className="val" style={{ color: "#ff9a9a" }}>açık</span>
-          </div>
-        )}
-        <div className="chip"><span className="lbl">Tuzak</span><span className="val" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="trap" size={13} /> {trapCount}</span></div>
-        <div className="chip"><span className="lbl">Para</span><span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</span></div>
-        {arenaMode ? (
-          <>
-            <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
-              <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> Tur</span>
-              <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
-            </div>
-            <div className="chip" style={{ borderColor: hud.surv <= 15 ? "rgba(255,90,90,0.7)" : undefined }}>
-              <span className="lbl">Süre</span>
-              <span className="val" style={{ color: hud.surv <= 15 ? "#ff7a7a" : undefined }}>{Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}</span>
-            </div>
-            <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
-              <span className="lbl">Öldürdüğün</span>
-              <span className="val" style={{ color: "#ff9a9a" }}>{hud.rk}</span>
-            </div>
-            <div className="chip">
-              <span className="lbl">Toplam</span>
-              <span className="val">{hud.kills}</span>
-            </div>
-            <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
-              <span className="lbl">Puanın</span>
-              <span className="val" style={{ color: "#7dffb0" }}>{hud.scores[mySeat] ?? 0}/{ARENA_WIN_POINTS}</span>
-            </div>
-          </>
-        ) : (
+        {/* Sol: bilgi çipleri — durum → kaynaklar → mod bilgisi → skor tablosu */}
+        <div className="hud-info">
           <div className="chip">
-            <span className="lbl">Çıkışın</span>
-            <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
-              {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
-            </span>
+            <span className="lbl">Can</span>
+            <div className="hpbar">
+              <div
+                className="hpfill"
+                style={{
+                  width: `${(hud.hp / PLAYER_MAX_HP) * 100}%`,
+                  background: hud.hp / PLAYER_MAX_HP > 0.35 ? "var(--hp)" : "var(--hp-low)",
+                }}
+              />
+            </div>
           </div>
-        )}
-        {hud.veil > 0 && (
-          <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
-            <span className="lbl">Görünmez</span>
-            <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
+          <div className="chip">
+            <span className="lbl"><Icon name="ammo" size={12} /> Mermi</span>
+            <span className="val">{hud.ammo}</span>
           </div>
-        )}
-        {mqHud && (
-          <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
-            <span className="lbl">Fırsat</span>
-            <span className="val" style={{ color: "#ffd75a" }}>{mqHud}</span>
+          <div className="chip">
+            <span className="lbl"><Icon name="box" size={12} /> Bariyer</span>
+            <span className="val">{hud.barriers}</span>
           </div>
-        )}
-        <div className="chip"><span className="lbl">Skor</span>
-          <span className="val">
-            {hud.scores.map((s, seat) => (
-              <span key={seat}>
-                {seat > 0 && <span style={{ color: "var(--muted)" }}> · </span>}
-                <span
-                  style={{
-                    color: SEAT_COLORS[seat % SEAT_COLORS.length],
-                    fontWeight: seat === mySeat ? 900 : 400,
-                    textDecoration: seat === mySeat ? "underline" : "none",
-                  }}
-                >
-                  {s}
-                </span>
+          <div className="chip">
+            <span className="lbl"><Icon name="trap" size={12} /> Tuzak</span>
+            <span className="val">{trapCount}</span>
+          </div>
+          <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
+            <span className="lbl"><Icon name="coin" size={12} /> Altın</span>
+            <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
+          </div>
+          <div className="chip">
+            <span className="lbl">Bölüm</span>
+            <span className="val">{hud.level}</span>
+          </div>
+          {info.pvp && (
+            <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
+              <span className="lbl"><Icon name="swords" size={12} /> PvP</span>
+              <span className="val" style={{ color: "#ff9a9a" }}>açık</span>
+            </div>
+          )}
+          {arenaMode ? (
+            <>
+              <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
+                <span className="lbl"><Icon name="swords" size={12} /> Tur</span>
+                <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
+              </div>
+              <div className="chip" style={{ borderColor: hud.surv <= 15 ? "rgba(255,90,90,0.7)" : undefined }}>
+                <span className="lbl">Süre</span>
+                <span className="val" style={{ color: hud.surv <= 15 ? "#ff7a7a" : undefined }}>{Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}</span>
+              </div>
+              <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
+                <span className="lbl">Bu tur</span>
+                <span className="val" style={{ color: "#ff9a9a" }}>{hud.rk}</span>
+              </div>
+              <div className="chip">
+                <span className="lbl">Toplam</span>
+                <span className="val">{hud.kills}</span>
+              </div>
+              <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
+                <span className="lbl">Puanın</span>
+                <span className="val" style={{ color: "#7dffb0" }}>{hud.scores[mySeat] ?? 0}/{ARENA_WIN_POINTS}</span>
+              </div>
+            </>
+          ) : (
+            <div className="chip" style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)" }}>
+              <span className="lbl"><Icon name={hud.exitOpen ? "key" : "lock"} size={12} /> Çıkışın</span>
+              <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
+                {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
               </span>
-            ))}
-          </span>
-        </div>
-        <div className="chip"><span className="lbl">Sen</span>
-          <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
-        </div>
-        {/* CANLI SKOR TABLOSU — kimin kazandığı her an ekranda (yarış: tur galibiyeti, arena: puan) */}
-        {hud.scores.length > 1 && (
+            </div>
+          )}
+          {hud.veil > 0 && (
+            <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
+              <span className="lbl"><Icon name="veil" size={12} /> Görünmez</span>
+              <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
+            </div>
+          )}
+          {mqHud && (
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
+              <span className="lbl"><Icon name="flame" size={12} /> Fırsat</span>
+              <span className="val" style={{ color: "#ffd75a" }}>{mqHud}</span>
+            </div>
+          )}
+          {/* CANLI SKOR TABLOSU — kimin önde olduğu her an ekranda (yarış: tur galibiyeti, arena: puan) */}
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.55)" }}>
-            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <span className="lbl">
               <Icon name="trophy" size={12} /> {arenaMode ? `Puan (ilk ${ARENA_WIN_POINTS})` : "Skor"}
             </span>
             <span className="val" style={{ display: "inline-flex", gap: 7, flexWrap: "wrap" }}>
               {hud.scores.map((s, seat) => {
                 const lead = s === Math.max(...hud.scores) && s > 0;
+                const me = seat === mySeat;
                 return (
                   <span
                     key={seat}
-                    title={nameOf(seat)}
+                    title={me ? `${nameOf(seat)} (sen)` : nameOf(seat)}
                     style={{
                       color: SEAT_COLORS[seat % SEAT_COLORS.length],
                       fontWeight: lead ? 900 : 700,
-                      opacity: lead ? 1 : 0.75,
+                      opacity: lead || me ? 1 : 0.75,
+                      textDecoration: me ? "underline" : "none",
                     }}
                   >
                     {nameOf(seat)}&nbsp;{s}
-                    {lead ? "★" : ""}
+                    {lead ? <Icon name="crown" size={11} style={{ marginLeft: 3 }} /> : null}
                   </span>
                 );
               })}
             </span>
           </div>
-        )}
-        {arenaMode && (
-          <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title="Arena kuralları">
-            <span className="val" style={{ fontWeight: 900 }}>?</span>
+        </div>
+
+        {/* Sağ üst: yardım · dükkân · çıkış (hep yan yana) */}
+        <div className="hud-actions">
+          {arenaMode && (
+            <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title="Arena kuralları">
+              <Icon name="help" size={17} />
+            </button>
+          )}
+          <button className="chip mutebtn" onClick={openShop} title="Dükkân — altınla eşya al">
+            <Icon name="cart" size={17} />
           </button>
-        )}
-        <button className="chip mutebtn" onClick={openShop} title="Dükkân — parayla eşya al">
-          <span className="val" style={{ display: "inline-flex" }}><Icon name="cart" size={16} /></span>
-        </button>
-        <button className="chip mutebtn" onClick={quit} title="Menüye dön">
-          <span className="val">⎋</span>
-        </button>
+          <button className="chip mutebtn" onClick={quit} title="Menüye dön">
+            <Icon name="exit" size={17} />
+          </button>
+        </div>
       </div>
 
       {/* Oyun-içi envanter (online) — ortalanmış modal, mobil dostu */}

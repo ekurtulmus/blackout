@@ -968,10 +968,10 @@ export default function Game({
         ctx!.restore();
       }
 
-      // --- Kan görüşü: gerilim/hasar arttıkça ekran kenarları kızarır ---
-      if (engine.tension > 0.35 || engine.hurtFlash > 0) {
-        const red = Math.max(engine.hurtFlash * 1.8, (engine.tension - 0.35) * 0.5);
-        const rv = ctx!.createRadialGradient(
+      // --- Gerilim: göremediğin kenarlar KIZARMAZ, daha da KARARIR (kırmızı alarm yok) ---
+      if (engine.tension > 0.35) {
+        const dark = Math.min(0.45, (engine.tension - 0.35) * 0.55);
+        const dv = ctx!.createRadialGradient(
           cssW / 2,
           cssH / 2,
           Math.min(cssW, cssH) * 0.25,
@@ -979,9 +979,14 @@ export default function Game({
           cssH / 2,
           Math.min(cssW, cssH) * 0.6
         );
-        rv.addColorStop(0, "rgba(120,0,0,0)");
-        rv.addColorStop(1, `rgba(120,0,0,${Math.min(0.5, red)})`);
-        ctx!.fillStyle = rv;
+        dv.addColorStop(0, "rgba(0,0,0,0)");
+        dv.addColorStop(1, `rgba(2,2,3,${dark})`);
+        ctx!.fillStyle = dv;
+        ctx!.fillRect(0, 0, cssW, cssH);
+      }
+      // Hasar anı: KISA kırmızı flaş (kalıcı alarm değil, "vuruldum" geri bildirimi)
+      if (engine.hurtFlash > 0) {
+        ctx!.fillStyle = `rgba(150,10,10,${Math.min(0.32, engine.hurtFlash * 0.9)})`;
         ctx!.fillRect(0, 0, cssW, cssH);
       }
 
@@ -1352,149 +1357,141 @@ export default function Game({
       <canvas ref={canvasRef} />
 
       <div className="hud">
-        {mission && (
-          <div className="chip" style={{ borderColor: "rgba(110,231,255,0.6)" }}>
-            <span className="lbl">Görev</span>
-            <span className="val" style={{ color: "#8be9ff" }}>{objective}</span>
-          </div>
-        )}
-        {!mission && (
+        {/* Sol: bilgi çipleri — durum (can/nefes) önce, sayaçlar sonra, geçici uyarılar en sonda */}
+        <div className="hud-info">
           <div className="chip">
-            <span className="lbl">Bölüm</span>
-            <span className="val">{hud.level}</span>
+            <span className="lbl">Can</span>
+            <div className={"hpbar" + (hpBlink ? " blink" : "")}>
+              <div className="hpfill" style={{ width: `${hpPct}%`, background: hpColor }} />
+            </div>
+            <div className="lives">
+              {Array.from({ length: Math.max(3, hud.lives) }, (_, i) => (
+                <Icon key={i} name="heart" size={13} fill={i < hud.lives} className={"heart" + (i < hud.lives ? "" : " gone")} />
+              ))}
+            </div>
           </div>
-        )}
-        {!mission?.noFire && (
           <div className="chip">
-            <span className="lbl">Mermi</span>
-            <span className="val">{hud.ammo}</span>
+            <span className="lbl">Nefes</span>
+            <div className="hpbar" style={{ width: 90 }}>
+              <div
+                className="hpfill"
+                style={{ width: `${stamina}%`, background: stamina > 20 ? "#7ec8ff" : "#ff9a3c" }}
+              />
+            </div>
           </div>
-        )}
-        {mission && (
-          <div className="chip">
-            <span className="lbl">Süre</span>
-            <span className="val">
-              {mm}:{ss}
-            </span>
-          </div>
-        )}
-        <div className="chip">
-          <span className="lbl">Can</span>
-          <div className={"hpbar" + (hpBlink ? " blink" : "")}>
-            <div
-              className="hpfill"
-              style={{ width: `${hpPct}%`, background: hpColor }}
-            />
-          </div>
-        </div>
-        <div className="chip">
-          <span className="lbl">Nefes</span>
-          <div className="hpbar" style={{ width: 90 }}>
-            <div
-              className="hpfill"
-              style={{
-                width: `${stamina}%`,
-                background: stamina > 20 ? "#7ec8ff" : "#ff9a3c",
-              }}
-            />
-          </div>
-        </div>
-        {!mission && (
-          <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
-            <span className="lbl">Para</span>
-            <span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={14} /> {coins}</span>
-          </div>
-        )}
-        <div className="chip">
-          <div className="lives">
-            {Array.from({ length: Math.max(3, hud.lives) }, (_, i) => (
-              <span
-                key={i}
-                className={"heart" + (i < hud.lives ? "" : " gone")}
-              >
-                ♥
+          {!mission && (
+            <div className="chip">
+              <span className="lbl">Bölüm</span>
+              <span className="val">{hud.level}</span>
+            </div>
+          )}
+          {!mission?.noFire && (
+            <div className="chip">
+              <span className="lbl"><Icon name="ammo" size={12} /> Mermi</span>
+              <span className="val">{hud.ammo}</span>
+            </div>
+          )}
+          {mission && (
+            // Bitmeyen Gece/Kör Gece'de süre = SKORUN (uzun dayanmak iyidir) → ayrıca vurgula
+            <div className="chip" style={mission.endless ? { borderColor: "rgba(125,255,176,0.6)" } : undefined}>
+              <span className="lbl">{mission.endless ? "Dayandığın süre" : "Süre"}</span>
+              <span className="val" style={mission.endless ? { color: "#7dffb0" } : undefined}>
+                {mm}:{ss}
               </span>
-            ))}
-          </div>
-        </div>
-        <button
-          className="chip"
-          style={{ cursor: "pointer", borderColor: hud.exitOpen ? undefined : "rgba(255,150,150,0.5)" }}
-          onClick={() => {
-            const r = engineRef.current?.exitLockReason() ?? "";
-            if (r) {
-              setExitMsg(r);
-              window.setTimeout(() => setExitMsg(""), 4000);
-            }
-          }}
-          title="Çıkış neden kilitli?"
-        >
-          <span className="lbl">Çıkış</span>
-          <span
-            className="val"
-            style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}
+            </div>
+          )}
+          {!mission && (
+            <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
+              <span className="lbl"><Icon name="coin" size={12} /> Altın</span>
+              <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
+            </div>
+          )}
+          {/* Bitmeyen Gece'de çıkış YOK → "KİLİTLİ" çipi yanıltıcı olurdu, gösterme */}
+          {!mission?.endless && (
+          <button
+            className="chip is-btn"
+            style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)" }}
+            onClick={() => {
+              const r = engineRef.current?.exitLockReason() ?? "";
+              if (r) {
+                setExitMsg(r);
+                window.setTimeout(() => setExitMsg(""), 4000);
+              }
+            }}
+            title="Çıkış neden kilitli?"
           >
-            {hud.exitOpen ? "AÇIK" : "KİLİTLİ ⓘ"}
-          </span>
-        </button>
-        {exitHint && (
-          <div className="chip" style={{ borderColor: "rgba(180,220,255,0.6)" }}>
-            <span className="lbl">Kehanet</span>
-            <span className="val" style={{ color: "#bfe0ff" }}>{exitHint}</span>
-          </div>
-        )}
-        {escapeSec && (
-          <div className="chip" style={{ borderColor: "rgba(255,90,90,0.8)" }}>
-            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="bomb" size={13} /> Çöküyor</span>
-            <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
-          </div>
-        )}
-        {soldierState !== "none" && (
-          <div className="chip" style={{ borderColor: soldierState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
-            <span className="lbl">Asker</span>
-            <span className="val" style={{ color: soldierState === "escort" ? "#7dffb0" : "#8be9ff" }}>
-              {soldierState === "escort" ? "yanında (ateş ediyor)" : "zincirini çöz"}
+            <span className="lbl"><Icon name={hud.exitOpen ? "key" : "lock"} size={12} /> Çıkış</span>
+            <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
+              {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
             </span>
-          </div>
-        )}
-        {hud.veil > 0 && (
-          <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
-            <span className="lbl">Görünmez</span>
-            <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
-          </div>
-        )}
-        {mq && !mission && (
-          <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
-            <span className="lbl">Fırsat</span>
-            <span className="val" style={{ color: "#ffd75a" }}>{mq}</span>
-          </div>
-        )}
-        <button
-          className="chip mutebtn"
-          onClick={openHelp}
-          title="Hedef / kontroller / uyarı"
-          style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
-        >
-          <span className="val">?</span>
-        </button>
-        <button
-          className="chip mutebtn"
-          onClick={() => {
-            const m = !sound.muted;
-            sound.setMuted(m);
-            setMuted(m);
-          }}
-          title={muted ? "Sesi aç" : "Sesi kapat"}
-        >
-          <span className="val" style={{ display: "inline-flex" }}><Icon name={muted ? "mute" : "music"} size={16} /></span>
-        </button>
-        <button
-          className="chip mutebtn"
-          onClick={togglePause}
-          title={paused ? "Devam et" : "Duraklat"}
-        >
-          <span className="val">{paused ? "▶" : "⏸"}</span>
-        </button>
+          </button>
+          )}
+          {/* Endless'ta hedef metni zaten "Süre Xs" → üstteki süre çipiyle aynı, tekrar etme */}
+          {mission && !mission.endless && (
+            <div className="chip" style={{ borderColor: "rgba(110,231,255,0.6)" }}>
+              <span className="lbl"><Icon name="target" size={12} /> Görev</span>
+              <span className="val" style={{ color: "#8be9ff" }}>{objective}</span>
+            </div>
+          )}
+          {exitHint && (
+            <div className="chip" style={{ borderColor: "rgba(180,220,255,0.6)" }}>
+              <span className="lbl"><Icon name="map" size={12} /> Kehanet</span>
+              <span className="val" style={{ color: "#bfe0ff" }}>{exitHint}</span>
+            </div>
+          )}
+          {escapeSec && (
+            <div className="chip" style={{ borderColor: "rgba(255,90,90,0.8)" }}>
+              <span className="lbl"><Icon name="bomb" size={12} /> Çöküyor</span>
+              <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
+            </div>
+          )}
+          {soldierState !== "none" && (
+            <div className="chip" style={{ borderColor: soldierState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
+              <span className="lbl"><Icon name="people" size={12} /> Asker</span>
+              <span className="val" style={{ color: soldierState === "escort" ? "#7dffb0" : "#8be9ff" }}>
+                {soldierState === "escort" ? "yanında" : "zincirini çöz"}
+              </span>
+            </div>
+          )}
+          {hud.veil > 0 && (
+            <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
+              <span className="lbl"><Icon name="veil" size={12} /> Görünmez</span>
+              <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
+            </div>
+          )}
+          {mq && !mission && (
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
+              <span className="lbl"><Icon name="flame" size={12} /> Fırsat</span>
+              <span className="val" style={{ color: "#ffd75a" }}>{mq}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Sağ üst: yardım · ses · duraklat (hep yan yana, aynı sırada) */}
+        <div className="hud-actions">
+          <button
+            className="chip mutebtn"
+            onClick={openHelp}
+            title="Hedef / kontroller / uyarı"
+            style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
+          >
+            <Icon name="help" size={17} />
+          </button>
+          <button
+            className="chip mutebtn"
+            onClick={() => {
+              const m = !sound.muted;
+              sound.setMuted(m);
+              setMuted(m);
+            }}
+            title={muted ? "Sesi aç" : "Sesi kapat"}
+          >
+            <Icon name={muted ? "mute" : "music"} size={17} />
+          </button>
+          <button className="chip mutebtn" onClick={togglePause} title={paused ? "Devam et" : "Duraklat"}>
+            <Icon name={paused ? "play" : "pause"} size={17} fill />
+          </button>
+        </div>
       </div>
 
       {/* Oyun-içi envanter — masaüstünde sağ-orta, mobilde ortalanmış. Tıkla=KUŞAN */}

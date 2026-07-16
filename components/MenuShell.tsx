@@ -15,6 +15,7 @@ export default function MenuShell({
   onBack,
   onSettings,
   onFriends,
+  onHelp,
   coins = 0,
   friendsOnline = 0,
   children,
@@ -23,6 +24,7 @@ export default function MenuShell({
   onBack?: () => void;
   onSettings?: () => void;
   onFriends?: () => void;
+  onHelp?: () => void; // Nasıl Oynanır — menüde sağ üstte
   coins?: number;
   friendsOnline?: number;
   children: React.ReactNode;
@@ -343,9 +345,10 @@ export default function MenuShell({
       {/* Sol üst: menüde cüzdan çipi, diğer ekranlarda TEK geri butonu */}
       {menu ? (
         <div className="shell-wallet">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e0a24a" strokeWidth="1.6" aria-hidden="true">
-            <circle cx="12" cy="12" r="8.2" />
-            <path d="M12 7.5v9M9.6 9.6h3.4a1.7 1.7 0 0 1 0 3.4H10a1.7 1.7 0 0 0 0 3.4h3.4" strokeLinecap="round" />
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e0a24a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="8.5" />
+            <circle cx="12" cy="12" r="5.2" />
+            <path d="M9.2 8.6a4.6 4.6 0 0 0-1.4 1.7" />
           </svg>
           {coins}
         </div>
@@ -359,9 +362,39 @@ export default function MenuShell({
         )
       )}
 
-      {/* Sağ üst (yalnız menüde): Tam ekran + Ayarlar + Arkadaşlar */}
+      {/* Sağ üst (yalnız menüde): Nasıl Oynanır + Ayarlar + Arkadaşlar */}
       {menu && (
         <div className="shell-top-right">
+          {onHelp && (
+            <button className="shell-icon" onClick={onHelp} title="Nasıl Oynanır" aria-label="Nasıl Oynanır">
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M9.4 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.4 2.2-2.4 3.7" />
+                <circle cx="12" cy="17" r=".6" fill="currentColor" />
+              </svg>
+            </button>
+          )}
+          <button className="shell-icon" onClick={onSettings} title="Ayarlar" aria-label="Ayarlar">
+            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="3.2" />
+              <path d="M12 2.6l1 2.2a1.4 1.4 0 0 0 1.9.8l2.2-1 1.3 1.3-1 2.2a1.4 1.4 0 0 0 .8 1.9l2.2 1v1.8l-2.2 1a1.4 1.4 0 0 0-.8 1.9l1 2.2-1.3 1.3-2.2-1a1.4 1.4 0 0 0-1.9.8l-1 2.2h-1.8l-1-2.2a1.4 1.4 0 0 0-1.9-.8l-2.2 1-1.3-1.3 1-2.2a1.4 1.4 0 0 0-.8-1.9l-2.2-1v-1.8l2.2-1a1.4 1.4 0 0 0 .8-1.9l-1-2.2 1.3-1.3 2.2 1a1.4 1.4 0 0 0 1.9-.8z" />
+            </svg>
+          </button>
+          <button className="shell-icon" onClick={onFriends} title="Arkadaşlarım" aria-label="Arkadaşlarım" style={{ position: "relative" }}>
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="9" cy="8" r="3.2" />
+              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
+              <circle cx="17" cy="8.5" r="2.4" />
+              <path d="M15.5 14.2A4.6 4.6 0 0 1 20.5 18.5" />
+            </svg>
+            {friendsOnline > 0 && <span className="shell-badge">{friendsOnline}</span>}
+          </button>
+        </div>
+      )}
+
+      {/* Sağ alt (yalnız menüde): Tam ekran */}
+      {menu && (
+        <div className="shell-bottom-right">
           <button
             className="shell-icon"
             onClick={toggleFullscreen}
@@ -377,21 +410,6 @@ export default function MenuShell({
                 <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
               </svg>
             )}
-          </button>
-          <button className="shell-icon" onClick={onSettings} title="Ayarlar" aria-label="Ayarlar">
-            <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="12" cy="12" r="3.2" />
-              <path d="M12 2.6l1 2.2a1.4 1.4 0 0 0 1.9.8l2.2-1 1.3 1.3-1 2.2a1.4 1.4 0 0 0 .8 1.9l2.2 1v1.8l-2.2 1a1.4 1.4 0 0 0-.8 1.9l1 2.2-1.3 1.3-2.2-1a1.4 1.4 0 0 0-1.9.8l-1 2.2h-1.8l-1-2.2a1.4 1.4 0 0 0-1.9-.8l-2.2 1-1.3-1.3 1-2.2a1.4 1.4 0 0 0-.8-1.9l-2.2-1v-1.8l2.2-1a1.4 1.4 0 0 0 .8-1.9l-1-2.2 1.3-1.3 2.2 1a1.4 1.4 0 0 0 1.9-.8z" />
-            </svg>
-          </button>
-          <button className="shell-icon" onClick={onFriends} title="Arkadaşlarım" aria-label="Arkadaşlarım" style={{ position: "relative" }}>
-            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-              <circle cx="9" cy="8" r="3.2" />
-              <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
-              <circle cx="17" cy="8.5" r="2.4" />
-              <path d="M15.5 14.2A4.6 4.6 0 0 1 20.5 18.5" />
-            </svg>
-            {friendsOnline > 0 && <span className="shell-badge">{friendsOnline}</span>}
           </button>
         </div>
       )}

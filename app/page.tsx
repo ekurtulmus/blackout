@@ -175,6 +175,8 @@ export default function Page() {
   const [openSecret, setOpenSecret] = useState<number | null>(null); // popup için
   // Tek kişilik zorluk
   const [spDiff, setSpDiff] = useState<Diff>("orta");
+  // Nasıl Oynanır: düğme kabuğun sağ üstünde (MenuShell), modal MainMenu'de → durum burada
+  const [helpOpen, setHelpOpen] = useState(false);
 
   // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
@@ -576,6 +578,7 @@ export default function Page() {
         onBack={screen === "menu" ? undefined : goBack}
         onSettings={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
         onFriends={() => setScreen("friends")}
+        onHelp={() => setHelpOpen(true)}
         coins={menuCoins}
         friendsOnline={friendsOnline}
       >
@@ -656,13 +659,14 @@ export default function Page() {
               const ts = TIER_STYLE[a.tier];
               return (
                 <div key={a.id} className={"card" + (got ? "" : " is-locked")}>
-                  <div className="card-row">
+                  {/* Başlık ikonun ALTINDA değil YANINDA (tek satır: ikon + ad, sağda zorluk rozeti) */}
+                  <div className="card-head">
                     <div className="item-ico" style={got ? undefined : { color: "var(--ink-dimmer)", background: "rgba(206,186,156,.06)", borderColor: "rgba(206,186,156,.18)" }}>
                       <Icon name={got ? (ACH_ICON[a.id] ?? "trophy") : "lock"} size={22} stroke={1.6} />
                     </div>
+                    <div className="card-t">{a.title}</div>
                     <span className="badge-tier" style={{ color: ts.color }}>{ts.label}</span>
                   </div>
-                  <div className="card-t">{a.title}</div>
                   <div className="card-d">{a.desc}</div>
                   <div className="card-meta">
                     <span className="card-gold"><Icon name="coin" size={13} /> {a.reward}</span>
@@ -714,11 +718,12 @@ export default function Page() {
               const got = journalGot.includes(e.id);
               return (
                 <div key={e.id} className={"card card-strip" + (got ? "" : " is-locked")}>
-                  <div className="card-row">
+                  {/* Roma rakamı + sayfa adı aynı satırda */}
+                  <div className="card-head">
                     <span className="roman">{roman(i + 1)}</span>
+                    <div className="card-t">{got ? e.title : "Kayıp Sayfa"}</div>
                     {!got && <Icon name="lock" size={15} />}
                   </div>
-                  <div className="card-t">{got ? e.title : "Kayıp Sayfa"}</div>
                   <div className="card-d" style={{ fontStyle: "italic" }}>
                     {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
                   </div>
@@ -847,11 +852,14 @@ export default function Page() {
         </div>
         <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,30px)" }}>
           <b style={{ color: "#8be9ff" }}>{arenaResult.wave}. dalgaya</b> ulaştın
-          {rec && <span style={{ color: "#7dffb0" }}> · yeni rekor! 🏆</span>}
+          {rec && <span style={{ color: "#7dffb0" }}> · yeni rekor!</span>}
         </div>
-        <div className="subtitle">En iyi: <b style={{ color: "#7dffb0" }}>{arenaResult.best}. dalga</b></div>
+        <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <Icon name="trophy" size={17} style={{ color: "#7dffb0" }} />
+          En iyi: <b style={{ color: "#7dffb0" }}>{arenaResult.best}. dalga</b>
+        </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="btn btn-primary" onClick={() => playArena(arenaMission)}>↻ Tekrar Dene</button>
+          <button className="btn btn-primary" onClick={() => playArena(arenaMission)}>Tekrar Dene →</button>
           <button className="btn" onClick={() => setScreen("modes")}>← Modlar</button>
         </div>
       </div>
@@ -892,20 +900,38 @@ export default function Page() {
   }
 
   if (screen === "endlessresult" && endlessResult) {
+    // Bu modda AMAÇ uzun dayanmak: süre = skor. Ekran bunu açıkça söylesin —
+    // rekor kırdıysan kutla, kırmadıysan rekora ne kadar kaldığını göster.
     const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
+    const gap = Math.max(0, endlessResult.best - endlessResult.survived);
     return chrome(
       <div className="screen">
-        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
-          DAYANAMADIN
+        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: rec ? "#7dffb0" : "#ff6b6b" }}>
+          {rec ? "YENİ REKOR" : "GECE SENİ YENDİ"}
         </div>
         <div className="subtitle" style={{ color: "#c9b8d0", marginTop: -8 }}>{endlessResult.title}</div>
-        <div className="subtitle" style={{ fontSize: "clamp(20px,5vw,30px)" }}>
-          <b style={{ color: "#8be9ff" }}>{endlessResult.survived} saniye</b> hayatta kaldın
-          {rec && <span style={{ color: "#7dffb0" }}> · yeni rekor! 🏆</span>}
+
+        <div className="subtitle" style={{ opacity: 0.85 }}>
+          Bu modda çıkış yok — tek skorun <b>dayandığın süre</b>. Ne kadar uzun dayanırsan o kadar iyi.
         </div>
-        <div className="subtitle">En iyi: <b style={{ color: "#7dffb0" }}>{endlessResult.best}s</b></div>
+
+        <div className="subtitle" style={{ fontSize: "clamp(26px,7vw,44px)", lineHeight: 1.2 }}>
+          <b style={{ color: rec ? "#7dffb0" : "#8be9ff" }}>{endlessResult.survived} saniye</b>
+        </div>
+        <div className="subtitle" style={{ marginTop: -10, color: "#c9b8d0" }}>dayandın</div>
+
+        <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
+          <Icon name="trophy" size={17} style={{ color: "#7dffb0" }} />
+          Rekorun: <b style={{ color: "#7dffb0" }}>{endlessResult.best}s</b>
+          {rec ? (
+            <span style={{ color: "#7dffb0" }}>· en uzun gecen buydu!</span>
+          ) : (
+            <span style={{ color: "#ff9a3c" }}>· rekoru geçmek için {gap} sn daha dayanmalısın</span>
+          )}
+        </div>
+
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-          <button className="btn btn-primary" onClick={() => playEndless(endlessMission)}>↻ Tekrar Dene</button>
+          <button className="btn btn-primary" onClick={() => playEndless(endlessMission)}>Daha Uzun Dayan →</button>
           <button className="btn" onClick={() => setScreen("modes")}>← Modlar</button>
         </div>
       </div>
@@ -920,7 +946,7 @@ export default function Page() {
           className="title"
           style={{ fontSize: "clamp(30px,8vw,56px)", color: mr.ok ? "#7dffb0" : "#ff6b6b" }}
         >
-          {mr.ok ? "GÖREV TAMAM 🏆" : "BAŞARISIZ"}
+          {mr.ok ? "GÖREV TAMAM" : "BAŞARISIZ"}
         </div>
         <div className="subtitle" style={{ fontSize: "clamp(18px,4.5vw,26px)" }}>
           {mr.title}
@@ -943,7 +969,7 @@ export default function Page() {
           )}
           {!mr.ok && missionIndex != null && (
             <button className="btn btn-primary" onClick={() => playMission(missionIndex)}>
-              ↻ Tekrar Dene
+              Tekrar Dene →
             </button>
           )}
           <button className="btn" onClick={() => setScreen("missions")}>
@@ -971,15 +997,18 @@ export default function Page() {
               const done = cleared.includes(m.id);
               return (
                 <button key={m.id} className="card" onClick={() => setOpenMission(i)}>
-                  <div className="card-row">
+                  {/* Görev no + adı aynı satırda */}
+                  <div className="card-head">
                     <span className="badge-num">{m.id}</span>
+                    <div className="card-t">{m.title}</div>
                     {done && <span className="badge-ok">Tamam</span>}
                   </div>
-                  <div className="card-t">{m.title}</div>
                   <div className="card-d">{m.objectiveHint}</div>
-                  <div className="card-meta">
-                    {missionBest[m.id] ? <span>En iyi {missionBest[m.id]}s</span> : <span>Henüz süre yok</span>}
-                  </div>
+                  {missionBest[m.id] ? (
+                    <div className="card-meta">
+                      <span>En iyi {missionBest[m.id]}s</span>
+                    </div>
+                  ) : null}
                 </button>
               );
             })}
@@ -1087,6 +1116,8 @@ export default function Page() {
         onSecrets={() => setScreen("secrets")}
         continueLabel={rp ? `Bölüm ${rp.level}` : null}
         onContinue={() => rp && play(rp.level, rp.score, rp.lives)}
+        help={helpOpen}
+        onHelpClose={() => setHelpOpen(false)}
       />
       </>
     );
@@ -1210,8 +1241,12 @@ export default function Page() {
             {deadCrushed
               ? <>Süre doldu — tünel üstüne çöktü. Bir canın söndü. Bölüm {level} yeniden başlıyor.</>
               : <>Soğuk eller ensende… bir canın söndü. Bölüm {level} yeniden başlıyor.</>}
-            <br />
-            Kalan can: {"♥".repeat(lives)}
+          </div>
+          <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            Kalan can:
+            {Array.from({ length: Math.max(3, lives) }, (_, i) => (
+              <Icon key={i} name="heart" size={17} fill={i < lives} className={"heart" + (i < lives ? "" : " gone")} />
+            ))}
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn btn-primary" onClick={() => play(level, score, lives)}>
@@ -1235,16 +1270,16 @@ export default function Page() {
           <div className="subtitle">
             Bu koridordan sağ çıktın… ama fısıltılar peşinde. Skor: <b>{score}</b>
           </div>
-          <div className="subtitle" style={{ color: "#ffd75a" }}>
-            🪙 Kazanılan: <b>+{coinInfo.gained} para</b>
+          <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+            <Icon name="coin" size={16} /> Kazanılan: <b>+{coinInfo.gained} altın</b>
             {coinInfo.bonus > 0 && (
               <span style={{ color: "#c9b8d0" }}> (bölüm bonusu +{coinInfo.bonus})</span>
             )}
             {" · "}Cüzdan: <b>{coinInfo.total}</b>
           </div>
           {newAch.length > 0 && (
-            <div className="subtitle" style={{ color: "#ffd75a" }}>
-              🏆 Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+            <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+              <Icon name="trophy" size={16} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
@@ -1257,8 +1292,9 @@ export default function Page() {
             <button
               className="btn"
               onClick={() => { setShopReturn("levelclear"); setScreen("shop"); }}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
             >
-              🛒 Dükkâna Uğra
+              <Icon name="cart" size={16} /> Dükkâna Uğra
             </button>
             <button className="btn" onClick={() => setScreen("menu")}>
               ← Menüye Dön
@@ -1296,12 +1332,12 @@ export default function Page() {
             {TOTAL_LEVELS} bölümün karanlığından da sağ çıktın. Gelinler geride
             kaldı — şimdilik. Final skorun: <b>{score}</b>
           </div>
-          <div className="subtitle" style={{ color: "#ffd75a" }}>
-            🪙 Cüzdan: <b>{coinInfo.total} para</b>
+          <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Icon name="coin" size={16} /> Cüzdan: <b>{coinInfo.total} altın</b>
           </div>
           {newAch.length > 0 && (
-            <div className="subtitle" style={{ color: "#ffd75a" }}>
-              🏆 Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+            <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+              <Icon name="trophy" size={16} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>

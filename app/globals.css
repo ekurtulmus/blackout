@@ -155,6 +155,22 @@ button {
   display: flex;
   gap: 10px;
 }
+
+/* Sağ alt: tam ekran düğmesi (menüde) */
+.shell-bottom-right {
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  z-index: 8;
+  display: flex;
+  gap: 10px;
+}
+@media (max-width: 640px) {
+  .shell-bottom-right {
+    bottom: 14px;
+    right: 14px;
+  }
+}
 /* Cüzdan çipi (yalnız menüde, sol üst) */
 .shell-wallet {
   position: absolute;
@@ -921,6 +937,29 @@ button.card:hover {
   border: 1px solid currentColor;
 }
 .card-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+
+/* Kart başlığı: ikon/rozet + AD aynı satırda (ad artık ikonun altında değil yanında),
+   varsa durum rozeti en sağda. Başarım/Görev/Günlük/Dükkân kartları bunu kullanır. */
+.card-head {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.card-head > .card-t,
+.card-head > .item-name {
+  flex: 1;
+  min-width: 0;
+}
+.card-head > .item-ico,
+.card-head > .badge-num,
+.card-head > .roman,
+.card-head > .badge-tier,
+.card-head > .badge-ok,
+.card-head > svg {
+  flex: none;
+}
+/* KALICI rozeti mutlak konumlu → başlık onun altına girmesin */
+.item-card.is-perm .card-head { padding-right: 58px; }
 /* Roma rakamı (günlük) */
 .roman {
   font-family: "Cinzel", serif;
@@ -1426,7 +1465,9 @@ button.card:hover {
   touch-action: none;
 }
 
-/* --- HUD --- */
+/* --- HUD ---
+   Yapı: .hud (üst şerit) = .hud-info (sol, bilgi çipleri sarar) + .hud-actions (sağ, ? / ses / duraklat).
+   Aksiyonlar hep sağ üstte yan yana kalsın diye ayrı gruptalar (eskiden her butona margin-left:auto vardı). */
 .hud {
   position: fixed;
   top: 0;
@@ -1434,13 +1475,28 @@ button.card:hover {
   right: 0;
   padding: 12px 16px;
   display: flex;
-  align-items: center;
-  gap: 14px;
-  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
   z-index: 10;
   pointer-events: none;
   font-size: 13px;
   background: linear-gradient(180deg, rgba(0, 0, 0, 0.6), transparent);
+}
+
+.hud-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
 }
 
 .chip {
@@ -1454,7 +1510,16 @@ button.card:hover {
   white-space: nowrap;
 }
 
+.chip.is-btn {
+  pointer-events: auto;
+  cursor: pointer;
+  font: inherit;
+}
+
 .chip .lbl {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
   color: var(--muted);
   font-size: 11px;
   text-transform: uppercase;
@@ -1471,26 +1536,22 @@ button.card:hover {
   pointer-events: auto;
   cursor: pointer;
   color: var(--ink);
-  margin-left: auto;
+  padding: 0;
+  width: 38px;
+  height: 34px;
+  justify-content: center;
 }
 
 .mutebtn:hover {
   border-color: rgba(110, 231, 255, 0.5);
+  color: #fff;
 }
 
 /* Dokunmatik cihazlarda HUD butonları daha büyük/kolay basılır + yazılar daha okunaklı */
 @media (pointer: coarse) {
-  .hud {
-    gap: 10px;
-  }
   .mutebtn {
-    min-width: 46px;
-    min-height: 42px;
-    justify-content: center;
-    font-size: 18px;
-  }
-  .mutebtn .val {
-    font-size: 18px;
+    width: 42px;
+    height: 40px;
   }
   /* Mobilde HUD etiketleri soluk kalıp göz yormasın diye belirginleştir */
   .chip .lbl {
@@ -1501,13 +1562,20 @@ button.card:hover {
   }
   /* Mobilde HUD'ı SIKIŞTIR — üstte az yer kaplasın, oyun alanı büyük görünsün */
   .hud {
-    gap: 5px;
+    gap: 6px;
     padding: 7px 9px;
+  }
+  .hud-info,
+  .hud-actions {
+    gap: 5px;
   }
   .chip {
     padding: 3px 7px;
     border-radius: 8px;
     gap: 4px;
+  }
+  .mutebtn {
+    padding: 0;
   }
   .chip .lbl {
     font-size: 8.5px;
@@ -1555,17 +1623,18 @@ button.card:hover {
 
 .lives {
   display: flex;
-  gap: 5px;
+  align-items: center;
+  gap: 3px;
 }
 
+/* Canlar = line-icon kalpler (dolu = kalan can, boş = harcanmış) */
 .heart {
   color: var(--danger);
-  font-size: 16px;
   filter: drop-shadow(0 0 4px rgba(255, 77, 77, 0.5));
 }
 
 .heart.gone {
-  color: rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.22);
   filter: none;
 }
 

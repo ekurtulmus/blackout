@@ -2,12 +2,14 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-14**
+> Son güncelleme: **2026-07-17**
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main, her push→Vercel).
 > Deploy: `git push origin main`. Kullanıcı tercihi: **küçük düzeltmeleri sormadan canlıya al** (commit+push).
 >
 > **NEREDE KALDIK (özet — GÜNCEL):** Ön yüz **tamamen yenilendi** (design handoff), oyun mantığı **değişmedi**.
+> - **HUD (YENİ):** `.hud` = `.hud-info` (sol, bilgi çipleri) + `.hud-actions` (sağ üst, butonlar). Oyun-içi
+>   **emoji YOK** — hepsi `components/Icon.tsx` line-icon. Kart adları ikonun **yanında** (`.card-head`).
 > - **Mimari (ÖNEMLİ):** `components/MenuShell.tsx` = ortak kabuk (labirent canvas + scrim + grain + vinyet).
 >   `page.tsx` içindeki `chrome()` her menü ekranını `<MenuShell>` ile sarar → kökte hep aynı tip döndüğü için React
 >   bileşeni mount'ta tutar → **arka plan ekranlar arası kesintisiz**. Oyun ekranları kabuk KULLANMAZ (`isPlayScreen()`).
@@ -26,6 +28,40 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-17 #9 — HUD düzeni + line-icon temizliği + 9 istek
+`next build` + tsc temiz. Doğrulama: gerçek tarayıcı (dev :3008) + DOM ölçümü (ekran görüntüsü rAF yüzünden alınamıyor).
+- ✅ **Kırmızı alarm kaldırıldı** (`Game.tsx`): kök sebep gerilim (`engine.tension`) bazlı **sürekli** kızıl vinyetti
+  (`rgba(120,0,0,…)`). Artık gerilimde kenarlar KIZARMAZ, **daha da kararır** (`rgba(2,2,3,…)`). Hasar anı kısa
+  kırmızı flaş olarak kaldı ("vuruldum" geri bildirimi). Kaçış bölümündeki kırmızı nabız (süre dolmak üzere)
+  **bilerek durdu** — o bir alarm değil, süreli mekanik.
+- ✅ **HUD yeniden düzenlendi** (`Game.tsx` + `OnlineGame.tsx` + `globals.css`): `.hud` artık
+  **`.hud-info`** (sol, bilgi çipleri) + **`.hud-actions`** (sağ üst, aksiyon butonları) olarak ikiye ayrıldı.
+  Eskiden her butonda `margin-left:auto` vardı → sarınca dağılıyordu. Sıra: SP = **? · ses · duraklat**,
+  online = **? · dükkân · çıkış**. Bilgi çipleri anlamlı sırada: durum (Can+kalpler/Nefes) → kaynak
+  (Mermi/Bariyer/Tuzak/Altın) → bölüm/mod → geçici uyarılar (Kehanet/Çöküyor/Asker/Görünmez/Fırsat) → skor.
+- ✅ **Oyun-içi emoji → line-icon**: HUD'da `?`/`⏸`/`▶`/`⎋`/`♥`/`ⓘ` kalktı. `Icon.tsx`'e **help/play/pause/exit**
+  eklendi. Canlar artık line-icon kalp (dolu/boş). Mini-görev HUD metninden emoji **kaynağında** silindi
+  (`engine.miniQuestText()` + OnlineGame `MQ_DEFS[...].icon`) — çip kendi ikonunu çiziyor. Sonuç ekranlarındaki
+  🪙/🏆/🛒/♥ ve `↻` de line-icon/metne çevrildi.
+- ✅ **Altın ikonu düzeltildi**: eskisi çember + bozuk transform'lu `$` idi ("hiç altına benzemiyor"). Yeni sikke =
+  dış kenar + iç kabartma halkası + parıltı. `Shop.tsx`'in kendi çıplak-çember `Coin`'i ve `MenuShell` cüzdanı
+  da aynı çizime bağlandı (tek kaynak).
+- ✅ **Kart başlıkları ikonun YANINDA**: yeni ortak **`.card-head`** (globals.css) — Başarımlar, Görevler (no+ad),
+  Günlük (roma+ad), Dükkân eşyaları. `.item-card.is-perm .card-head` sağdan dolgulu (KALICI rozeti çakışmıyor).
+- ✅ **Bitmeyen Gece sonucu düzeltildi**: "DAYANAMADIN + X saniye hayatta kaldın" kısa süreyi iyi gibi
+  gösteriyordu. Artık: başlık **YENİ REKOR / GECE SENİ YENDİ**, "bu modda tek skorun dayandığın süre, ne kadar
+  uzun o kadar iyi" açıklaması, dev punto süre, rekor + **"rekoru geçmek için N sn daha dayanmalısın"**,
+  buton "Daha Uzun Dayan →". HUD'da da çip **"Dayandığın süre"** (yeşil) oldu.
+- ✅ **Bitmeyen Gece HUD tekrarı temizlendi**: `objectiveText()` endless'ta zaten "Süre Xs" döndürüyordu →
+  "Görev" çipi süreyle aynıydı, kaldırıldı. O modda **çıkış olmadığı** için "Çıkış: KİLİTLİ" çipi de gizlendi.
+  Sonuç: Can · Nefes · Mermi · Dayandığın süre.
+- ✅ **"Henüz süre yok" kaldırıldı** (Karanlık Görevler): en iyi süre yoksa `.card-meta` hiç basılmıyor.
+- ✅ **Menü chrome**: **Nasıl Oynanır** sağ üste (kabuğun `.shell-top-right` grubuna, Ayarlar/Arkadaşlar ile),
+  **Tam ekran** sağ alta (yeni `.shell-bottom-right`). `.mm-foot` kaldırıldı. Modal hâlâ `MainMenu`'de ama
+  açık/kapalı durumu **page.tsx**'te (`helpOpen`) → `MenuShell onHelp` + `MainMenu help/onHelpClose`.
+- ⚠️ **Not**: `.claude/launch.json` preview aracı 3000'e takılıyor (orada YKS Takip dev sunucusu var);
+  bu oturumda dev sunucu elle **:3008**'de çalıştırıldı.
 
 ## OTURUM 2026-07-14 #8 — Ön yüz cilası + geri döngüsü düzeltmesi (CANLI)
 `next build` + tsc temiz. (commit `a829234`, `2ee4957`, `d0e2ebc`)
@@ -72,6 +108,7 @@ Kural: **oyun mantığı/dinamikleri DEĞİŞMEDİ** (`lib/*`, engine, netcode, 
 - ✅ **Shop çift kullanım**: `standalone` prop — MenuShell içinde çıplak, OnlineGame overlay'inde kendi zemini+kapat.
 - ⏳ KALAN: Lobi'nin tasarımdaki "oyuncu yuvaları / hazır noktaları / boş yuva" detayı (şu an işlevsel ama
   eski iç düzen); sonuç ekranları (dead/levelclear/gameover/win) hâlâ eski `.screen` görünümünde (tasarımda yok).
+  KALAN emoji yüzeyleri (menü dışı, oyun dışı): `OnlineLobby` (🏠/🔑/⚔️/▶/🪙), `Settings`/`Friends` "✓" mesajları.
 - ⚠️ **ÇELİŞKİ (kullanıcı kararı bekliyor)**: Önceki istek "ayarlar her sayfada sağ üstte" idi; tasarım
   "ayarlar YALNIZ menüde" diyor. Şu an **tasarıma uyuldu**.
 
@@ -553,6 +590,7 @@ ses (ateş/toplama/hasar/kapı/ağlama).
   Çözüm işe yaradı: sunucu durdur + `.next` & `node_modules/.cache` sil + dosyayı zorla yeniden yaz + restart.
 
 ## 10) Son commitler (git log)
+- HUD düzeni (bilgi/aksiyon ayrımı) + oyun-içi line-icon + altın ikonu + kart başlıkları + endless sonucu
 - `d0e2ebc` Oyun-içi brifing/duraklat/hazırlık → tasarım dili (geri = sol üst 46px ikon)
 - `2ee4957` Günlüğe sırlar müziği + GERİ DÖNGÜSÜ düzeltmesi + çift geri butonu kaldırıldı
 - `a829234` Serif temizliği (Archivo) + Nasıl Oynanır eski hali + sayfalar büyütüldü + tam ekran butonu

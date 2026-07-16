@@ -37,14 +37,20 @@ export type IconName =
   | "check"
   | "moon"
   | "swarm"
+  | "help"
+  | "play"
+  | "pause"
+  | "exit"
   | "ammo";
 
 // Her ikon: viewBox 0 0 24 24 içinde stroke tabanlı yollar.
 const PATHS: Record<IconName, React.ReactNode> = {
+  // Altın sikke: dış kenar + iç kabartma halkası + tepede parıltı (yazı/simge yok — her boyutta okunur)
   coin: (
     <>
-      <circle cx="12" cy="12" r="8" />
-      <path d="M12 8v8M9.5 9.5h3.2a1.6 1.6 0 0 1 0 3.2H10a1.6 1.6 0 0 0 0 3.2h3.2" transform="scale(0.85) translate(2 1.8)" />
+      <circle cx="12" cy="12" r="8.5" />
+      <circle cx="12" cy="12" r="5.2" />
+      <path d="M9.2 8.6a4.6 4.6 0 0 0-1.4 1.7" />
     </>
   ),
   shield: <path d="M12 3l7 2.5v5.5c0 4.4-3 7.6-7 9-4-1.4-7-4.6-7-9V5.5L12 3z" />,
@@ -188,6 +194,26 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   ammo: <path d="M10 4h4v6l1 3v5a2 2 0 0 1-2 2h-2a2 2 0 0 1-2-2v-5l1-3V4z" />,
+  help: (
+    <>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M9.4 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.4 2.2-2.4 3.7" />
+      <circle cx="12" cy="17" r="0.6" fill="currentColor" />
+    </>
+  ),
+  play: <path d="M8.5 5.5l10 6.5-10 6.5z" />,
+  exit: (
+    <>
+      <path d="M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8" />
+      <path d="M17 8l4 4-4 4M21 12h-9" />
+    </>
+  ),
+  pause: (
+    <>
+      <rect x="8.2" y="5" width="2.8" height="14" rx="1.2" />
+      <rect x="13" y="5" width="2.8" height="14" rx="1.2" />
+    </>
+  ),
 };
 
 export default function Icon({
