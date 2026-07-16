@@ -8,7 +8,12 @@
 > Deploy: `git push origin main`. Kullanıcı tercihi: **küçük düzeltmeleri sormadan canlıya al** (commit+push).
 >
 > **NEREDE KALDIK (özet — GÜNCEL):** Ön yüz **tamamen yenilendi** (design handoff), oyun mantığı **değişmedi**.
-> - **HUD (YENİ):** `.hud` = `.hud-info` (sol, bilgi çipleri) + `.hud-actions` (sağ üst, butonlar). Oyun-içi
+> - **TEMA (YENİ):** Koyu ↔ Aydınlık, `<html data-theme>` + `blackout_theme`. Aydınlık **YALNIZ menü/alt ekranlar**;
+>   `.stage` (oyun) karanlığa sabit. Menü yüzeylerinde **sabit renk yazma** — `globals.css` tokenlarını kullan
+>   (alfa için `rgba(var(--edge-rgb), .2)`). Tema `layout.tsx` head'inde, ilk boyamadan önce uygulanır.
+> - **MÜZİK (YENİ):** `audio.ts` `SCREEN_TRACKS` + page.tsx `SCREEN_MUSIC` — her menü ekranının kendi parçası.
+>   `public/` dosya adları **ASCII** (Vercel/Linux).
+> - **HUD:** `.hud` = `.hud-info` (sol, bilgi çipleri) + `.hud-actions` (sağ üst, butonlar). Oyun-içi
 >   **emoji YOK** — hepsi `components/Icon.tsx` line-icon. Kart adları ikonun **yanında** (`.card-head`).
 > - **Mimari (ÖNEMLİ):** `components/MenuShell.tsx` = ortak kabuk (labirent canvas + scrim + grain + vinyet).
 >   `page.tsx` içindeki `chrome()` her menü ekranını `<MenuShell>` ile sarar → kökte hep aynı tip döndüğü için React
@@ -28,6 +33,40 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-17 #10 — AYDINLIK TEMA + ekran müzikleri (CANLI, commit `6053dec`)
+Kullanıcı `Blackout t.zip` (design_handoff_blackout_theme) verdi — **eski sürüme** dayanıyordu; harfiyen değil
+**uyarlanarak** uygulandı. `next build` + tsc temiz.
+- ✅ **TEMA MİMARİSİ (ÖNEMLİ):** Handoff yeni bir **paralel** değişken seti öneriyordu (`--ink`, `--mut`, `--gold`…)
+  ama projede zaten token seti vardı (`--ink-body`, `--ink-2`…). İkinci set = iki doğruluk kaynağı → **reddedildi**.
+  Bunun yerine aydınlık değerler **mevcut tokenların üstüne** `[data-theme="light"]` ile bağlandı.
+  `globals.css`'te 3 blok: `:root,[data-theme="dark"]` · `[data-theme="light"]` · `.stage`.
+  Alfa için `-rgb` üçlüleri: `rgba(var(--edge-rgb), .2)`. **Menü yüzeylerinde sabit renk YAZMA.**
+- ✅ **`.stage` karanlığa SABİT**: HUD `--panel`/`--ink`/`--border` kullanıyor; aydınlık global override edilince
+  HUD beyazlayıp canvas karanlık kalıyordu. `.stage` tüm tokenları koyu değerlere geri çakar →
+  **aydınlık tema yalnız menü/alt ekranlar**. Oyun canvas'ı fener/sis/görüş üstüne kurulu, aydınlatılamaz.
+  Doğrulandı: html `data-theme=light` iken `.stage` siyah, çipler `rgba(12,16,26,.82)`.
+- ✅ **Canvas `MenuShell`'de dallandırıldı** (handoff `MainMenu` diyordu — kabuk refactor'ünde taşınmıştı).
+  Tema canvas döngüsüne **ref ile** verilir (`lightRef`): `theme`'i effect bağımlılığına koymak labirenti
+  her tema değişiminde sıfırdan kurardı. Renkler README §3 tablosundan.
+- ✅ **FOUC yok**: tema `layout.tsx` `<head>`'de, İLK BOYAMADAN ÖNCE bloklayıcı script ile uygulanır.
+  (Handoff React mount'unda uygulamayı söylüyordu → sayfa bir an koyu açılıp beyaza atlıyordu.)
+- ✅ **Tema düğmesi**: kabuk sağ üst (tema · Nasıl Oynanır · Ayarlar · Arkadaşlar). `blackout_theme` localStorage.
+- ✅ **Koyu tema birebir korundu** (hesaplanan değerlerle doğrulandı). `.mm-eyebrow` #b3aa93 kendi tokenına
+  (`--ink-eyebrow`) alındı — `--ink-dim`e bağlayınca 4 birim kayıyordu.
+- ✅ **EKRAN MÜZİKLERİ**: `audio.ts`'te iki sabit alan (`secretsAudio`/`shopAudio`) yerine **`SCREEN_TRACKS` tablosu**
+  + `screenAudios` Map. Dükkân→`dukkan.mp3` · Başarım→`basarim.mp3` · Görevler→`gorevler.mp3` ·
+  Modlar→`modlar.mp3` · Günlük→`gunluk.mp3` · Sırlar→`sirlar.mp3`. page.tsx'te `SCREEN_MUSIC` eşlemesi.
+  Aynı parça çalarken ekran değişirse **baştan başlamaz**. Yeni müzik eklemek = 2 satır.
+  - ⚠️ **Ölüm Koşusu** eskiden `playScreenMusic("shop")` çağırıyordu → "shop"u dukkan.mp3'e bağlayınca yarışın
+    müziği de sessizce değişecekti. Yarışa **kendi anahtarı** (`race`) verildi, `envanter.mp3` çalmaya devam eder.
+  - ⚠️ **`dükkan.mp3` → `dukkan.mp3`**: dosya adındaki Türkçe karakter URL'de kodlanmak zorunda; Vercel/Linux'ta
+    404 riski. **Kural: public/ dosya adları ASCII.**
+- ✅ **Görevler**: tamamlanmayanlar Başarımlar'daki gibi saydam (ortak `.is-locked`, opacity .55). Doğrulandı.
+- ✅ **Modlar**: başlık ikonun yanında (`.card-head`). Doğrulandı.
+- ⚠️ **DOĞRULANAMAYAN** (panel sınırı — gerçek tarayıcı ister): labirent canvas'ının aydınlık renkleri
+  (panel sayfayı `hidden` tutuyor → **rAF hiç çalışmıyor**, canvas alpha=0 ölçüldü) · müziğin duyulması ·
+  temanın **çalışırken** değiştirilmesi (panel attribute değişiminde stili geçersizleştirmiyor; ilk yüklemede doğru).
 
 ## OTURUM 2026-07-17 #9 — HUD düzeni + line-icon temizliği + 9 istek
 `next build` + tsc temiz. Doğrulama: gerçek tarayıcı (dev :3008) + DOM ölçümü (ekran görüntüsü rAF yüzünden alınamıyor).
@@ -590,7 +629,8 @@ ses (ateş/toplama/hasar/kapı/ağlama).
   Çözüm işe yaradı: sunucu durdur + `.next` & `node_modules/.cache` sil + dosyayı zorla yeniden yaz + restart.
 
 ## 10) Son commitler (git log)
-- HUD düzeni (bilgi/aksiyon ayrımı) + oyun-içi line-icon + altın ikonu + kart başlıkları + endless sonucu
+- `6053dec` Aydınlık tema + ekran müzikleri + görev/mod kart düzeni
+- `066a422` HUD düzeni (bilgi/aksiyon ayrımı) + oyun-içi line-icon + altın ikonu + kart başlıkları + endless sonucu
 - `d0e2ebc` Oyun-içi brifing/duraklat/hazırlık → tasarım dili (geri = sol üst 46px ikon)
 - `2ee4957` Günlüğe sırlar müziği + GERİ DÖNGÜSÜ düzeltmesi + çift geri butonu kaldırıldı
 - `a829234` Serif temizliği (Archivo) + Nasıl Oynanır eski hali + sayfalar büyütüldü + tam ekran butonu
