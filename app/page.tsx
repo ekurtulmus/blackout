@@ -30,6 +30,7 @@ import type { Diff } from "@/lib/engine";
 import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
+import MenuShell from "@/components/MenuShell";
 
 // Tek kişilik (Yalnız Kaçış) ilerleme kaydı — çıkıp tekrar girince kaldığı bölümden devam.
 const SP_PROGRESS_KEY = "blackout_sp_progress";
@@ -95,6 +96,7 @@ type Screen =
   | "endlessplay"
   | "endlessresult"
   | "modes"
+  | "multi"
   | "arenaplay"
   | "arenaresult"
   | "secrets"
@@ -545,24 +547,31 @@ export default function Page() {
     setScreen("menu");
   }
 
-  // Sağ üstte her sayfada AYARLAR (dişli) — oyun/ayarlar ekranlarında gizli.
-  // MainMenu kendi dişlisini çizer; onu da hariç tut.
-  const noFab =
-    screen === "ayarlar" || screen === "menu" || screen === "playing" || screen === "onlinegame" ||
+  // Geri: tek buton (kabukta, sol üst) — geçmiş yığınından bir önceki ekrana döner.
+  const goBack = () => {
+    const prev = backStack.current.pop();
+    poppingRef.current = true;
+    setScreen(prev ?? "menu");
+  };
+
+  // ORTAK KABUK: oyun ekranları hariç TÜM ekranlar MenuShell içinde render edilir.
+  // Kökte hep aynı <MenuShell> tipi döndüğü için React onu mount'ta tutar →
+  // labirent/grain canvas'ı ekranlar arası KESİNTİSİZ akar (tasarım gereği).
+  const isGameScreen =
+    screen === "playing" || screen === "onlinegame" ||
     screen === "missionplay" || screen === "endlessplay" || screen === "arenaplay";
   const chrome = (body: React.ReactNode): React.ReactNode =>
-    noFab ? body : (
-      <>
+    isGameScreen ? body : (
+      <MenuShell
+        menu={screen === "menu"}
+        onBack={screen === "menu" ? undefined : goBack}
+        onSettings={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
+        onFriends={() => setScreen("friends")}
+        coins={menuCoins}
+        friendsOnline={friendsOnline}
+      >
         {body}
-        <button
-          className="topsettings"
-          title="Ayarlar"
-          aria-label="Ayarlar"
-          onClick={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
-        >
-          <Icon name="gear" size={20} />
-        </button>
-      </>
+      </MenuShell>
     );
 
   if (screen === "playing") {
@@ -610,7 +619,7 @@ export default function Page() {
   }
 
   if (screen === "ayarlar") {
-    return <Settings onBack={() => setScreen(settingsReturn)} />;
+    return chrome(<Settings onBack={() => setScreen(settingsReturn)} />);
   }
 
   if (screen === "shop") {
@@ -1111,89 +1120,134 @@ export default function Page() {
   );
 
   if (screen === "menu") {
-    return (
+    const rp = loadSpProgress();
+    return chrome(
       <>
       {inviteBanner}
       <MainMenu
         onSolo={startNewGame}
-        onRace={() => { setPendingJoin(null); setLobbyPublic(false); setLobbyAutoHost(false); setLobbyReturn("menu"); setScreen("lobby"); }}
-        onOnline={() => setScreen("online")}
+        onMulti={() => setScreen("multi")}
         onMissions={() => setScreen("missions")}
         onModes={() => setScreen("modes")}
-        onSecrets={() => setScreen("secrets")}
         onShop={() => { setShopReturn("menu"); setScreen("shop"); }}
         onAchievements={() => setScreen("achievements")}
         onJournal={() => setScreen("journal")}
-        onSettings={() => setScreen("ayarlar")}
-        onFriends={() => setScreen("friends")}
-        friendsOnline={friendsOnline}
-        secrets={unlockedSecrets.length}
-        secretTotal={SECRET_COUNT}
-        coins={menuCoins}
-        ach={achList.length}
-        achTotal={ACHIEVEMENTS.length}
-        journal={journalGot.length}
-        journalTotal={JOURNAL.length}
+        onSecrets={() => setScreen("secrets")}
+        continueLabel={rp ? `Bölüm ${rp.level}` : null}
+        onContinue={() => rp && play(rp.level, rp.score, rp.lives)}
       />
       </>
+    );
+  }
+
+  // ÇOK OYUNCULU — 2 kart (tasarım): Arkadaşlarınla Oyna / Online Odalar
+  if (screen === "multi") {
+    return chrome(
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Çok Oyunculu</div>
+          <h2 className="scr-title">ÖLÜM KOŞUSU</h2>
+          <p className="scr-sub">
+            2–6 kişi aynı karanlığa hapis. Gelinler hepinizin peşinde — ilk kaçan hayatta kalır.
+          </p>
+        </div>
+        <div className="scr-body" style={{ maxWidth: 800 }}>
+          <div className="mm-primaries" style={{ marginTop: 0 }}>
+            <button
+              className="mm-card"
+              onClick={() => { setPendingJoin(null); setLobbyPublic(false); setLobbyAutoHost(false); setLobbyReturn("multi"); setScreen("lobby"); }}
+            >
+              <span className="mm-card-ico">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="8.5" cy="8" r="3" /><circle cx="16.5" cy="9" r="2.4" />
+                  <path d="M3 19a5.5 5.5 0 0 1 11 0M14.5 15a4.5 4.5 0 0 1 6.5 4" />
+                </svg>
+              </span>
+              <span className="mm-card-txt">
+                <span className="mm-card-title">ARKADAŞLARINLA OYNA</span>
+                <span className="mm-card-sub">Oda kur, kodu paylaş · özel oda</span>
+              </span>
+            </button>
+            <button
+              className="mm-card"
+              onClick={() => setScreen("online")}
+            >
+              <span className="mm-card-ico">
+                <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18z" />
+                </svg>
+              </span>
+              <span className="mm-card-txt">
+                <span className="mm-card-title">ONLINE ODALAR</span>
+                <span className="mm-card-sub">Herkese açık odalara katıl</span>
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // TEK KİŞİLİK — brifing / giriş (tasarım)
+  if (screen === "intro") {
+    const rp = loadSpProgress();
+    return chrome(
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Tek Kişilik · Yalnız Kaçış</div>
+          <h2 className="scr-title">{INTRO_TITLE}</h2>
+        </div>
+        <div className="scr-body" style={{ maxWidth: 720 }}>
+          <div className="panel panel-blood" style={{ padding: "22px 24px" }}>
+            {INTRO_LINES.map((line, i) => (
+              <p key={i} className="panel-p" style={{ marginTop: i === 0 ? 0 : 12 }}>{line}</p>
+            ))}
+          </div>
+
+          {/* Zorluk seçici — tek tip 3'lü segment */}
+          <div className="seg-label">Zorluk</div>
+          <div className="seg seg-3">
+            {([
+              { key: "kolay", label: "Kolay", desc: "Az ve yavaş gelin" },
+              { key: "orta", label: "Orta", desc: "Dengeli" },
+              { key: "zor", label: "Zor", desc: "Çok/hızlı gelin, dar görüş" },
+            ] as { key: Diff; label: string; desc: string }[]).map((d) => (
+              <button
+                key={d.key}
+                className={"seg-item" + (spDiff === d.key ? " is-on" : "")}
+                onClick={() => chooseDiff(d.key)}
+              >
+                <span className="seg-item-t">{d.label}</span>
+                <span className="seg-item-d">{d.desc}</span>
+              </button>
+            ))}
+          </div>
+
+          <div className="cta-row">
+            {rp ? (
+              <>
+                <button className="btn-primary-x" onClick={() => play(rp.level, rp.score, rp.lives)}>
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+                  Devam Et · Bölüm {rp.level}
+                </button>
+                <button className="mm-ghost" onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}>
+                  Baştan Başla
+                </button>
+              </>
+            ) : (
+              <button className="btn-primary-x" onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}>
+                Karanlığa Gir →
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
     );
   }
 
   return chrome(
     <div className="screen">
       {inviteBanner}
-
-      {screen === "intro" && (
-        <>
-          <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-          <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-            {INTRO_TITLE}
-          </div>
-          <div className="how" style={{ textAlign: "left", lineHeight: 1.6 }}>
-            {INTRO_LINES.map((line, i) => (
-              <p key={i} style={{ margin: i === 0 ? 0 : "10px 0 0" }}>
-                {line}
-              </p>
-            ))}
-          </div>
-          <div>
-            <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
-              {([
-                { key: "kolay", label: "Kolay", desc: "az/yavaş gelin" },
-                { key: "orta", label: "Orta", desc: "dengeli" },
-                { key: "zor", label: "Zor", desc: "çok/hızlı gelin, dar görüş" },
-              ] as { key: Diff; label: string; desc: string }[]).map((d) => (
-                <button
-                  key={d.key}
-                  className={"btn" + (spDiff === d.key ? " btn-primary" : "")}
-                  onClick={() => chooseDiff(d.key)}
-                  style={{ opacity: spDiff === d.key ? 1 : 0.7 }}
-                >
-                  {d.label}
-                  <span style={{ display: "block", fontSize: 12, opacity: 0.7 }}>{d.desc}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            {(() => {
-              const rp = loadSpProgress();
-              return rp ? (
-                <button className="btn btn-primary" onClick={() => play(rp.level, rp.score, rp.lives)}>
-                  Devam Et → Bölüm {rp.level}
-                </button>
-              ) : null;
-            })()}
-            <button
-              className={"btn" + (loadSpProgress() ? "" : " btn-primary")}
-              onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}
-            >
-              {loadSpProgress() ? "Baştan Başla" : "Karanlığa Gir →"}
-            </button>
-          </div>
-        </>
-      )}
 
       {screen === "dead" && (
         <>
