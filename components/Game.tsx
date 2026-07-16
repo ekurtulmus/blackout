@@ -1564,26 +1564,21 @@ export default function Game({
 
       {helpOpen && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="subtitle" style={{ color: "#ffd75a", letterSpacing: "0.15em" }}>
-            HAZIRLIK
-          </div>
-          {levelNotice ? (
-            <div
-              className="how"
-              style={{ maxWidth: 460, lineHeight: 1.6, fontSize: 17, color: "#ffe9a8", borderColor: "rgba(255,200,90,0.4)" }}
-            >
-              {levelNotice}
+          <div className="scr-eyebrow">Hazırlık</div>
+          <h2 className="scr-title" style={{ fontSize: "clamp(28px,6vw,44px)" }}>BÖLÜM {hud.level}</h2>
+          <div className={"panel" + (levelNotice ? " panel-gold" : "")} style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
+            <p className="panel-p" style={{ fontStyle: "normal", color: levelNotice ? "#ffe9a8" : undefined }}>
+              {levelNotice || "Gelinleri yok et, gizli çıkışı bul. Karanlıkta hızlı ol."}
+            </p>
+            <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.8 }}>
+              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>Kontroller</span>
+              <div style={{ marginTop: 5 }}>
+                WASD/ok hareket · Boşluk ateş · <kbd>Shift</kbd> koş · <kbd>E</kbd> tuzak ·{" "}
+                <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter
+              </div>
             </div>
-          ) : (
-            <div className="how" style={{ maxWidth: 460, lineHeight: 1.6 }}>
-              Gelinleri yok et, gizli çıkışı bul. Karanlıkta hızlı ol.
-            </div>
-          )}
-          <div className="how" style={{ maxWidth: 460, lineHeight: 1.7, fontSize: 13, color: "var(--muted)" }}>
-            <b>Kontroller:</b> WASD/ok hareket · Boşluk ateş · <kbd>Shift</kbd> koş ·{" "}
-            <kbd>E</kbd> tuzak · <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter
           </div>
-          <button className="btn btn-primary" onClick={closeHelp}>
+          <button className="btn-primary-x" onClick={closeHelp}>
             {hud.time > 0.1 ? "Devam →" : "Başla →"}
           </button>
         </div>
@@ -1591,44 +1586,47 @@ export default function Game({
 
       {brief && mission && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.86)" }}>
-          <div className="subtitle" style={{ color: "#8be9ff", letterSpacing: "0.15em" }}>
+          {/* Geri: diğer TÜM ekranlarla aynı — sol üst, 46px, yalnız ok ikonu */}
+          {onQuit && (
+            <button className="shell-icon shell-back" onClick={onQuit} title="Geri" aria-label="Geri">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+          <div className="scr-eyebrow">
             {mission.endless || mission.arena ? "MOD" : `GÖREV ${mission.id}`}
           </div>
-          <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
+          <h2 className="scr-title" style={{ fontSize: "clamp(30px,7vw,52px)" }}>
             {mission.title}
-          </div>
-          <div className="how" style={{ maxWidth: 480, lineHeight: 1.6 }}>
-            {mission.brief}
-            <div style={{ marginTop: 10, color: "#8be9ff" }}>
-              <b>Hedef:</b> {mission.objectiveHint}
+          </h2>
+          <div className="panel panel-blood" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
+            <p className="panel-p" style={{ fontStyle: "normal" }}>{mission.brief}</p>
+            <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 15 }}>
+              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>Hedef</span>
+              <div style={{ marginTop: 5, color: "var(--ink-body)" }}>{mission.objectiveHint}</div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={startMission}>
-              Başla →
-            </button>
-            {onQuit && (
-              <button className="btn" onClick={onQuit} style={{ opacity: 0.7 }}>
-                ← Geri
-              </button>
-            )}
-          </div>
+          <button className="btn-primary-x" onClick={startMission}>Başla →</button>
         </div>
       )}
 
       {paused && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.82)" }}>
-          <div className="big" style={{ color: "#6ee7ff" }}>DURAKLATILDI</div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button className="btn btn-primary" onClick={togglePause}>
-              ▶ Devam Et
+          {/* Geri: sol üst, 46px ikon (tüm ekranlarla aynı) */}
+          {onQuit && (
+            <button className="shell-icon shell-back" onClick={onQuit} title="Geri" aria-label="Geri">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M15 18l-6-6 6-6" />
+              </svg>
             </button>
-            {onQuit && (
-              <button className="btn" onClick={onQuit}>
-                ← Geri
-              </button>
-            )}
-          </div>
+          )}
+          <div className="scr-eyebrow">Ara Verdin</div>
+          <h2 className="scr-title" style={{ fontSize: "clamp(30px,7vw,52px)" }}>DURAKLATILDI</h2>
+          <button className="btn-primary-x" onClick={togglePause}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+            Devam Et
+          </button>
         </div>
       )}
 
