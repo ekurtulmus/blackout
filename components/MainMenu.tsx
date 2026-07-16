@@ -517,6 +517,14 @@ export default function MainMenu({
         {friendsOnline > 0 && <span className="mm-friends-badge">{friendsOnline}</span>}
       </button>
 
+      {/* Sağ üstte ayarlar (dişli) — arkadaş butonunun soluna */}
+      <button className="mm-settings" onClick={onSettings} title="Ayarlar" aria-label="Ayarlar">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="3" />
+          <path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M18.4 5.6l-2.1 2.1M7.7 16.3l-2.1 2.1" />
+        </svg>
+      </button>
+
       <div className="mm-wrap">
         <h1 className="mm-title">
           BLACK<span className="mm-o">O</span>UT
@@ -655,6 +663,8 @@ const MM_CSS = `
 .mm-foot button:hover{color:#e0a24a;background:rgba(224,162,74,.07);border-color:rgba(224,162,74,.42);}
 .mm-friends{position:fixed;top:14px;right:14px;z-index:8;width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(20,15,13,.7);border:1px solid rgba(206,186,156,.28);color:#c9bfa8;cursor:pointer;backdrop-filter:blur(3px);transition:color .2s,border-color .2s,background .2s;}
 .mm-friends:hover{color:#e0a24a;border-color:rgba(224,162,74,.5);background:rgba(30,22,18,.85);}
+.mm-settings{position:fixed;top:14px;right:70px;z-index:8;width:46px;height:46px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:rgba(20,15,13,.7);border:1px solid rgba(206,186,156,.28);color:#c9bfa8;cursor:pointer;backdrop-filter:blur(3px);transition:color .2s,border-color .2s,background .2s;}
+.mm-settings:hover{color:#e0a24a;border-color:rgba(224,162,74,.5);background:rgba(30,22,18,.85);}
 .mm-friends-badge{position:absolute;top:-5px;right:-5px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#2e9e5b;color:#fff;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;font-family:system-ui,sans-serif;box-shadow:0 0 0 2px #0a0807;}
 /* Mobilde buton çerçeveleri daha belirgin + hafif dolgu (göze net görünsün) */
 @media (max-width:640px){

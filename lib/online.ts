@@ -194,7 +194,8 @@ export function generateArenaLevel(themeSeed = 0, playerCount = 2): RaceLevel {
   const onSpawn = (c: Vec) => spawns.some((s) => s.x === c.x && s.y === c.y);
   const cells = shuffle(reach.filter((c) => !onSpawn(c)));
   const ammoN = Math.floor(floors.length * 0.08) + MAX_PLAYERS;
-  const healthN = Math.max(3, Math.floor(floors.length * 0.03));
+  // Arena'da can SEYREK olsun (çok sık bulunmasın)
+  const healthN = Math.max(1, Math.floor(floors.length * 0.012));
   const veilN = Math.max(1, Math.floor(pc / 3));
   const ammo = cells.slice(0, ammoN);
   const health = cells.slice(ammoN, ammoN + healthN);

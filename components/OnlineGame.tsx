@@ -44,8 +44,10 @@ import Icon, { type IconName } from "@/components/Icon";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
-const ARENA_WAVE_MS = 16000; // arena: her ~16 sn'de bir yeni dalga (host gelin ekler)
-const ARENA_WAVE_ADD = 3; // her dalgada eklenen gelin sayısı (kişi başına biraz artar)
+const ARENA_WAVE_MS = 18000; // arena: her ~18 sn'de bir yeni dalga (host gelin ekler; yavaş)
+const ARENA_WAVE_ADD = 2; // her dalgada eklenen gelin (tur numarasıyla yavaşça artar)
+const ARENA_ROUND_MS = 120000; // arena turu 2 dakika
+const ARENA_WIN_POINTS = 5; // 5 tur kazanan maçı alır
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
@@ -64,7 +66,7 @@ const KIND_CODE: Record<BKind, number> = {
   normal: 0, dark: 1, mucus: 2, caller: 3, splitter: 4, climber: 5, queen: 6,
 };
 const CODE_KIND: BKind[] = ["normal", "dark", "mucus", "caller", "splitter", "climber", "queen"];
-type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null };
+type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null; dead?: boolean; rk?: number };
 
 export default function OnlineGame({
   room,
@@ -78,7 +80,7 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false, trap: false });
   const [phase, setPhase] = useState<Phase>("playing");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0, wave: 1, surv: 0 });
+  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0, wave: 1, surv: 0, rk: 0 });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
   const [mqHud, setMqHud] = useState(""); // aktif mini-görev etiketi (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev ödül bildirimi
@@ -100,13 +102,23 @@ export default function OnlineGame({
   const order = info.order; // oyuncu id sırası (seat = index)
   const myColor = SEAT_COLORS[mySeat % SEAT_COLORS.length];
   const nameOf = (seat: number) =>
-    info.names[seat] || (seat === 0 ? "Ev sahibi" : `Oyuncu ${seat + 1}`);
+    (info.names[seat] || "").trim() || `Oyuncu ${seat + 1}`;
 
   // Sen ölünce dükkan askeri gider (yeniden satın alınabilir)
   const loseHiredSoldier = () => {
     soldierPos.current = null;
     const inv = getInventory();
     if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
+  };
+  // Öl → 3 sn ölü yerinde don (anında doğma yok). step() donmayı ve doğmayı yönetir.
+  const die = (now: number) => {
+    if (deadUntil.current > 0) return; // zaten ölü/bekliyor
+    deadUntil.current = now + 3000;
+    hp.current = 0;
+    hurt.current = 0.5;
+    bullets.current = [];
+    loseHiredSoldier();
+    sound.play("gameover");
   };
 
   // Dünya
@@ -151,11 +163,16 @@ export default function OnlineGame({
   // Dükkan askeri (online müttefik): yerel simüle, pos'la yayınlanır (herkes görsün)
   const soldierPos = useRef<Vec | null>(null);
   const soldierFireCd = useRef(0);
-  // Arena: dalga sayacı + hayatta kalma süresi (host dalga ekler; skor = süre)
+  // Arena: dalga sayacı + tur sistemi (2dk tur, en çok gelin öldüren turu kazanır, ilk 5)
   const arenaWave = useRef(1);
   const arenaStartMs = useRef(0);
   const arenaNextWaveAt = useRef(0);
+  const roundEndsAt = useRef(0); // bu turun bitiş anı (ms, performance.now)
+  const roundKills = useRef(0); // bu turda öldürdüğün gelin (tur sonu tally)
+  const roundNum = useRef(1); // kaçıncı tur
+  const [arenaOver, setArenaOver] = useState<{ scores: number[]; winner: number } | null>(null);
   const invulnUntil = useRef(0);
+  const deadUntil = useRef(0); // öldüysen bu ana kadar ölü yerinde donarsın (sonra doğarsın)
   const hurt = useRef(0);
   const hp = useRef(PLAYER_MAX_HP);
   const selfMoving = useRef(false);
@@ -289,11 +306,14 @@ export default function OnlineGame({
     resultPending.current = false;
     sentReach.current = false;
     ready.current = true;
-    // Arena: hayatta kalma süresi + dalga zamanlayıcısını bir kez başlat
+    // Arena: tur sistemi + dalga zamanlayıcısını bir kez başlat (2dk tur, en çok öldüren kazanır)
     if (arenaMode && arenaStartMs.current === 0) {
-      arenaStartMs.current = performance.now();
-      arenaNextWaveAt.current = performance.now() + ARENA_WAVE_MS;
-      arenaWave.current = 1;
+      const t = performance.now();
+      arenaStartMs.current = t;
+      arenaNextWaveAt.current = t + ARENA_WAVE_MS;
+      roundEndsAt.current = t + ARENA_ROUND_MS;
+      arenaWave.current = 1; roundKills.current = 0; roundNum.current = 1;
+      scores.current = order.map(() => 0);
     }
     // Dükkan askeri: sahipsen her bölümde yanında doğar (ölene dek)
     soldierPos.current = getInventory().hiredSoldier ? { ...mySpawn.current } : null;
@@ -391,9 +411,11 @@ export default function OnlineGame({
       setOverlay({ winnerSeat, scores: scores.current.slice() });
     }
     function scheduleLoad(next: RaceLevel) {
-      // 12 sn bekleme: turlar arası dükkândan alışverişe zaman tanır
+      // 12 sn bekleme: turlar arası dükkândan alışverişe zaman tanır. Süre bitince
+      // dükkândaysan bile kapanıp oyuna dönersin (#37).
       window.setTimeout(() => {
         setOverlay(null);
+        setShopOpen(false);
         buildWorld(next);
       }, 12000);
     }
@@ -466,6 +488,7 @@ export default function OnlineGame({
       } else guestBrides.current.delete(id);
       if (local) {
         kills.current++;
+        if (arenaMode) roundKills.current++; // arena: tur skoru (en çok öldüren turu kazanır)
         setCoins(addCoins(COIN_PER_KILL)); // gelin başına para (kişisel, kalıcı cüzdan)
         // Arena'da çıkış YOK — sadece yarışta 1 öldürünce çıkış açılır
         if (!arenaMode && kills.current >= 1 && !exitOpen.current) {
@@ -497,6 +520,8 @@ export default function OnlineGame({
         o.everSeen = true;
         // Dükkan askeri pozisyonu (varsa) — diğer oyuncunun müttefikini çizmek için
         o.sPos = m.sx != null && m.sy != null ? { x: m.sx as number, y: m.sy as number } : null;
+        o.dead = !!m.dead; // ölü/donmuş mu (soluk çiz)
+        o.rk = (m.rk as number) ?? 0; // arena: bu oyuncunun tur öldürmesi (host tally için)
       } else if (m.t === "brides" && !amHost.current) {
         const arr = m.b as [number, number, number, number, number][];
         const map = guestBrides.current;
@@ -542,23 +567,32 @@ export default function OnlineGame({
         // Madde 8: bir oyuncu görünmez oldu/bozuldu → host AI hedeflemesi için sakla
         const seat = m.seat as number;
         veiledUntil.current[seat] = m.on ? performance.now() + TUNING.veilSec * 1000 : 0;
+      } else if (m.t === "round") {
+        // Arena: host yeni tur başlattı (puanlar + kalan süre)
+        scores.current = m.scores as number[];
+        roundKills.current = 0;
+        roundNum.current = (m.roundNum as number) ?? roundNum.current + 1;
+        roundEndsAt.current = performance.now() + ((m.remainMs as number) ?? ARENA_ROUND_MS);
+        deadUntil.current = 0;
+        hp.current = PLAYER_MAX_HP;
+        selfPos.current = { ...mySpawn.current };
+        bullets.current = [];
+        setShopOpen(false); // #37: yeni tur → dükkân kapansın, oyuna dön
+      } else if (m.t === "arenaover") {
+        scores.current = m.scores as number[];
+        resultPending.current = true;
+        setArenaOver({ scores: m.scores as number[], winner: m.winner as number });
       } else if (m.t === "pvphit") {
         // PvP: başka bir oyuncunun mermisi bana isabet etti (atıcı tespit eder, ben hasarı uygularım).
         if (info.pvp && (m.to as number) === mySeat) {
           const now = performance.now();
-          if (now > invulnUntil.current && veilUntil.current <= now && !resultPending.current) {
+          if (now > invulnUntil.current && veilUntil.current <= now && !resultPending.current && deadUntil.current === 0) {
             hp.current -= PVP_DMG;
-            hurt.current = Math.max(hurt.current, 0.4);
+            hurt.current = Math.max(hurt.current, 0.5);
             sound.play("hurt");
-            if (hp.current <= 0) {
-              hp.current = PLAYER_MAX_HP;
-              selfPos.current = { ...mySpawn.current };
-              ammoCount.current = Math.max(ammoCount.current, 1);
-              invulnUntil.current = now + 2000;
-              hurt.current = 0.5;
-              bullets.current = [];
-              loseHiredSoldier();
-            }
+            // vurulan da kan görsün (kendi konumunda sıçrama)
+            bloodStains.current.push({ x: selfPos.current.x, y: selfPos.current.y, r: 0.35 + Math.random() * 0.2, seed: Math.floor(Math.random() * 1000) });
+            if (hp.current <= 0) die(now);
           }
         }
       }
@@ -659,12 +693,26 @@ export default function OnlineGame({
       if (fireCd.current > 0) fireCd.current -= dt;
       if (hurt.current > 0) hurt.current -= dt;
 
-      // hareket (aktif bariyerler duvar gibi engeller)
+      // Ölüm cezası: öldüysen 3 sn ölü yerinde donarsın (hareket/ateş/temas yok), sonra doğarsın.
+      // NOT: host isen gelin simülasyonu (aşağıda) yine çalışır — yalnız KENDİ oyuncun donar.
+      if (deadUntil.current > 0 && now >= deadUntil.current) {
+        deadUntil.current = 0;
+        hp.current = PLAYER_MAX_HP;
+        selfPos.current = { ...mySpawn.current };
+        ammoCount.current = Math.max(ammoCount.current, 1);
+        invulnUntil.current = now + 2000;
+        bullets.current = [];
+      }
+      const frozen = deadUntil.current > 0;
+
+      // hareket (aktif bariyerler duvar gibi engeller) — donmuşken hareket yok
       let mx = 0, my = 0;
-      if (i.up) my -= 1; if (i.down) my += 1; if (i.left) mx -= 1; if (i.right) mx += 1;
+      if (!frozen) {
+        if (i.up) my -= 1; if (i.down) my += 1; if (i.left) mx -= 1; if (i.right) mx += 1;
+      }
       let scl = 1;
       const amag = Math.hypot(i.ax, i.ay);
-      if (amag > 0.18) { mx = i.ax; my = i.ay; scl = Math.min(1, amag); }
+      if (!frozen && amag > 0.18) { mx = i.ax; my = i.ay; scl = Math.min(1, amag); }
       const moving = mx !== 0 || my !== 0;
       selfMoving.current = moving;
       const barrierWall = (bx: number, by: number) => activeBarrier(bx, by, now);
@@ -694,8 +742,8 @@ export default function OnlineGame({
         } else breakTimer.current = 0;
       } else breakTimer.current = 0;
 
-      // ateş
-      if (i.fire && fireCd.current <= 0 && ammoCount.current > 0) {
+      // ateş (donmuşken yok)
+      if (!frozen && i.fire && fireCd.current <= 0 && ammoCount.current > 0) {
         ammoCount.current--;
         fireCd.current = FIRE_COOLDOWN;
         // Madde 8: ateş edersen görünmezlik bozulur
@@ -764,12 +812,13 @@ export default function OnlineGame({
           }
           brideRespawnQueue.current = remain;
         }
-        // Arena: dalga dalga gelin ekle (host-otoriter). Her dalga biraz daha kalabalık.
+        // Arena: dalga dalga gelin ekle (host-otoriter). İLERİKİ TURLARDA daha kalabalık ama YAVAŞ.
         if (arenaMode && now >= arenaNextWaveAt.current) {
           arenaWave.current += 1;
           arenaNextWaveAt.current = now + ARENA_WAVE_MS;
-          const cap = 14 + order.length * 8; // toplam gelin üst sınırı (kontrolden çıkmasın)
-          const add = ARENA_WAVE_ADD + Math.floor(arenaWave.current / 3) + Math.floor(order.length / 2);
+          // Üst sınır tur numarasıyla yavaşça büyür (çok hızlı artmasın)
+          const cap = 10 + order.length * 5 + roundNum.current * 3;
+          const add = ARENA_WAVE_ADD + Math.floor(roundNum.current / 2) + Math.floor(order.length / 2);
           for (let i = 0; i < add; i++) {
             if (hostBrides.current.length >= cap) break;
             const cell = spawnBrideFarOnline();
@@ -784,6 +833,38 @@ export default function OnlineGame({
             });
           }
           sound.play("warn"); // yeni dalga uyarısı
+        }
+
+        // Arena TUR SONU (host): 2 dk dolunca en çok gelin öldüreni belirle → +1 puan.
+        if (arenaMode && !resultPending.current && roundEndsAt.current > 0 && now >= roundEndsAt.current) {
+          const rk: Record<number, number> = { [mySeat]: roundKills.current };
+          for (const o of others.current.values()) rk[o.seat] = o.rk ?? 0;
+          let winner = mySeat, best = -1;
+          for (const seat of Object.keys(rk).map(Number)) {
+            if (rk[seat] > best) { best = rk[seat]; winner = seat; }
+          }
+          const sc = scores.current.slice();
+          sc[winner] = (sc[winner] ?? 0) + 1;
+          scores.current = sc;
+          if (sc[winner] >= ARENA_WIN_POINTS) {
+            room.send({ t: "arenaover", scores: sc, winner });
+            resultPending.current = true;
+            setArenaOver({ scores: sc, winner });
+          } else {
+            roundNum.current += 1;
+            roundKills.current = 0;
+            arenaWave.current = 1;
+            roundEndsAt.current = now + ARENA_ROUND_MS;
+            hostBrides.current = []; // yeni tur temiz başlasın
+            brideRespawnQueue.current = [];
+            // host da kendi oyuncusunu diriltip başlangıca al
+            deadUntil.current = 0;
+            hp.current = PLAYER_MAX_HP;
+            selfPos.current = { ...mySpawn.current };
+            bullets.current = [];
+            setShopOpen(false); // dükkândaysan yeni tur seni oyuna atar (#37)
+            room.send({ t: "round", scores: sc, winner, remainMs: ARENA_ROUND_MS, roundNum: roundNum.current });
+          }
         }
       }
 
@@ -854,6 +935,9 @@ export default function OnlineGame({
               if (Math.hypot(b.pos.x - o.pos.x, b.pos.y - o.pos.y) < PLAYER_RADIUS + 0.14) {
                 b.life = 0; hit = true;
                 room.send({ t: "pvphit", to: o.seat });
+                // Vuran KAN görsün → isabet noktasına kan sıçraması
+                bloodStains.current.push({ x: o.pos.x, y: o.pos.y, r: 0.35 + Math.random() * 0.2, seed: Math.floor(Math.random() * 1000) });
+                sound.play("hurt");
                 break;
               }
             }
@@ -928,7 +1012,7 @@ export default function OnlineGame({
       }
 
       // hasar (dokunulmazlık bittiyse VE görünmez değilken): gelin teması can barını düşürür
-      if (now > invulnUntil.current && veilUntil.current <= now) {
+      if (!frozen && now > invulnUntil.current && veilUntil.current <= now) {
         let touched = false;
         for (const z of brides) {
           if (Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y) < PLAYER_RADIUS + BRIDE_RADIUS) {
@@ -940,15 +1024,7 @@ export default function OnlineGame({
           hp.current -= CONTACT_DPS * dt;
           hurt.current = 0.25;
           sound.play("hurt");
-          if (hp.current <= 0) {
-            hp.current = PLAYER_MAX_HP;
-            selfPos.current = { ...mySpawn.current };
-            ammoCount.current = Math.max(ammoCount.current, 1);
-            invulnUntil.current = now + 2000;
-            hurt.current = 0.5;
-            bullets.current = [];
-            loseHiredSoldier();
-          }
+          if (hp.current <= 0) die(now);
         }
       }
 
@@ -961,14 +1037,7 @@ export default function OnlineGame({
             if (m.x === mc.x && m.y === mc.y) {
               hp.current -= TUNING.mucusDps * dt;
               hurt.current = Math.max(hurt.current, 0.15);
-              if (hp.current <= 0) {
-                hp.current = PLAYER_MAX_HP;
-                selfPos.current = { ...mySpawn.current };
-                ammoCount.current = Math.max(ammoCount.current, 1);
-                invulnUntil.current = now + 2000;
-                hurt.current = 0.5;
-                loseHiredSoldier();
-              }
+              if (hp.current <= 0) die(now);
               break;
             }
           }
@@ -1368,20 +1437,36 @@ export default function OnlineGame({
         const oc = cellOf(o.pos);
         if (vis.get(oc.y * cols + oc.x) === undefined) continue;
         const ox = o.pos.x * TS - camX, oy = o.pos.y * TS - camY;
-        drawPlayer(ctx!, TS, ox, oy, o.dir, T, true, flicker, lvl.visionRadius, { cone: false, ring: SEAT_COLORS[o.seat % SEAT_COLORS.length] });
-        drawNameTag(ox, oy, o.name, SEAT_COLORS[o.seat % SEAT_COLORS.length]);
+        if (o.dead) ctx!.save(), (ctx!.globalAlpha = 0.4); // ölü/donmuş → soluk
+        drawPlayer(ctx!, TS, ox, oy, o.dir, T, !o.dead, flicker, lvl.visionRadius, { cone: false, ring: o.dead ? "#888" : SEAT_COLORS[o.seat % SEAT_COLORS.length] });
+        if (o.dead) ctx!.restore();
+        drawNameTag(ox, oy, o.name, o.dead ? "#999" : SEAT_COLORS[o.seat % SEAT_COLORS.length]);
         // o oyuncunun dükkan askeri (varsa)
         if (o.sPos) drawSoldierMarker(o.sPos.x, o.sPos.y, SEAT_COLORS[o.seat % SEAT_COLORS.length], o.name);
       }
       // kendi dükkan askerin (senin koltuk renginde + ismin)
       if (soldierPos.current) drawSoldierMarker(soldierPos.current.x, soldierPos.current.y, myColor, nameOf(mySeat));
 
-      // kendi (dokunulmazlıkta camgöbeği halka)
+      // kendi (dokunulmazlıkta camgöbeği halka; ölüyken soluk + geri sayım)
       const cx = cssW / 2, cy = cssH / 2;
       const nowSelf = performance.now();
       const invuln = nowSelf < invulnUntil.current;
-      drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfMoving.current, flicker, vEff, invuln ? { ring: "#6ee7ff" } : undefined);
-      drawNameTag(cx, cy, nameOf(mySeat), myColor); // kendi ismin de kafanın üstünde
+      const selfDead = deadUntil.current > nowSelf;
+      if (selfDead) ctx!.save(), (ctx!.globalAlpha = 0.4);
+      drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfDead ? false : selfMoving.current, flicker, vEff, selfDead ? { ring: "#888" } : invuln ? { ring: "#6ee7ff" } : undefined);
+      if (selfDead) ctx!.restore();
+      drawNameTag(cx, cy, nameOf(mySeat), selfDead ? "#999" : myColor); // kendi ismin de kafanın üstünde
+      if (selfDead) {
+        // "öldün — N sn" geri sayımı
+        const sec = Math.max(1, Math.ceil((deadUntil.current - nowSelf) / 1000));
+        ctx!.save();
+        ctx!.fillStyle = "#ff6b6b";
+        ctx!.font = `800 ${Math.round(TS * 0.5)}px 'Cinzel', serif`;
+        ctx!.textAlign = "center";
+        ctx!.shadowColor = "#000"; ctx!.shadowBlur = 6;
+        ctx!.fillText(`ÖLDÜN · ${sec}`, cx, cy - TS * 0.95);
+        ctx!.restore();
+      }
       // Madde 8: görünmezken titreşen tül halkası
       if (veilUntil.current > nowSelf) {
         ctx!.save();
@@ -1499,12 +1584,12 @@ export default function OnlineGame({
         posAcc += dt;
         if (posAcc >= 0.05) {
           posAcc = 0;
-          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null });
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current });
         }
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0, wave: arenaWave.current, surv: arenaMode && arenaStartMs.current ? Math.floor((performance.now() - arenaStartMs.current) / 1000) : 0 });
+          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0, wave: roundNum.current, surv: arenaMode && roundEndsAt.current ? Math.max(0, Math.ceil((roundEndsAt.current - performance.now()) / 1000)) : 0, rk: roundKills.current });
           setMqHud(miniQuest.current && !mqDone.current ? `${MQ_DEFS[miniQuest.current.kind].icon} ${MQ_DEFS[miniQuest.current.kind].hud}` : "");
         }
         render();
@@ -1668,12 +1753,20 @@ export default function OnlineGame({
         {arenaMode ? (
           <>
             <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
-              <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> Dalga</span>
+              <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="swords" size={12} /> Tur</span>
               <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
             </div>
-            <div className="chip">
+            <div className="chip" style={{ borderColor: hud.surv <= 15 ? "rgba(255,90,90,0.7)" : undefined }}>
               <span className="lbl">Süre</span>
-              <span className="val">{hud.surv}s</span>
+              <span className="val" style={{ color: hud.surv <= 15 ? "#ff7a7a" : undefined }}>{Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}</span>
+            </div>
+            <div className="chip">
+              <span className="lbl">Turda</span>
+              <span className="val">{hud.rk} kill</span>
+            </div>
+            <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
+              <span className="lbl">Puanın</span>
+              <span className="val" style={{ color: "#7dffb0" }}>{hud.scores[mySeat] ?? 0}/{ARENA_WIN_POINTS}</span>
             </div>
           </>
         ) : (
@@ -1821,6 +1914,27 @@ export default function OnlineGame({
           <div className="subtitle">Sonraki bölüm ~12 sn içinde — dükkâna uğrayabilirsin.</div>
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
             <Icon name="cart" size={16} /> Dükkâna Uğra ({coins} <Icon name="coin" size={13} />)
+          </button>
+        </div>
+      )}
+
+      {/* Arena maçı bitti — en çok tur kazanan (5) maçı aldı */}
+      {arenaOver && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.9)", zIndex: 30 }}>
+          <div className="big" style={{ color: arenaOver.winner === mySeat ? "#7dffb0" : "#ff6b6b" }}>
+            {arenaOver.winner === mySeat
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>ARENA ŞAMPİYONU SENSİN! <Icon name="trophy" size={28} /></span>
+              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={26} /> {nameOf(arenaOver.winner)} kazandı</span>}
+          </div>
+          <div className="subtitle" style={{ fontSize: "clamp(16px,4vw,24px)", lineHeight: 1.8 }}>
+            {arenaOver.scores.map((s, seat) => (
+              <div key={seat}>
+                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>{nameOf(seat)}</b>: {s} puan
+              </div>
+            ))}
+          </div>
+          <button className="btn btn-primary" onClick={onExit} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            ← Menüye Dön
           </button>
         </div>
       )}

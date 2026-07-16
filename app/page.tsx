@@ -122,6 +122,7 @@ export default function Page() {
   const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [deadCrushed, setDeadCrushed] = useState(false); // ölüm sebebi: çıkış çöktü (mesaj ayrımı)
+  const [settingsReturn, setSettingsReturn] = useState<Screen>("menu"); // ayarlardan çıkınca dönülecek ekran
   const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
   const [achClaimed, setAchClaimed] = useState<string[]>([]); // ödülü alınan başarımlar
   const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
@@ -544,6 +545,26 @@ export default function Page() {
     setScreen("menu");
   }
 
+  // Sağ üstte her sayfada AYARLAR (dişli) — oyun/ayarlar ekranlarında gizli.
+  // MainMenu kendi dişlisini çizer; onu da hariç tut.
+  const noFab =
+    screen === "ayarlar" || screen === "menu" || screen === "playing" || screen === "onlinegame" ||
+    screen === "missionplay" || screen === "endlessplay" || screen === "arenaplay";
+  const chrome = (body: React.ReactNode): React.ReactNode =>
+    noFab ? body : (
+      <>
+        {body}
+        <button
+          className="topsettings"
+          title="Ayarlar"
+          aria-label="Ayarlar"
+          onClick={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
+        >
+          <Icon name="gear" size={20} />
+        </button>
+      </>
+    );
+
   if (screen === "playing") {
     return (
       <Game
@@ -561,7 +582,7 @@ export default function Page() {
   }
 
   if (screen === "lobby") {
-    return (
+    return chrome(
       <OnlineLobby
         onBack={() => { setPendingJoin(null); setScreen(lobbyReturn); }}
         onStarted={handleStarted}
@@ -574,11 +595,11 @@ export default function Page() {
   }
 
   if (screen === "friends") {
-    return <Friends presence={presenceRef.current} onBack={() => setScreen("menu")} />;
+    return chrome(<Friends presence={presenceRef.current} onBack={() => setScreen("menu")} />);
   }
 
   if (screen === "online") {
-    return (
+    return chrome(
       <Online
         presence={presenceRef.current}
         onJoin={(code) => { setPendingJoin(code); setLobbyPublic(true); setLobbyAutoHost(false); setLobbyReturn("online"); setScreen("lobby"); }}
@@ -589,11 +610,11 @@ export default function Page() {
   }
 
   if (screen === "ayarlar") {
-    return <Settings onBack={() => setScreen("menu")} />;
+    return <Settings onBack={() => setScreen(settingsReturn)} />;
   }
 
   if (screen === "shop") {
-    return (
+    return chrome(
       <Shop
         title={shopReturn === "levelclear" ? "BÖLÜM ARASI DÜKKÂN" : "DÜKKÂN"}
         onBack={() => setScreen(shopReturn)}
@@ -602,7 +623,7 @@ export default function Page() {
   }
 
   if (screen === "achievements") {
-    return (
+    return chrome(
       <div className="menuscreen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
@@ -652,7 +673,7 @@ export default function Page() {
   }
 
   if (screen === "journal") {
-    return (
+    return chrome(
       <div className="menuscreen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
@@ -686,7 +707,7 @@ export default function Page() {
   if (screen === "secrets") {
     const all = unlockedSecrets.length >= SECRET_COUNT;
     const sel = openSecret != null ? SECRETS[openSecret] : null;
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
@@ -867,7 +888,7 @@ export default function Page() {
 
   if (screen === "arenaresult" && arenaResult) {
     const rec = arenaResult.wave >= arenaResult.best && arenaResult.wave > 1;
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(28px,7vw,50px)", color: "#ff9a3c" }}>
@@ -894,7 +915,7 @@ export default function Page() {
       { title: "⚔️ Arena", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, ". dalga") },
       { title: "🐝 Sürü Gecesi", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, ". dalga") },
     ];
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>MODLAR</div>
@@ -918,7 +939,7 @@ export default function Page() {
 
   if (screen === "endlessresult" && endlessResult) {
     const rec = endlessResult.survived >= endlessResult.best && endlessResult.survived > 0;
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("modes")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)", color: "#ff9a3c" }}>
@@ -940,7 +961,7 @@ export default function Page() {
 
   if (screen === "missionresult" && missionResult) {
     const mr = missionResult;
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("missions")}>← Geri</button>
         <div
@@ -982,7 +1003,7 @@ export default function Page() {
   }
 
   if (screen === "missions") {
-    return (
+    return chrome(
       <div className="screen">
         <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
         <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
@@ -1118,7 +1139,7 @@ export default function Page() {
     );
   }
 
-  return (
+  return chrome(
     <div className="screen">
       {inviteBanner}
 

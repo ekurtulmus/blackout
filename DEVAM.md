@@ -23,6 +23,27 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #5 — Online/UI paketi (CANLI)
+`next build` + tsc temiz:
+- ✅ **Davet Et**: davet edilince buton kaybolur ("✓ Davet edildi" metni; `invited` kalıcı, timeout kaldırıldı).
+- ✅ **Arkadaş ekle butonu**: sadece **+ ve profil ikonu** (roster "+ Arkadaş" ve Friends "İstek Gönder").
+- ✅ **Roster ismi**: isim varsa isim, yoksa **kod** (`p.name.trim() || p.code`).
+- ✅ **İsim kalıcı + herkeste**: `net.ts` boş isim fallback'i "Oyuncu" DEĞİL **arkadaş kodu** (`this.fcode`);
+  `nameOf` sağlam fallback. Konulan isim (`blackout_name`) değiştirilene dek kalıcı.
+- ✅ **Ayarlar her sayfada sağ üstte**: `.topsettings` (globals.css) + page.tsx `chrome()` sarmalayıcı tüm
+  ekranlara ekler (oyun/menü/ayarlar hariç); menü kendi dişlisini çizer (`.mm-settings`). Ayarlardan çıkınca
+  `settingsReturn` ile geldiği ekrana döner.
+- ✅ **Dükkan zaman aşımı (#37)**: yarışta 12sn bekleme bitince + arena yeni tur başlayınca dükkan kapanır (oyuna at).
+- ✅ **PvP kan**: oyuncu oyuncuyu vurunca isabet + kurban konumunda **kan sıçraması** (`bloodStains`) + ses.
+- ✅ **Arena ROUND sistemi**: **2 dk tur**, **en çok gelin öldüren** turu kazanır (+1 puan), **ilk 5** maçı alır.
+  Host-otoriter tally (herkesin `rk` pos'ta yayınlanır); `{t:round}`/`{t:arenaover}` mesajları. HUD: Tur/Süre(mm:ss)/
+  Turda-kill/Puan. Bitişte şampiyon + puanlar + Menüye Dön. Gelinler tur numarasıyla YAVAŞ artar; **can seyrek**
+  (`generateArenaLevel` healthN ↓).
+- ✅ **Ölüm cezası (#40)**: online ölünce **3 sn ölü yerinde donarsın** (hareket/ateş/temas yok, "ÖLDÜN·N"),
+  sonra doğarsın. `deadUntil` + `die()`; host gelin simülasyonu donmaz. Ölü oyuncular herkeste **soluk** (pos'ta `dead`).
+- ✅ **Arena mobil buton (#41)**: online slot/envanter butonları `right:214`(joystick'e biniyordu)→ ateşin ÜSTÜne
+  (`right:30`) alındı + küçültüldü (60px). Joystick/ateşle çakışmaz.
+
 ## OTURUM 2026-07-14 #4 — Dükkan/menü paketi (CANLI)
 `next build` + tsc temiz:
 - ✅ **Kozmetik kırpma**: fener 4 (crimson/toxic/violet/gold) + görünüm 4 (gold/violet/emerald/crimson).

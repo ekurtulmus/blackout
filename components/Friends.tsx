@@ -103,8 +103,16 @@ export default function Friends({
               maxLength={6}
               style={{ ...inputStyle, flex: 1, minWidth: 140 }}
             />
-            <button className="btn btn-primary" onClick={doAdd} disabled={code.trim().length < 4}>
-              İstek Gönder
+            <button
+              className="btn btn-primary"
+              onClick={doAdd}
+              disabled={code.trim().length < 4}
+              title="Arkadaş ekle"
+              aria-label="Arkadaş ekle"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+            >
+              <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>+</span>
+              <Icon name="people" size={18} />
             </button>
           </div>
         </div>

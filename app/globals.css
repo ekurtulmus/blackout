@@ -266,6 +266,36 @@ button {
     padding: 10px 15px;
   }
 }
+
+/* Sağ üstte sabit AYARLAR (dişli) butonu — her sayfada. topback ile aynı stil dili. */
+.topsettings {
+  position: fixed;
+  top: 14px;
+  right: 14px;
+  z-index: 41;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(180deg, rgba(58, 34, 20, 0.95), rgba(34, 20, 14, 0.95));
+  border: 1.5px solid rgba(224, 162, 74, 0.65);
+  border-radius: 9px;
+  color: #f2d9a8;
+  cursor: pointer;
+  backdrop-filter: blur(3px);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(224, 162, 74, 0.18);
+  transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
+}
+.topsettings:hover {
+  color: #fff;
+  border-color: rgba(224, 162, 74, 0.95);
+  background: linear-gradient(180deg, rgba(80, 46, 26, 0.96), rgba(46, 26, 16, 0.96));
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 22px rgba(224, 162, 74, 0.35);
+}
+.topsettings:active {
+  transform: translateY(1px);
+}
 /* Mobilde başlık, sabit "← Menü" butonunun altına insin (üst üste binmesin) */
 @media (max-width: 640px) {
   .menuscreen {
@@ -310,10 +340,16 @@ button {
     right: 134px;
     bottom: 52px;
   }
-  /* Online'da BARİYER/tuzak düğmeleriyle çakışmasın diye slotu daha sola al */
+  /* Online: slotu SOLA değil (joystick'e biniyordu) ateşin ÜSTÜNE al + küçült */
   .slotbtn.slotbtn-mp {
-    right: 214px;
-    bottom: 44px;
+    right: 30px;
+    bottom: 150px;
+    width: 60px;
+    height: 60px;
+    border-radius: 13px;
+  }
+  .slotbtn.slotbtn-mp .si {
+    font-size: 20px;
   }
 }
 
@@ -343,9 +379,13 @@ button {
     right: 134px;
     bottom: 136px;
   }
+  /* Online: envanteri slotun ÜSTÜne al + küçült (joystick'e binmesin) */
   .invbtn.invbtn-mp {
-    right: 214px;
-    bottom: 128px;
+    right: 30px;
+    bottom: 218px;
+    width: 60px;
+    height: 30px;
+    font-size: 11px;
   }
 }
 

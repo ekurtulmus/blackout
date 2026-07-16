@@ -58,7 +58,9 @@ export class NetRoom {
   constructor(code: string, role: NetRole, name: string) {
     this.code = code.toUpperCase();
     this.role = role;
-    this.name = (name || "").trim() || (role === "host" ? "Ev sahibi" : "Oyuncu");
+    // İsim yoksa "Oyuncu/Ev sahibi" değil ARKADAŞ KODU kullanılır → herkeste tutarlı görünür
+    // ve isim konulmadıysa kod gözükür (isim konulunca kalıcı olarak onunla değişir).
+    this.name = (name || "").trim() || this.fcode;
     this.id = role + "-" + Math.floor(Math.random() * 1e9).toString(36);
   }
 

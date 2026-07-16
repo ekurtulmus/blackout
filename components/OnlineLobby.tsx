@@ -23,6 +23,7 @@ import { randomThemeSeed } from "@/lib/themes";
 import { isOnlineAvailable } from "@/lib/supabaseClient";
 import { getCoins, addCoins } from "@/lib/coins";
 import { getFriends, getMyCode, isSent, type FriendPresence } from "@/lib/friends";
+import Icon from "@/components/Icon";
 
 type Mode = "choose" | "host" | "join";
 
@@ -123,13 +124,20 @@ export default function OnlineLobby({
           const canAdd = !me && !!p.code && p.code !== getMyCode() && !friendCodes.has(p.code);
           return (
             <div key={p.id} className="how" style={{ padding: "8px 12px", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-              <b style={{ flex: 1, textAlign: "left", color: me ? "#6ee7ff" : "#7dffb0" }}>{p.name}{me ? " (sen)" : ""}</b>
+              <b style={{ flex: 1, textAlign: "left", color: me ? "#6ee7ff" : "#7dffb0" }}>{(p.name && p.name.trim()) || p.code || "Oyuncu"}{me ? " (sen)" : ""}</b>
               {canAdd &&
                 (isSent(p.code!) ? (
                   <span style={{ fontSize: 12, color: "#ffd75a" }}>istek ⏳</span>
                 ) : (
-                  <button className="btn" style={{ padding: "4px 10px" }} onClick={() => { presence?.sendRequest(p.code!); setTick((t) => t + 1); }}>
-                    + Arkadaş
+                  <button
+                    className="btn"
+                    style={{ padding: "5px 9px", display: "inline-flex", alignItems: "center", gap: 3 }}
+                    title="Arkadaş ekle"
+                    aria-label="Arkadaş ekle"
+                    onClick={() => { presence?.sendRequest(p.code!); setTick((t) => t + 1); }}
+                  >
+                    <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>+</span>
+                    <Icon name="people" size={16} />
                   </button>
                 ))}
             </div>
@@ -142,8 +150,8 @@ export default function OnlineLobby({
   const [invited, setInvited] = useState<Set<string>>(new Set());
   function inviteFriend(code: string) {
     presence?.invite(code, roomRef.current?.code || "");
+    // Davet edildi → kalıcı (buton kaybolur, tekrar "Davet Et" görünmez)
     setInvited((s) => new Set(s).add(code));
-    window.setTimeout(() => setInvited((s) => { const n = new Set(s); n.delete(code); return n; }), 4000);
   }
 
   // Ayrılırken kanalı kapat — AMA devredildiyse dokunma (OnlineGame kullanıyor)
@@ -355,14 +363,19 @@ export default function OnlineLobby({
                       <div key={f.code} style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ width: 9, height: 9, borderRadius: "50%", background: "#2e9e5b", boxShadow: "0 0 6px #2e9e5b", flex: "none" }} />
                         <span style={{ flex: 1, fontWeight: 700 }}>{f.name}</span>
-                        <button
-                          className={"btn" + (invited.has(f.code) ? "" : " btn-primary")}
-                          style={{ padding: "5px 12px" }}
-                          disabled={invited.has(f.code)}
-                          onClick={() => inviteFriend(f.code)}
-                        >
-                          {invited.has(f.code) ? "✓ Davet edildi" : "Davet Et"}
-                        </button>
+                        {invited.has(f.code) ? (
+                          <span style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <Icon name="check" size={13} /> Davet edildi
+                          </span>
+                        ) : (
+                          <button
+                            className="btn btn-primary"
+                            style={{ padding: "5px 12px" }}
+                            onClick={() => inviteFriend(f.code)}
+                          >
+                            Davet Et
+                          </button>
+                        )}
                       </div>
                     ))}
                   </div>
