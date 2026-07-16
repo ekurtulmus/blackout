@@ -15,7 +15,7 @@ import { getCoins, initStarterCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed, bumpStat, setStatMax, evaluateAll, type AchCtx } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
-import { sound } from "@/lib/audio";
+import { sound, type ScreenTrack } from "@/lib/audio";
 import { randomThemeSeed } from "@/lib/themes";
 import { INTRO_TITLE, INTRO_LINES, flavorForLevel } from "@/lib/story";
 import { MISSIONS, ENDLESS, ARENA, KOR_GECE, HORDE, type Mission } from "@/lib/missions";
@@ -119,6 +119,17 @@ type Screen =
   | "lobby"
   | "onlinegame";
 
+// Kendi müziği olan menü ekranları. Burada OLMAYAN ekranlarda menü müziği kesintisiz sürer.
+// (Oyun ekranları ve Ölüm Koşusu yukarıdaki efektte ayrıca ele alınır.)
+const SCREEN_MUSIC: Partial<Record<Screen, ScreenTrack>> = {
+  shop: "shop",
+  achievements: "achievements",
+  missions: "missions",
+  modes: "modes",
+  journal: "journal",
+  secrets: "secrets",
+};
+
 // (arkadaş sistemi + davet bandı entegre edildi)
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
@@ -177,6 +188,32 @@ export default function Page() {
   const [spDiff, setSpDiff] = useState<Diff>("orta");
   // Nasıl Oynanır: düğme kabuğun sağ üstünde (MenuShell), modal MainMenu'de → durum burada
   const [helpOpen, setHelpOpen] = useState(false);
+
+  // TEMA (Koyu ↔ Aydınlık) — yalnız menü/alt ekranları etkiler; oyun ekranları (.stage)
+  // globals.css'te karanlığa sabitli (fener/sis oynanışı aydınlıkta bozulurdu).
+  // `data-theme` html köküne konur: bileşen sarmalayıcıları kök div'e konanı düşürebiliyor.
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    let saved: "dark" | "light" = "dark";
+    try {
+      saved = (localStorage.getItem("blackout_theme") as "dark" | "light") || "dark";
+    } catch {
+      /* geç */
+    }
+    setTheme(saved);
+    document.documentElement.setAttribute("data-theme", saved);
+  }, []);
+  const toggleTheme = () =>
+    setTheme((t) => {
+      const n = t === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", n);
+      try {
+        localStorage.setItem("blackout_theme", n);
+      } catch {
+        /* geç */
+      }
+      return n;
+    });
 
   // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
@@ -347,21 +384,22 @@ export default function Page() {
       sound.startWhistles();
       return;
     }
-    // Ölüm Koşusu (online): DÜKKÂN müziği (envanter.mp3) çalar + ıslık
+    // Ölüm Koşusu (online): kendi parçası (envanter.mp3) çalar + ıslık
     if (screen === "onlinegame") {
       sound.stopMenuMusic();
-      sound.playScreenMusic("shop");
+      sound.playScreenMusic("race");
       sound.startWhistles();
       return;
     }
     sound.stopWhistles();
-    // Sırlar + Günlük: hikâye ekranları — "sirlar" müziği çalar (menü müziği kısılır)
-    if (screen === "secrets" || screen === "journal") {
+    // Kendi müziği olan ekranlar (SCREEN_MUSIC): menü müziği kısılır, ekranın parçası açılır.
+    const track = SCREEN_MUSIC[screen];
+    if (track) {
       sound.stopMenuMusic();
-      sound.playScreenMusic("secrets");
+      sound.playScreenMusic(track);
       return;
     }
-    // Dükkân + diğer menü ekranları: menü müziği DEVAM eder (dükkânın ayrı müziği yok)
+    // Kendi müziği olmayan ekranlar: menü müziği DEVAM eder
     sound.stopScreenMusic();
     if (audioUnlocked.current) {
       sound.resume();
@@ -579,6 +617,8 @@ export default function Page() {
         onSettings={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
         onFriends={() => setScreen("friends")}
         onHelp={() => setHelpOpen(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
         coins={menuCoins}
         friendsOnline={friendsOnline}
       >
@@ -885,11 +925,12 @@ export default function Page() {
           <div className="grid grid-340">
             {modeList.map((m) => (
               <button key={m.title} className="card" onClick={m.onClick}>
-                <div className="card-row">
+                {/* Mod adı ikonun ALTINDA değil YANINDA (diğer kartlarla aynı düzen) */}
+                <div className="card-head">
                   <div className="item-ico"><Icon name={m.icon} size={22} stroke={1.6} /></div>
+                  <div className="card-t">{m.title}</div>
                   {m.best && <span className="badge-ok">{m.best}</span>}
                 </div>
-                <div className="card-t">{m.title}</div>
                 <div className="card-d">{m.desc}</div>
               </button>
             ))}
@@ -996,7 +1037,8 @@ export default function Page() {
             {MISSIONS.map((m, i) => {
               const done = cleared.includes(m.id);
               return (
-                <button key={m.id} className="card" onClick={() => setOpenMission(i)}>
+                // Tamamlanmamış görev = Başarımlar'daki kilitli rozet gibi hafif saydam
+                <button key={m.id} className={"card" + (done ? "" : " is-locked")} onClick={() => setOpenMission(i)}>
                   {/* Görev no + adı aynı satırda */}
                   <div className="card-head">
                     <span className="badge-num">{m.id}</span>

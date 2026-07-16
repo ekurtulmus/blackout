@@ -23,6 +23,14 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <head>
+        {/* Temayı İLK BOYAMADAN ÖNCE uygula. React mount'unda uygulanırsa sayfa bir an
+            koyu açılıp aydınlığa atlar (FOUC). Bloklayıcı olduğu için tek satır tutuldu. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "try{document.documentElement.setAttribute('data-theme',localStorage.getItem('blackout_theme')||'dark')}catch(e){document.documentElement.setAttribute('data-theme','dark')}",
+          }}
+        />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         {/* Tasarım: Cinzel YALNIZ büyük başlıklarda; diğer her şey Archivo.

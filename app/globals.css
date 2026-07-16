@@ -1,4 +1,12 @@
-:root {
+/* ============================================================================
+   TEMA TOKENLARI  (handoff: design_handoff_blackout_theme)
+   Koyu = varsayılan ve DEĞİŞMEDİ. Aydınlık, `<html data-theme="light">` ile açılır.
+   Kural: menü/alt ekran yüzeyleri BU tokenları kullanır; sabit renk yazma.
+   Alfa gereken yerlerde `-rgb` üçlüleri var: rgba(var(--edge-rgb), .2) gibi.
+   NOT: Oyun ekranları (.stage) temadan ETKİLENMEZ — aşağıda karanlığa sabitlenir.
+   ========================================================================== */
+:root,
+[data-theme="dark"] {
   --bg: #05060a;
   --ink: #e8ecf3;
   --muted: #a7aec0;
@@ -22,7 +30,14 @@
   --ink-2: #a59c86; /* ikincil */
   --ink-dim: #aca287; /* soluk */
   --ink-dimmer: #968b74; /* en soluk */
+  --ink-label: #c9bfa8; /* etiket */
+  --ink-btn: #d7cdb4; /* ikon/buton metni */
+  --ink-narr: #c0b8a6; /* anlatı/hikâye metni (günlük, sır, brifing) */
+  --ink-eyebrow: #b3aa93; /* menü eyebrow */
   --gold-lite: #f2d9a8;
+  --gold-warm: #e8d9b6; /* cüzdan/şerit */
+  --gold-code: #f2d9a8; /* oda kodu */
+  --gold-ico: #e8b98a; /* birincil kart ikonu */
   --copper: #c86b4a; /* eyebrow/etiket */
   --ok-dot: #2e9e5b;
   --ok-text: #7dffb0;
@@ -32,6 +47,125 @@
   --edge: rgba(206, 186, 156, 0.2); /* nötr kenarlık */
   --edge-gold: rgba(224, 162, 74, 0.4);
   --edge-blood: rgba(209, 26, 26, 0.5);
+
+  /* alfa için rgb üçlüleri */
+  --edge-rgb: 206, 186, 156;
+  --edge2-rgb: 120, 110, 95;
+  --gold-rgb: 224, 162, 74;
+  --blood-rgb: 209, 26, 26;
+  --surf-rgb: 22, 16, 14;
+  --surf2-rgb: 12, 9, 8;
+  --panel-rgb: 14, 10, 9;
+  --chip-rgb: 20, 15, 13;
+  --card2a-rgb: 34, 22, 19;
+  --card2b-rgb: 48, 28, 24;
+  --band-rgb: 30, 23, 10;
+  --band2-rgb: 30, 20, 12;
+  --btna-rgb: 70, 22, 20;
+  --btnb-rgb: 30, 12, 11;
+  --ok-rgb: 125, 255, 176;
+  /* kabuk (arka plan katmanları) */
+  --scrim-rgb: 4, 3, 3;
+  --vig1-rgb: 40, 8, 8;
+  --vig2-rgb: 20, 3, 3;
+  --beat: #000; /* vinyet nabzı */
+  --grain-blend: overlay;
+  --grain-op: 0.05;
+}
+
+/* --- AYDINLIK TEMA — yalnız renk override'ı; düzen/JSX aynı --- */
+[data-theme="light"] {
+  --bg: #e9e2d4;
+  --ink: #2b2620;
+  --muted: #524a3c;
+  --panel: rgba(255, 251, 245, 0.82);
+  --border: rgba(74, 60, 44, 0.18);
+  --veil: #2b2620;
+  --ash: #8b8272;
+  --blood: #b01414;
+  --gold: #a9741f;
+  --parch-muted: #5f5647;
+  --parch-border: rgba(120, 100, 78, 0.28);
+
+  --ink-title: #241a12;
+  --ink-body: #2b2620;
+  --ink-2: #524a3c;
+  --ink-dim: #5f5647;
+  --ink-dimmer: #6a6052;
+  --ink-label: #5f5749;
+  --ink-btn: #3a342b;
+  --ink-narr: #4a4236;
+  --ink-eyebrow: #5f5647;
+  --gold-lite: #7a5214;
+  --gold-warm: #6a4f22;
+  --gold-code: #e08a1c;
+  --gold-ico: #9a5a2a;
+  --copper: #b0552f;
+  --ok-dot: #5f8a6b;
+  --ok-text: #6f9a7e;
+
+  --card: linear-gradient(180deg, rgba(255, 251, 245, 0.72), rgba(250, 247, 240, 0.72));
+  --box: rgba(255, 251, 245, 0.6);
+  --edge: rgba(74, 60, 44, 0.2);
+  --edge-gold: rgba(169, 116, 31, 0.4);
+  --edge-blood: rgba(176, 20, 20, 0.5);
+
+  --edge-rgb: 74, 60, 44;
+  --edge2-rgb: 120, 100, 78;
+  --gold-rgb: 169, 116, 31;
+  --blood-rgb: 176, 20, 20;
+  --surf-rgb: 255, 251, 245;
+  --surf2-rgb: 250, 247, 240;
+  --panel-rgb: 255, 251, 245;
+  --chip-rgb: 255, 251, 245;
+  --card2a-rgb: 255, 250, 244;
+  --card2b-rgb: 250, 244, 236;
+  --band-rgb: 245, 236, 214;
+  --band2-rgb: 248, 240, 226;
+  --btna-rgb: 176, 20, 20;
+  --btnb-rgb: 150, 16, 16;
+  --ok-rgb: 143, 179, 155;
+  --scrim-rgb: 238, 232, 222;
+  --vig1-rgb: 120, 60, 40;
+  --vig2-rgb: 90, 44, 30;
+  --beat: rgba(120, 88, 54, 0.18);
+  --grain-blend: multiply;
+  --grain-op: 0.045;
+}
+
+/* OYUN EKRANLARI HER ZAMAN KARANLIK.
+   Aydınlık tema yalnız menü/alt ekranlar içindir: oyun canvas'ı el feneri, sis ve
+   görüş yarıçapı üstüne kurulu — aydınlatılırsa oynanış bozulur. HUD tokenları burada
+   koyu değerlere geri sabitlenir ki `data-theme="light"` iken HUD beyazlamasın. */
+.stage {
+  --ink: #e8ecf3;
+  --muted: #a7aec0;
+  --panel: rgba(12, 16, 26, 0.82);
+  --border: rgba(120, 140, 180, 0.18);
+  --ink-body: #e4ddce;
+  --ink-title: #efe7d6;
+  --ink-2: #a59c86;
+  --ink-dim: #aca287;
+  --ink-dimmer: #968b74;
+  --ink-narr: #c0b8a6;
+  --ink-eyebrow: #b3aa93;
+  --gold: #e0a24a;
+  --gold-lite: #f2d9a8;
+  --gold-ico: #e8b98a;
+  --copper: #c86b4a;
+  --blood: #d11a1a;
+  --ok-text: #7dffb0;
+  --ok-dot: #2e9e5b;
+  --card: linear-gradient(180deg, rgba(22, 16, 14, 0.72), rgba(12, 9, 8, 0.72));
+  --box: rgba(14, 10, 9, 0.6);
+  --edge: rgba(206, 186, 156, 0.2);
+  --edge-rgb: 206, 186, 156;
+  --gold-rgb: 224, 162, 74;
+  --blood-rgb: 209, 26, 26;
+  --surf-rgb: 22, 16, 14;
+  --surf2-rgb: 12, 9, 8;
+  --panel-rgb: 14, 10, 9;
+  --chip-rgb: 20, 15, 13;
 }
 
 * {
@@ -43,7 +177,7 @@
 html,
 body {
   height: 100%;
-  background: #000;
+  background: var(--bg);
   color: var(--ink-body);
   /* Tasarım: gövde fontu Archivo (Cinzel yalnız büyük başlıklarda) */
   font-family: "Archivo", system-ui, "Segoe UI", Roboto, sans-serif;
@@ -87,9 +221,9 @@ button {
   pointer-events: none;
   background: radial-gradient(
     closest-side 52vw 50vh at 50% 44%,
-    rgba(4, 3, 3, 0.92),
-    rgba(4, 3, 3, 0.66) 55%,
-    rgba(4, 3, 3, 0.14) 100%
+    rgba(var(--scrim-rgb), 0.92),
+    rgba(var(--scrim-rgb), 0.66) 55%,
+    rgba(var(--scrim-rgb), 0.14) 100%
   );
 }
 .shell-grain {
@@ -98,8 +232,8 @@ button {
   width: 100%;
   height: 100%;
   z-index: 2;
-  opacity: 0.05;
-  mix-blend-mode: overlay;
+  opacity: var(--grain-op);
+  mix-blend-mode: var(--grain-blend);
   pointer-events: none;
 }
 .shell-vignette {
@@ -107,8 +241,8 @@ button {
   inset: 0;
   z-index: 3;
   pointer-events: none;
-  background: radial-gradient(130% 120% at 50% 50%, transparent 42%, rgba(40, 8, 8, 0.5) 82%, rgba(20, 3, 3, 0.85) 100%);
-  box-shadow: inset 0 0 260px 120px #000;
+  background: radial-gradient(130% 120% at 50% 50%, transparent 42%, rgba(var(--vig1-rgb), 0.5) 82%, rgba(var(--vig2-rgb), 0.85) 100%);
+  box-shadow: inset 0 0 260px 120px var(--beat);
   animation: mm-beat 3.4s ease-in-out infinite;
 }
 /* İçerik: kaydırılabilir, arka plan sabit kalır */
@@ -129,17 +263,17 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(20, 15, 13, 0.66);
-  border: 1px solid rgba(206, 186, 156, 0.28);
-  color: #d7cdb4;
+  background: rgba(var(--chip-rgb), 0.66);
+  border: 1px solid rgba(var(--edge-rgb), 0.28);
+  color: var(--ink-btn);
   cursor: pointer;
   backdrop-filter: blur(3px);
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 .shell-icon:hover {
   color: var(--gold-lite);
-  border-color: rgba(224, 162, 74, 0.55);
-  background: rgba(30, 22, 18, 0.85);
+  border-color: rgba(var(--gold-rgb), 0.55);
+  background: rgba(var(--card2a-rgb), 0.85);
 }
 .shell-back {
   position: absolute;
@@ -182,10 +316,10 @@ button {
   gap: 8px;
   padding: 9px 15px;
   border-radius: 10px;
-  background: rgba(20, 15, 13, 0.66);
-  border: 1px solid rgba(206, 186, 156, 0.24);
+  background: rgba(var(--chip-rgb), 0.66);
+  border: 1px solid rgba(var(--edge-rgb), 0.24);
   backdrop-filter: blur(3px);
-  color: #e8d9b6;
+  color: var(--gold-warm);
   font-weight: 600;
   font-size: 14px;
   letter-spacing: 0.06em;
@@ -205,7 +339,7 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 0 2px #0a0807;
+  box-shadow: 0 0 0 2px rgba(var(--surf2-rgb), 0.9);
 }
 
 /* Tasarım keyframe'leri (kabuk + menü ortak) */
@@ -250,7 +384,7 @@ button {
   font-size: clamp(54px, 8.6vw, 104px);
   letter-spacing: 0.16em;
   color: var(--ink-title);
-  text-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 40px rgba(209, 26, 26, 0.32), 0 0 80px rgba(139, 13, 13, 0.28);
+  text-shadow: 0 0 30px rgba(0, 0, 0, 0.9), 0 0 40px rgba(var(--blood-rgb), 0.32), 0 0 80px rgba(var(--blood-rgb), 0.28);
   line-height: 1;
   white-space: nowrap;
   animation: mm-flicker 7s 1.2s infinite steps(1);
@@ -271,13 +405,13 @@ button {
   margin-top: 22px;
   font-size: 14px;
   letter-spacing: 0.5em;
-  color: #b3aa93;
+  color: var(--ink-eyebrow);
   text-transform: uppercase;
   text-shadow: 0 1px 6px #000;
 }
 .mm-rule { width: 46px; height: 1px; }
-.mm-rule-l { background: linear-gradient(90deg, transparent, rgba(209, 26, 26, 0.55)); }
-.mm-rule-r { background: linear-gradient(90deg, rgba(209, 26, 26, 0.55), transparent); }
+.mm-rule-l { background: linear-gradient(90deg, transparent, rgba(var(--blood-rgb), 0.55)); }
+.mm-rule-r { background: linear-gradient(90deg, rgba(var(--blood-rgb), 0.55), transparent); }
 .mm-lore {
   margin-top: 18px;
   max-width: 620px;
@@ -298,8 +432,8 @@ button {
   gap: 11px;
   padding: 12px 24px;
   border-radius: 10px;
-  background: rgba(224, 162, 74, 0.09);
-  border: 1px solid rgba(224, 162, 74, 0.42);
+  background: rgba(var(--gold-rgb), 0.09);
+  border: 1px solid rgba(var(--gold-rgb), 0.42);
   color: var(--gold-lite);
   font-size: 15px;
   font-weight: 600;
@@ -308,9 +442,9 @@ button {
   transition: all 0.2s;
 }
 .mm-continue:hover {
-  background: rgba(224, 162, 74, 0.16);
-  border-color: rgba(224, 162, 74, 0.7);
-  box-shadow: 0 0 22px rgba(224, 162, 74, 0.18);
+  background: rgba(var(--gold-rgb), 0.16);
+  border-color: rgba(var(--gold-rgb), 0.7);
+  box-shadow: 0 0 22px rgba(var(--gold-rgb), 0.18);
 }
 /* İki eşit birincil kart */
 .mm-primaries {
@@ -328,17 +462,17 @@ button {
   max-width: 100%;
   padding: 20px 24px;
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(34, 22, 19, 0.82), rgba(14, 10, 9, 0.88));
-  border: 1px solid rgba(206, 186, 156, 0.3);
+  background: linear-gradient(180deg, rgba(var(--card2a-rgb), 0.82), rgba(var(--panel-rgb), 0.88));
+  border: 1px solid rgba(var(--edge-rgb), 0.3);
   border-top: 2px solid var(--blood);
   color: var(--ink-title);
   text-align: left;
   transition: transform 0.1s, border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 .mm-card:hover {
-  border-color: rgba(209, 26, 26, 0.6);
-  box-shadow: 0 0 30px rgba(209, 26, 26, 0.2);
-  background: linear-gradient(180deg, rgba(48, 28, 24, 0.86), rgba(20, 12, 11, 0.9));
+  border-color: rgba(var(--blood-rgb), 0.6);
+  box-shadow: 0 0 30px rgba(var(--blood-rgb), 0.2);
+  background: linear-gradient(180deg, rgba(var(--card2b-rgb), 0.86), rgba(var(--card2a-rgb), 0.9));
 }
 .mm-card-ico {
   flex: none;
@@ -348,9 +482,9 @@ button {
   width: 52px;
   height: 52px;
   border-radius: 12px;
-  background: rgba(209, 26, 26, 0.12);
-  border: 1px solid rgba(209, 26, 26, 0.3);
-  color: #e8b98a;
+  background: rgba(var(--blood-rgb), 0.12);
+  border: 1px solid rgba(var(--blood-rgb), 0.3);
+  color: var(--gold-ico);
 }
 .mm-card-txt { display: flex; flex-direction: column; gap: 3px; }
 .mm-card-title { font-size: 20px; font-weight: 700; letter-spacing: 0.1em; }
@@ -373,8 +507,8 @@ button {
   height: 96px;
   border-radius: 12px;
   background: var(--box);
-  border: 1px solid rgba(206, 186, 156, 0.24);
-  color: #c9bfa8;
+  border: 1px solid rgba(var(--edge-rgb), 0.24);
+  color: var(--ink-label);
   transition: all 0.2s;
 }
 .mm-box span {
@@ -384,10 +518,10 @@ button {
   text-transform: uppercase;
 }
 .mm-box:hover {
-  border-color: rgba(224, 162, 74, 0.55);
+  border-color: rgba(var(--gold-rgb), 0.55);
   color: var(--gold-lite);
-  background: rgba(224, 162, 74, 0.07);
-  box-shadow: 0 0 18px rgba(224, 162, 74, 0.12);
+  background: rgba(var(--gold-rgb), 0.07);
+  box-shadow: 0 0 18px rgba(var(--gold-rgb), 0.12);
 }
 .mm-foot { margin-top: 34px; display: flex; align-items: center; gap: 8px; }
 /* Hayalet buton (ikincil eylem) */
@@ -398,8 +532,8 @@ button {
   padding: 11px 22px;
   border-radius: 9px;
   background: transparent;
-  border: 1px solid rgba(206, 186, 156, 0.26);
-  color: #c9bfa8;
+  border: 1px solid rgba(var(--edge-rgb), 0.26);
+  color: var(--ink-label);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.18em;
@@ -408,8 +542,8 @@ button {
 }
 .mm-ghost:hover {
   color: var(--gold-lite);
-  border-color: rgba(224, 162, 74, 0.5);
-  background: rgba(224, 162, 74, 0.06);
+  border-color: rgba(var(--gold-rgb), 0.5);
+  background: rgba(var(--gold-rgb), 0.06);
 }
 /* Modal (Nasıl Oynanır / sır / brifing ortak) */
 .mm-modal {
@@ -427,7 +561,7 @@ button {
   width: min(540px, 100%);
   max-height: 86vh;
   overflow-y: auto;
-  background: linear-gradient(180deg, rgba(22, 16, 14, 0.98), rgba(12, 9, 8, 0.98));
+  background: linear-gradient(180deg, rgba(var(--surf-rgb), 0.98), rgba(var(--surf2-rgb), 0.98));
   border: 1px solid var(--edge);
   border-top: 2px solid var(--blood);
   border-radius: 14px;
@@ -467,9 +601,9 @@ button {
   font-size: 13.5px;
   font-weight: 600;
   letter-spacing: 0.04em;
-  color: #c9bfa8;
-  background: rgba(255, 255, 255, 0.025);
-  border: 1px solid rgba(206, 186, 156, 0.2);
+  color: var(--ink-label);
+  background: rgba(var(--surf-rgb), 0.28);
+  border: 1px solid rgba(var(--edge-rgb), 0.2);
   border-radius: 9px;
   padding: 14px 12px;
   text-align: center;
@@ -478,8 +612,8 @@ button {
 }
 .mm-help-topic:hover {
   color: var(--gold-lite);
-  background: rgba(224, 162, 74, 0.08);
-  border-color: rgba(224, 162, 74, 0.45);
+  background: rgba(var(--gold-rgb), 0.08);
+  border-color: rgba(var(--gold-rgb), 0.45);
 }
 .mm-help-back { align-self: flex-start; margin-bottom: 14px; padding: 8px 14px; letter-spacing: 0.1em; }
 @media (max-width: 420px) { .mm-help-grid { grid-template-columns: 1fr; } }
@@ -488,8 +622,8 @@ button {
   width: 100%;
   padding: 12px;
   border-radius: 10px;
-  background: rgba(224, 162, 74, 0.1);
-  border: 1px solid rgba(224, 162, 74, 0.42);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.42);
   color: var(--gold-lite);
   font-size: 12.5px;
   font-weight: 600;
@@ -497,7 +631,7 @@ button {
   text-transform: uppercase;
   transition: all 0.2s;
 }
-.mm-modal-close:hover { background: rgba(224, 162, 74, 0.18); border-color: rgba(224, 162, 74, 0.7); }
+.mm-modal-close:hover { background: rgba(var(--gold-rgb), 0.18); border-color: rgba(var(--gold-rgb), 0.7); }
 
 /* ==========================================================================
    ORTAK ALT-EKRAN İSKELETİ (.scr) — kabuk içinde, şeffaf zemin
@@ -580,15 +714,15 @@ button {
   padding: 13px 10px;
   border-radius: 11px;
   background: var(--box);
-  border: 1px solid rgba(206, 186, 156, 0.22);
+  border: 1px solid rgba(var(--edge-rgb), 0.22);
   border-top: 2px solid transparent;
-  color: #c9bfa8;
+  color: var(--ink-label);
   transition: all 0.2s;
 }
-.seg-item:hover { border-color: rgba(224, 162, 74, 0.45); color: var(--gold-lite); }
+.seg-item:hover { border-color: rgba(var(--gold-rgb), 0.45); color: var(--gold-lite); }
 .seg-item.is-on {
-  background: rgba(209, 26, 26, 0.1);
-  border-color: rgba(209, 26, 26, 0.45);
+  background: rgba(var(--blood-rgb), 0.1);
+  border-color: rgba(var(--blood-rgb), 0.45);
   border-top: 2px solid var(--blood);
   color: var(--ink-title);
 }
@@ -597,8 +731,8 @@ button {
 .seg-item.is-on .seg-item-d { color: var(--ink-dim); }
 /* Altın vurgulu segment (dükkân sekmeleri) */
 .seg-item.is-gold.is-on {
-  background: rgba(224, 162, 74, 0.1);
-  border-color: rgba(224, 162, 74, 0.5);
+  background: rgba(var(--gold-rgb), 0.1);
+  border-color: rgba(var(--gold-rgb), 0.5);
   border-top: 2px solid var(--gold);
   color: var(--gold-lite);
 }
@@ -617,8 +751,8 @@ button {
   gap: 10px;
   padding: 13px 26px;
   border-radius: 10px;
-  background: linear-gradient(180deg, rgba(70, 22, 20, 0.95), rgba(30, 12, 11, 0.95));
-  border: 1px solid rgba(209, 26, 26, 0.5);
+  background: linear-gradient(180deg, rgba(var(--btna-rgb), 0.95), rgba(var(--btnb-rgb), 0.95));
+  border: 1px solid rgba(var(--blood-rgb), 0.5);
   border-top: 2px solid var(--blood);
   color: #fff;
   font-size: 13.5px;
@@ -628,9 +762,9 @@ button {
   transition: all 0.2s;
 }
 .btn-primary-x:hover {
-  border-color: rgba(209, 26, 26, 0.8);
-  box-shadow: 0 0 26px rgba(209, 26, 26, 0.28);
-  background: linear-gradient(180deg, rgba(96, 30, 26, 0.95), rgba(40, 16, 14, 0.95));
+  border-color: rgba(var(--blood-rgb), 0.8);
+  box-shadow: 0 0 26px rgba(var(--blood-rgb), 0.28);
+  background: linear-gradient(180deg, rgba(var(--btna-rgb), 0.95), rgba(var(--btnb-rgb), 0.95));
 }
 .btn-primary-x:disabled { opacity: 0.45; cursor: not-allowed; box-shadow: none; }
 
@@ -656,7 +790,7 @@ button {
   gap: 9px;
   padding: 11px 18px;
   border-radius: 11px;
-  background: rgba(224, 162, 74, 0.09);
+  background: rgba(var(--gold-rgb), 0.09);
   border: 1px solid var(--edge-gold);
   color: var(--gold-lite);
   font-weight: 700;
@@ -670,19 +804,19 @@ button {
   padding: 11px 20px;
   border-radius: 10px;
   background: var(--box);
-  border: 1px solid rgba(206, 186, 156, 0.22);
+  border: 1px solid rgba(var(--edge-rgb), 0.22);
   border-top: 2px solid transparent;
-  color: #c9bfa8;
+  color: var(--ink-label);
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
   transition: all 0.2s;
 }
-.tab:hover { color: var(--gold-lite); border-color: rgba(224, 162, 74, 0.45); }
+.tab:hover { color: var(--gold-lite); border-color: rgba(var(--gold-rgb), 0.45); }
 .tab.is-on {
-  background: rgba(224, 162, 74, 0.1);
-  border-color: rgba(224, 162, 74, 0.5);
+  background: rgba(var(--gold-rgb), 0.1);
+  border-color: rgba(var(--gold-rgb), 0.5);
   border-top: 2px solid var(--gold);
   color: var(--gold-lite);
 }
@@ -690,8 +824,8 @@ button {
   margin-top: 20px;
   padding: 18px 20px;
   border-radius: 14px;
-  background: linear-gradient(180deg, rgba(30, 23, 10, 0.5), rgba(14, 11, 6, 0.5));
-  border: 1px solid rgba(224, 162, 74, 0.32);
+  background: linear-gradient(180deg, rgba(var(--band-rgb), 0.5), rgba(var(--band2-rgb), 0.5));
+  border: 1px solid rgba(var(--gold-rgb), 0.32);
 }
 .gold-band-t {
   display: flex;
@@ -712,8 +846,8 @@ button {
   gap: 9px;
   padding: 16px 12px;
   border-radius: 11px;
-  background: rgba(224, 162, 74, 0.06);
-  border: 1px solid rgba(224, 162, 74, 0.24);
+  background: rgba(var(--gold-rgb), 0.06);
+  border: 1px solid rgba(var(--gold-rgb), 0.24);
 }
 .gold-pack-n { font-size: 22px; font-weight: 800; color: var(--gold-lite); }
 .gold-pack-tag { font-size: 11px; color: var(--ok-text); height: 16px; }
@@ -721,15 +855,15 @@ button {
   width: 100%;
   padding: 9px;
   border-radius: 8px;
-  background: linear-gradient(180deg, rgba(70, 22, 20, 0.9), rgba(30, 12, 11, 0.9));
-  border: 1px solid rgba(209, 26, 26, 0.45);
+  background: linear-gradient(180deg, rgba(var(--btna-rgb), 0.9), rgba(var(--btnb-rgb), 0.9));
+  border: 1px solid rgba(var(--blood-rgb), 0.45);
   border-top: 2px solid var(--blood);
   color: #fff;
   font-size: 14.5px;
   font-weight: 600;
   transition: all 0.2s;
 }
-.gold-pack-b:hover { box-shadow: 0 0 18px rgba(209, 26, 26, 0.3); }
+.gold-pack-b:hover { box-shadow: 0 0 18px rgba(var(--blood-rgb), 0.3); }
 .inv-strip {
   display: flex;
   flex-wrap: wrap;
@@ -738,8 +872,8 @@ button {
   margin-top: 14px;
   padding: 11px 16px;
   border-radius: 11px;
-  background: rgba(20, 15, 13, 0.55);
-  border: 1px solid rgba(206, 186, 156, 0.18);
+  background: rgba(var(--chip-rgb), 0.55);
+  border: 1px solid rgba(var(--edge-rgb), 0.18);
 }
 .inv-strip-t {
   font-size: 12.5px;
@@ -769,12 +903,12 @@ button {
   gap: 9px;
   padding: 16px;
   border-radius: 12px;
-  background: linear-gradient(180deg, rgba(20, 15, 13, 0.7), rgba(12, 9, 8, 0.7));
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), 0.7), rgba(var(--surf2-rgb), 0.7));
   border: 1px solid var(--edge);
 }
 .item-card.is-perm {
-  background: linear-gradient(180deg, rgba(30, 20, 12, 0.72), rgba(14, 10, 7, 0.72));
-  border-color: rgba(224, 162, 74, 0.28);
+  background: linear-gradient(180deg, rgba(var(--band2-rgb), 0.72), rgba(var(--band2-rgb), 0.72));
+  border-color: rgba(var(--gold-rgb), 0.28);
 }
 .perm-badge {
   position: absolute;
@@ -784,7 +918,7 @@ button {
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--ok-text);
-  border: 1px solid rgba(125, 255, 176, 0.4);
+  border: 1px solid rgba(var(--ok-rgb), 0.4);
   border-radius: 5px;
   padding: 2px 6px;
 }
@@ -795,11 +929,11 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(224, 162, 74, 0.1);
-  border: 1px solid rgba(224, 162, 74, 0.22);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.22);
   color: var(--gold);
 }
-.item-card.is-perm .item-ico { background: rgba(224, 162, 74, 0.14); border-color: rgba(224, 162, 74, 0.3); }
+.item-card.is-perm .item-ico { background: rgba(var(--gold-rgb), 0.14); border-color: rgba(var(--gold-rgb), 0.3); }
 .item-name { font-size: 16.5px; font-weight: 700; color: var(--ink-title); }
 .item-name small { color: var(--ink-2); font-size: 13px; font-weight: 400; }
 .item-desc { font-size: 15px; color: var(--ink-2); line-height: 1.5; flex: 1; }
@@ -811,16 +945,16 @@ button {
   gap: 6px;
   padding: 8px 14px;
   border-radius: 8px;
-  background: rgba(224, 162, 74, 0.1);
-  border: 1px solid rgba(224, 162, 74, 0.38);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.38);
   color: var(--gold-lite);
   font-size: 14px;
   font-weight: 600;
   transition: all 0.2s;
 }
-.buy-btn:hover:not(:disabled) { background: rgba(224, 162, 74, 0.2); border-color: rgba(224, 162, 74, 0.6); }
+.buy-btn:hover:not(:disabled) { background: rgba(var(--gold-rgb), 0.2); border-color: rgba(var(--gold-rgb), 0.6); }
 .buy-btn:disabled { opacity: 0.45; cursor: not-allowed; }
-.buy-btn.is-owned { color: var(--ok-text); border-color: rgba(125, 255, 176, 0.35); background: rgba(125, 255, 176, 0.07); }
+.buy-btn.is-owned { color: var(--ok-text); border-color: rgba(var(--ok-rgb), 0.35); background: rgba(var(--ok-rgb), 0.07); }
 /* Kişiselleştirme swatch */
 .cos-label {
   font-size: 12px;
@@ -841,11 +975,11 @@ button {
   border: 1px solid var(--edge);
   transition: all 0.2s;
 }
-.swatch:hover { border-color: rgba(224, 162, 74, 0.55); }
-.swatch.is-on { border-color: rgba(224, 162, 74, 0.45); }
-.swatch-name { font-size: 12px; color: #cdc3aa; }
+.swatch:hover { border-color: rgba(var(--gold-rgb), 0.55); }
+.swatch.is-on { border-color: rgba(var(--gold-rgb), 0.45); }
+.swatch-name { font-size: 12px; color: var(--ink-label); }
 .swatch.is-on .swatch-name { color: var(--gold-lite); }
-.swatch-meta { font-size: 11px; color: #a89f8a; display: inline-flex; align-items: center; gap: 3px; }
+.swatch-meta { font-size: 11px; color: var(--ink-2); display: inline-flex; align-items: center; gap: 3px; }
 .swatch-sel { font-size: 10.5px; color: var(--ok-text); letter-spacing: 0.06em; }
 .swatch-dot { width: 32px; height: 32px; border-radius: 50%; }
 .swatch-ring { width: 32px; height: 32px; border-radius: 50%; border-width: 4px; border-style: solid; }
@@ -885,8 +1019,8 @@ button {
   transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
 }
 button.card:hover {
-  border-color: rgba(224, 162, 74, 0.5);
-  box-shadow: 0 0 20px rgba(224, 162, 74, 0.12);
+  border-color: rgba(var(--gold-rgb), 0.5);
+  box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.12);
 }
 .card.is-locked { opacity: 0.55; }
 .card-t { font-size: 17px; font-weight: 700; color: var(--ink-title); letter-spacing: 0.02em; }
@@ -912,8 +1046,8 @@ button.card:hover {
   height: 26px;
   padding: 0 7px;
   border-radius: 7px;
-  background: rgba(224, 162, 74, 0.1);
-  border: 1px solid rgba(224, 162, 74, 0.3);
+  background: rgba(var(--gold-rgb), 0.1);
+  border: 1px solid rgba(var(--gold-rgb), 0.3);
   color: var(--gold-lite);
   font-size: 12.5px;
   font-weight: 700;
@@ -923,7 +1057,7 @@ button.card:hover {
   font-weight: 700;
   letter-spacing: 0.1em;
   color: var(--ok-text);
-  border: 1px solid rgba(125, 255, 176, 0.4);
+  border: 1px solid rgba(var(--ok-rgb), 0.4);
   border-radius: 5px;
   padding: 3px 7px;
 }
@@ -975,7 +1109,7 @@ button.card:hover {
   border-radius: 9px;
   overflow: hidden;
   background: #1a1410;
-  border: 1px solid rgba(206, 186, 156, 0.14);
+  border: 1px solid rgba(var(--edge-rgb), 0.14);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -992,8 +1126,8 @@ button.card:hover {
 .field-input {
   width: 100%;
   margin-top: 9px;
-  background: rgba(0, 0, 0, 0.35);
-  border: 1px solid rgba(150, 140, 120, 0.35);
+  background: rgba(var(--surf2-rgb), 0.35);
+  border: 1px solid rgba(var(--edge2-rgb), 0.45);
   border-radius: 9px;
   padding: 11px 13px;
   color: var(--ink-body);
@@ -1002,7 +1136,7 @@ button.card:hover {
   outline: none;
   transition: border-color 0.2s;
 }
-.field-input:focus { border-color: rgba(224, 162, 74, 0.6); }
+.field-input:focus { border-color: rgba(var(--gold-rgb), 0.6); }
 .field-range { width: 100%; margin-top: 10px; accent-color: var(--gold); cursor: pointer; }
 .toggle {
   display: inline-flex;
@@ -1011,7 +1145,7 @@ button.card:hover {
   padding: 8px 15px;
   border-radius: 9px;
   background: var(--box);
-  border: 1px solid rgba(206, 186, 156, 0.24);
+  border: 1px solid rgba(var(--edge-rgb), 0.24);
   color: var(--ink-dimmer);
   font-size: 13px;
   font-weight: 600;
@@ -1019,8 +1153,8 @@ button.card:hover {
   transition: all 0.2s;
 }
 .toggle.is-on {
-  background: rgba(224, 162, 74, 0.1);
-  border-color: rgba(224, 162, 74, 0.5);
+  background: rgba(var(--gold-rgb), 0.1);
+  border-color: rgba(var(--gold-rgb), 0.5);
   color: var(--gold-lite);
 }
 .danger-btn {
@@ -1036,7 +1170,7 @@ button.card:hover {
   text-transform: uppercase;
   transition: all 0.2s;
 }
-.danger-btn:hover { background: rgba(209, 26, 26, 0.12); border-color: #ff6b6b; color: #fff; }
+.danger-btn:hover { background: rgba(var(--blood-rgb), 0.12); border-color: #ff6b6b; color: #fff; }
 .danger-btn.is-solid {
   margin-top: 0;
   background: linear-gradient(180deg, rgba(122, 31, 31, 0.95), rgba(60, 14, 14, 0.95));
@@ -1085,16 +1219,16 @@ button.card:hover {
   /* Menü ile uyumlu sinematik zemin: üstte kanlı parıltı + ağır vinyet */
   background: radial-gradient(
       1000px 520px at 50% -8%,
-      rgba(120, 16, 16, 0.3),
+      rgba(var(--vig1-rgb), 0.3),
       transparent 62%
     ),
     radial-gradient(
       130% 120% at 50% 50%,
       transparent 40%,
-      rgba(40, 8, 8, 0.45) 84%,
-      rgba(12, 3, 3, 0.85) 100%
+      rgba(var(--vig1-rgb), 0.45) 84%,
+      rgba(var(--vig2-rgb), 0.85) 100%
     ),
-    #060404;
+    var(--bg);
   color: var(--veil);
   z-index: 20;
 }
@@ -1112,7 +1246,7 @@ button.card:hover {
   font-size: clamp(44px, 12vw, 96px);
   font-weight: 800;
   letter-spacing: 0.18em;
-  color: #efe7d6;
+  color: var(--ink-title);
   text-shadow: 0 0 26px rgba(150, 12, 12, 0.55), 0 0 6px rgba(180, 20, 20, 0.7),
     2px 2px 2px rgba(0, 0, 0, 0.9);
 }
@@ -1128,7 +1262,7 @@ button.card:hover {
   font-family: "Cinzel", serif;
   font-size: clamp(30px, 8vw, 52px);
   font-weight: 800;
-  color: #efe7d6;
+  color: var(--ink-title);
   letter-spacing: 0.06em;
 }
 
@@ -1148,9 +1282,9 @@ button.card:hover {
 
 .btn:hover {
   color: #fff;
-  border-color: rgba(209, 26, 26, 0.55);
+  border-color: rgba(var(--blood-rgb), 0.55);
   background: linear-gradient(180deg, rgba(48, 26, 24, 0.95), rgba(22, 12, 11, 0.95));
-  box-shadow: 0 0 22px rgba(209, 26, 26, 0.22);
+  box-shadow: 0 0 22px rgba(var(--blood-rgb), 0.22);
 }
 
 .btn:active {
@@ -1158,8 +1292,8 @@ button.card:hover {
 }
 
 .btn-primary {
-  background: linear-gradient(180deg, rgba(70, 22, 20, 0.95), rgba(30, 12, 11, 0.95));
-  border-color: rgba(209, 26, 26, 0.45);
+  background: linear-gradient(180deg, rgba(var(--btna-rgb), 0.95), rgba(var(--btnb-rgb), 0.95));
+  border-color: rgba(var(--blood-rgb), 0.45);
   border-top: 2px solid var(--blood);
   color: #fff;
 }
@@ -1190,7 +1324,7 @@ button.card:hover {
   max-width: 520px;
   background: linear-gradient(180deg, rgba(18, 14, 12, 0.9), rgba(10, 8, 7, 0.9));
   border: 1px solid var(--parch-border);
-  border-top: 2px solid rgba(209, 26, 26, 0.5);
+  border-top: 2px solid rgba(var(--blood-rgb), 0.5);
   border-radius: 8px;
   padding: 18px 22px;
   color: var(--parch-muted);
@@ -1218,14 +1352,14 @@ button.card:hover {
 /* Menü-içi ekranlardaki chip'ler (ör. dükkân cüzdanı) sinematik tema — HUD etkilenmez */
 .screen .chip,
 .menuscreen .chip {
-  background: linear-gradient(180deg, rgba(24, 18, 16, 0.9), rgba(14, 10, 9, 0.9));
+  background: linear-gradient(180deg, rgba(24, 18, 16, 0.9), rgba(var(--panel-rgb), 0.9));
   border: 1px solid var(--parch-border);
   border-radius: 8px;
 }
 /* Menü-içi kartlar için ortak sinematik çerçeve yardımcı sınıfı */
 .card-parch {
   border: 1px solid var(--parch-border) !important;
-  background: linear-gradient(180deg, rgba(20, 15, 13, 0.7), rgba(12, 9, 8, 0.7)) !important;
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), 0.7), rgba(var(--surf2-rgb), 0.7)) !important;
   border-radius: 8px;
 }
 
@@ -1241,16 +1375,16 @@ button.card:hover {
   color: var(--veil);
   background: radial-gradient(
       1000px 520px at 50% -8%,
-      rgba(120, 16, 16, 0.3),
+      rgba(var(--vig1-rgb), 0.3),
       transparent 62%
     ),
     radial-gradient(
       130% 120% at 50% 50%,
       transparent 40%,
-      rgba(40, 8, 8, 0.45) 84%,
-      rgba(12, 3, 3, 0.85) 100%
+      rgba(var(--vig1-rgb), 0.45) 84%,
+      rgba(var(--vig2-rgb), 0.85) 100%
     ),
-    #060404;
+    var(--bg);
   z-index: 20;
 }
 
@@ -1265,9 +1399,9 @@ button.card:hover {
   gap: 7px;
   /* Arka plandan net ayrışsın: sıcak altın çerçeve + koyu dolgu + belirgin gölge */
   background: linear-gradient(180deg, rgba(58, 34, 20, 0.95), rgba(34, 20, 14, 0.95));
-  border: 1.5px solid rgba(224, 162, 74, 0.65);
+  border: 1.5px solid rgba(var(--gold-rgb), 0.65);
   border-radius: 9px;
-  color: #f2d9a8;
+  color: var(--gold-lite);
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.12em;
@@ -1275,14 +1409,14 @@ button.card:hover {
   padding: 11px 18px;
   cursor: pointer;
   backdrop-filter: blur(3px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(224, 162, 74, 0.18);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(var(--gold-rgb), 0.18);
   transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .topback:hover {
   color: #fff;
-  border-color: rgba(224, 162, 74, 0.95);
+  border-color: rgba(var(--gold-rgb), 0.95);
   background: linear-gradient(180deg, rgba(80, 46, 26, 0.96), rgba(46, 26, 16, 0.96));
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 22px rgba(224, 162, 74, 0.35);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 22px rgba(var(--gold-rgb), 0.35);
 }
 .topback:active {
   transform: translateY(1px);
@@ -1306,19 +1440,19 @@ button.card:hover {
   width: 44px;
   height: 44px;
   background: linear-gradient(180deg, rgba(58, 34, 20, 0.95), rgba(34, 20, 14, 0.95));
-  border: 1.5px solid rgba(224, 162, 74, 0.65);
+  border: 1.5px solid rgba(var(--gold-rgb), 0.65);
   border-radius: 9px;
-  color: #f2d9a8;
+  color: var(--gold-lite);
   cursor: pointer;
   backdrop-filter: blur(3px);
-  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(224, 162, 74, 0.18);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.55), 0 0 14px rgba(var(--gold-rgb), 0.18);
   transition: color 0.2s, border-color 0.2s, background 0.2s, box-shadow 0.2s;
 }
 .topsettings:hover {
   color: #fff;
-  border-color: rgba(224, 162, 74, 0.95);
+  border-color: rgba(var(--gold-rgb), 0.95);
   background: linear-gradient(180deg, rgba(80, 46, 26, 0.96), rgba(46, 26, 16, 0.96));
-  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 22px rgba(224, 162, 74, 0.35);
+  box-shadow: 0 4px 22px rgba(0, 0, 0, 0.6), 0 0 22px rgba(var(--gold-rgb), 0.35);
 }
 .topsettings:active {
   transform: translateY(1px);
@@ -1351,8 +1485,8 @@ button.card:hover {
   color: #f0d9a8;
   font-weight: 800;
   background: radial-gradient(circle at 40% 35%, #4a4436, #241f18);
-  border: 1px solid rgba(224, 162, 74, 0.5);
-  box-shadow: 0 0 16px rgba(224, 162, 74, 0.22);
+  border: 1px solid rgba(var(--gold-rgb), 0.5);
+  box-shadow: 0 0 16px rgba(var(--gold-rgb), 0.22);
 }
 .slotbtn .si {
   font-size: 24px;
@@ -1394,9 +1528,9 @@ button.card:hover {
   justify-content: center;
   gap: 6px;
   cursor: pointer;
-  color: #d7cdb4;
-  background: rgba(20, 15, 13, 0.82);
-  border: 1px solid rgba(206, 186, 156, 0.32);
+  color: var(--ink-btn);
+  background: rgba(var(--chip-rgb), 0.82);
+  border: 1px solid rgba(var(--edge-rgb), 0.32);
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.04em;
@@ -1430,9 +1564,9 @@ button.card:hover {
   display: flex;
   flex-direction: column;
   gap: 12px;
-  background: linear-gradient(180deg, rgba(20, 15, 13, 0.98), rgba(10, 8, 7, 0.98));
-  border: 1px solid rgba(120, 110, 95, 0.3);
-  border-top: 2px solid #d11a1a;
+  background: linear-gradient(180deg, rgba(var(--chip-rgb), 0.98), rgba(10, 8, 7, 0.98));
+  border: 1px solid rgba(var(--edge2-rgb), 0.3);
+  border-top: 2px solid var(--blood);
   border-radius: 10px;
   padding: 18px;
   min-width: min(320px, 88vw);

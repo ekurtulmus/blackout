@@ -16,6 +16,8 @@ export default function MenuShell({
   onSettings,
   onFriends,
   onHelp,
+  theme = "dark",
+  onToggleTheme,
   coins = 0,
   friendsOnline = 0,
   children,
@@ -25,12 +27,18 @@ export default function MenuShell({
   onSettings?: () => void;
   onFriends?: () => void;
   onHelp?: () => void; // Nasıl Oynanır — menüde sağ üstte
+  theme?: "dark" | "light"; // labirent canvas'ı renklerini dallandırmak için
+  onToggleTheme?: () => void;
   coins?: number;
   friendsOnline?: number;
   children: React.ReactNode;
 }) {
   const gameRef = useRef<HTMLCanvasElement | null>(null);
   const grainRef = useRef<HTMLCanvasElement | null>(null);
+  // Tema, canvas döngüsüne REF ile verilir: döngü mount'ta bir kez kurulur (bağımlılık []),
+  // theme'i bağımlılığa eklemek labirenti her tema değişiminde sıfırdan kurardı.
+  const lightRef = useRef(theme === "light");
+  lightRef.current = theme === "light";
 
   // --- Tam ekran (oyunu tam ekran oyna) ---
   const [isFs, setIsFs] = useState(false);
@@ -222,18 +230,19 @@ export default function MenuShell({
     }
 
     function drawBride(b: { x: number; y: number }, br: number) {
+      const L = lightRef.current; // aydınlık temada gelinler kızıl (beyaz zeminde beyaz gövde kaybolurdu)
       const s = TS * 0.5;
       g!.save();
       g!.translate(b.x, b.y);
       g!.globalAlpha = Math.min(1, br * 1.3);
-      g!.fillStyle = "#d9d2c4";
+      g!.fillStyle = L ? "#8f2b2b" : "#d9d2c4";
       g!.beginPath();
       g!.moveTo(-s * 0.42, s * 0.5);
       g!.quadraticCurveTo(-s * 0.5, -s * 0.45, 0, -s * 0.55);
       g!.quadraticCurveTo(s * 0.5, -s * 0.45, s * 0.42, s * 0.5);
       g!.closePath();
       g!.fill();
-      g!.fillStyle = "#efe9dc";
+      g!.fillStyle = L ? "#b25a5a" : "#efe9dc";
       g!.beginPath();
       g!.arc(0, -s * 0.42, s * 0.26, 0, 7);
       g!.fill();
@@ -252,12 +261,21 @@ export default function MenuShell({
     }
 
     function render() {
-      g!.fillStyle = "#000";
+      // Tema ref'ten okunur: canvas döngüsü mount'ta bir kez kuruluyor (bağımlılık []),
+      // temayı bağımlılığa eklersek labirent her geçişte sıfırdan kurulur.
+      const L = lightRef.current;
+      g!.fillStyle = L ? "#e7dfce" : "#000";
       g!.fillRect(0, 0, cv!.width, cv!.height);
       const cone = g!.createRadialGradient(px, py, 4, px, py, R * TS);
-      cone.addColorStop(0, "rgba(120,105,80,.20)");
-      cone.addColorStop(0.5, "rgba(70,60,45,.10)");
-      cone.addColorStop(1, "rgba(0,0,0,0)");
+      if (L) {
+        cone.addColorStop(0, "rgba(170,135,80,.20)");
+        cone.addColorStop(0.5, "rgba(170,140,95,.09)");
+        cone.addColorStop(1, "rgba(170,140,95,0)");
+      } else {
+        cone.addColorStop(0, "rgba(120,105,80,.20)");
+        cone.addColorStop(0.5, "rgba(70,60,45,.10)");
+        cone.addColorStop(1, "rgba(0,0,0,0)");
+      }
       for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS; c++) {
         const wx = c * TS + TS / 2, wy = r * TS + TS / 2;
         const b = bright(wx, wy);
@@ -266,28 +284,37 @@ export default function MenuShell({
         const vis = Math.max(b, seen[i] * 0.2);
         if (vis < 0.02) continue;
         if (grid[i]) {
-          const base = vis;
-          const rr = Math.floor(74 * base + 8), gg = Math.floor(60 * base + 6), bb = Math.floor(46 * base + 5);
-          g!.fillStyle = `rgb(${rr},${gg},${bb})`;
+          // Zemin (yürünen): koyuda ışıkla AÇILIR, aydınlıkta ışıkla KOYULAŞIR (ters bağıntı)
+          if (L) {
+            g!.fillStyle = `rgb(${Math.floor(222 - 58 * vis)},${Math.floor(210 - 64 * vis)},${Math.floor(188 - 74 * vis)})`;
+          } else {
+            const base = vis;
+            const rr = Math.floor(74 * base + 8), gg = Math.floor(60 * base + 6), bb = Math.floor(46 * base + 5);
+            g!.fillStyle = `rgb(${rr},${gg},${bb})`;
+          }
         } else {
-          const base = vis * 0.5;
-          const v = Math.floor(34 * base + 4);
-          g!.fillStyle = `rgb(${v + 4},${v + 3},${v})`;
+          if (L) {
+            g!.fillStyle = `rgb(${Math.floor(150 - 64 * vis)},${Math.floor(128 - 58 * vis)},${Math.floor(104 - 52 * vis)})`;
+          } else {
+            const base = vis * 0.5;
+            const v = Math.floor(34 * base + 4);
+            g!.fillStyle = `rgb(${v + 4},${v + 3},${v})`;
+          }
         }
         g!.fillRect(c * TS, r * TS, TS + 1, TS + 1);
-        if (b > 0.15) { g!.fillStyle = `rgba(0,0,0,${0.1 * Math.random()})`; g!.fillRect(c * TS, r * TS, TS, TS); }
+        if (b > 0.15 && !L) { g!.fillStyle = `rgba(0,0,0,${0.1 * Math.random()})`; g!.fillRect(c * TS, r * TS, TS, TS); }
       }
       g!.fillStyle = cone;
       g!.fillRect(0, 0, cv!.width, cv!.height);
       brides.forEach((b) => { const bb = bright(b.x, b.y); if (bb > 0.06) drawBride(b, bb); });
       const pg = g!.createRadialGradient(px, py, 1, px, py, TS * 1.4);
-      pg.addColorStop(0, "rgba(255,210,140,.5)");
-      pg.addColorStop(1, "rgba(255,150,60,0)");
+      pg.addColorStop(0, L ? "rgba(220,150,70,.4)" : "rgba(255,210,140,.5)");
+      pg.addColorStop(1, L ? "rgba(220,150,70,0)" : "rgba(255,150,60,0)");
       g!.fillStyle = pg;
       g!.beginPath();
       g!.arc(px, py, TS * 1.4, 0, 7);
       g!.fill();
-      g!.fillStyle = "#1a1512";
+      g!.fillStyle = L ? "#3a2a1e" : "#1a1512";
       g!.beginPath();
       g!.arc(px, py, TS * 0.22, 0, 7);
       g!.fill();
@@ -365,6 +392,20 @@ export default function MenuShell({
       {/* Sağ üst (yalnız menüde): Nasıl Oynanır + Ayarlar + Arkadaşlar */}
       {menu && (
         <div className="shell-top-right">
+          {onToggleTheme && (
+            <button
+              className="shell-icon"
+              onClick={onToggleTheme}
+              title={theme === "light" ? "Koyu temaya geç" : "Aydınlık temaya geç"}
+              aria-label={theme === "light" ? "Koyu temaya geç" : "Aydınlık temaya geç"}
+            >
+              {/* içi yarı dolu daire — kontrast/tema simgesi */}
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
+                <circle cx="12" cy="12" r="8.5" />
+                <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none" />
+              </svg>
+            </button>
+          )}
           {onHelp && (
             <button className="shell-icon" onClick={onHelp} title="Nasıl Oynanır" aria-label="Nasıl Oynanır">
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

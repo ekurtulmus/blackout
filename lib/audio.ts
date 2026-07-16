@@ -4,6 +4,21 @@
 // (alçak uğultu + gerilime göre kalp atışı + arkadan rastgele iniltiler/fısıltılar).
 import type { SoundEvent } from "./engine";
 
+// Ekran müzikleri — her menü ekranının kendi parçası. Yeni ekran müziği eklemek =
+// buraya bir satır + page.tsx'teki SCREEN_MUSIC eşlemesine bir satır.
+// NOT: dosya adları ASCII; Vercel (Linux) büyük/küçük harfe ve Türkçe karaktere duyarlı.
+export const SCREEN_TRACKS = {
+  secrets: "/audio/sirlar.mp3",
+  shop: "/audio/dukkan.mp3",
+  achievements: "/audio/basarim.mp3",
+  missions: "/audio/gorevler.mp3",
+  modes: "/audio/modlar.mp3",
+  journal: "/audio/gunluk.mp3",
+  // Ölüm Koşusu (online) kendi parçasını korur — dükkânınkiyle aynı değil.
+  race: "/audio/envanter.mp3",
+} as const;
+export type ScreenTrack = keyof typeof SCREEN_TRACKS;
+
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -16,8 +31,9 @@ class SoundEngine {
   private timers: number[] = [];
   private menuAudio: HTMLAudioElement | null = null;
   private gameAudio: HTMLAudioElement | null = null;
-  private secretsAudio: HTMLAudioElement | null = null; // sırlar ekranı müziği
-  private shopAudio: HTMLAudioElement | null = null; // dükkân/envanter müziği
+  // Ekran müzikleri (sırlar/dükkân/başarım/görevler/modlar/günlük) — kind → <audio>.
+  // Tek tek alan yerine tablo: yeni ekran müziği eklemek SCREEN_TRACKS'e satır yazmak.
+  private screenAudios = new Map<ScreenTrack, HTMLAudioElement>();
   private islikAudio: HTMLAudioElement | null = null; // oyun-içi ıslık (ara sıra)
   private whistleTimer = 0; // ıslık zamanlayıcısı
   private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
@@ -61,8 +77,7 @@ class SoundEngine {
       this.gameAudio.volume = this.musicOn ? this.vol * 0.45 : 0;
     }
     // Ekran müzikleri (çalıyorsa ses seviyesini uygula; fade bunu yönetebilir)
-    for (const el of [this.secretsAudio, this.shopAudio]) {
-      if (!el) continue;
+    for (const el of this.screenAudios.values()) {
       el.muted = this.muted;
       if (!el.paused && !this.fades.has(el)) el.volume = this.musicOn ? this.vol * 0.5 : 0;
     }
@@ -105,7 +120,7 @@ class SoundEngine {
     if (typeof document === "undefined") return;
     this.visibilityHooked = true;
     document.addEventListener("visibilitychange", () => {
-      const els = [this.menuAudio, this.gameAudio, this.secretsAudio, this.shopAudio];
+      const els = [this.menuAudio, this.gameAudio, ...this.screenAudios.values()];
       if (document.hidden) {
         this.pausedByHide = [];
         for (const el of els) {
@@ -317,47 +332,44 @@ class SoundEngine {
     this.fades.set(el, id);
   }
 
-  private ensureScreenEl(kind: "secrets" | "shop"): HTMLAudioElement {
-    if (kind === "secrets") {
-      if (!this.secretsAudio) {
-        const a = new Audio("/audio/sirlar.mp3");
-        a.loop = true;
-        a.preload = "auto";
-        a.volume = 0;
-        a.muted = this.muted;
-        this.secretsAudio = a;
-      }
-      return this.secretsAudio;
+  private ensureScreenEl(kind: ScreenTrack): HTMLAudioElement {
+    let el = this.screenAudios.get(kind);
+    if (!el) {
+      el = new Audio(SCREEN_TRACKS[kind]);
+      el.loop = true;
+      el.preload = "auto";
+      el.volume = 0;
+      el.muted = this.muted;
+      this.screenAudios.set(kind, el);
     }
-    if (!this.shopAudio) {
-      const a = new Audio("/audio/envanter.mp3");
-      a.loop = true;
-      a.preload = "auto";
-      a.volume = 0;
-      a.muted = this.muted;
-      this.shopAudio = a;
-    }
-    return this.shopAudio;
+    return el;
   }
 
-  // Ekran müziği (sırlar/dükkân): menü müziğini kısıp bu parçayı yumuşakça açar.
-  playScreenMusic(kind: "secrets" | "shop") {
+  // Ekran müziği: menü müziğini + diğer ekran müziklerini kısıp bu parçayı yumuşakça açar.
+  // Aynı parça zaten çalıyorsa DOKUNMA — yoksa ekran değişiminde baştan başlar.
+  playScreenMusic(kind: ScreenTrack) {
     if (!this.musicOn) return;
     this.resume();
     const target = this.vol * 0.5;
     const el = this.ensureScreenEl(kind);
-    const other = kind === "secrets" ? this.shopAudio : this.secretsAudio;
-    if (other) this.fadeTo(other, 0, 400, true);
+    for (const [k, other] of this.screenAudios) {
+      if (k !== kind && !other.paused) this.fadeTo(other, 0, 400, true);
+    }
     if (this.menuAudio && !this.menuAudio.paused) this.fadeTo(this.menuAudio, 0, 400, true);
     el.muted = this.muted;
+    if (!el.paused) {
+      this.fadeTo(el, target, 300); // zaten çalıyor: sadece seviyeyi koru
+      return;
+    }
     el.volume = 0;
     el.play().then(() => this.fadeTo(el, target, 600)).catch(() => {});
   }
 
   // Ekran müziğini durdur (menü müziğine geri dönülür — page.tsx yönetir).
   stopScreenMusic() {
-    if (this.secretsAudio && !this.secretsAudio.paused) this.fadeTo(this.secretsAudio, 0, 350, true);
-    if (this.shopAudio && !this.shopAudio.paused) this.fadeTo(this.shopAudio, 0, 350, true);
+    for (const el of this.screenAudios.values()) {
+      if (!el.paused) this.fadeTo(el, 0, 350, true);
+    }
   }
 
   // --- Oyun-içi ıslık (ara sıra, ürkütücü) ---
