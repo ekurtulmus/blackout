@@ -7,21 +7,48 @@
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main, her push→Vercel).
 > Deploy: `git push origin main`. Kullanıcı tercihi: **küçük düzeltmeleri sormadan canlıya al** (commit+push).
 >
-> **NEREDE KALDIK (özet, 2026-07-14):** Bu oturumda çok iş girdi ve HEPSİ CANLIDA:
-> - **Menü 2 buton**: TEK KİŞİLİK (Yalnız Kaçış/Görevler/Modlar/Sırlar/Başarım/Günlük) + ÇOK OYUNCULU
->   (Arkadaşlarınla Oyna=eski Ölüm Koşusu + Online Odalar). `MainMenu` iç `view` state; giriş animasyonu yalnız ilk açılışta.
-> - **Arkadaş sistemi** (`lib/friends.ts` FriendPresence, hesapsız, Supabase broadcast `blackout:friends`): arkadaş kodu,
->   istek GÖNDER/KABUL (kalıcı `blackout_sent`, kabul/iptale kadar durur), arkadaşlıktan çıkarma senkronu (unfriend broadcast),
->   davet→odaya katıl. **Online Odalar** (`components/Online.tsx`): herkese açık odalar (`announceRoom`), "Yeni Oda Kur"
->   (200 altın, parasız→uyarı), oda-içi lobide her oyuncuya "+ Arkadaş" (net roster'a arkadaş kodu eklendi).
-> - **Ekonomi**: yeni oyuncu **1000 altın** (`coins.initStarterCoins`); dükkanda "Altın Satın Al" (sembolik); başarım ödülü.
-> - **Yeni modlar**: Kör Gece + Sürü Gecesi (Bitmeyen Gece/Arena ile Modlar ekranında). Arena=açık alan+yarım hız+bol pickup.
-> - **Denge**: zorluk YUMUŞADI (kısa harita 11-19, gelin üst hız 2.9, cap %82, ease 1.6; MP `raceEffLevel` uzun rampa).
-> - **Diğer**: online envanter tam (duvak+tuzak), MP bekleme 12sn, isim max 8 (başta oyuncu kodu, Ayarlar'dan değişir),
->   çok-oyunculuda isim kafanın üstünde, tüm geri butonları "← Geri" (bir önceki ekrana), Faz 9 ikonlar (menü/dükkan/friends).
-> Doğrulama: **production build ✓ temiz** + tsc temiz + canlı DOM testleri. **UYARI:** dev-server Turbopack/OneDrive cache
-> bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
+> **NEREDE KALDIK (özet — GÜNCEL):** Ön yüz **tamamen yenilendi** (design handoff), oyun mantığı **değişmedi**.
+> - **Mimari (ÖNEMLİ):** `components/MenuShell.tsx` = ortak kabuk (labirent canvas + scrim + grain + vinyet).
+>   `page.tsx` içindeki `chrome()` her menü ekranını `<MenuShell>` ile sarar → kökte hep aynı tip döndüğü için React
+>   bileşeni mount'ta tutar → **arka plan ekranlar arası kesintisiz**. Oyun ekranları kabuk KULLANMAZ (`isPlayScreen()`).
+> - **Tipografi kuralı:** **Cinzel YALNIZ büyük başlıklarda** (BLACKOUT logosu, `.scr-title`, `.title`, `.big`,
+>   `.mm-modal-title`, `.roman`). **Diğer HER ŞEY Archivo** (buton/etiket/açıklama). Serif başka yerde kullanma.
+> - **Ortak parçalar (globals.css):** `.scr` (ekran iskeleti) · `.panel` · `.seg` · `.btn-primary-x` · `.mm-ghost` ·
+>   `.card` + `.grid-184/232/268/340` · `.mm-modal` · `.toggle`/`.field-*` · `.danger-btn` · `.shell-icon`/`.shell-back`.
+> - **Geri butonu:** TEK tip — sol üst, 46px, yalnız ok ikonu (`.shell-icon.shell-back`). Kabuk sağlar; oyun-içi
+>   brifing/duraklat/hazırlık ekranları da aynı sınıfı kullanır. `.topback` **tamamen kaldırıldı**.
+> - **Navigasyon:** `backStack` + `goBack()`. **Oyun ekranları geri hedefi OLAMAZ** (`isPlayScreen`) — yoksa sonuç
+>   ekranından geri oyunu yeniden başlatır (döngü). Telefon geri tuşu popstate ile yakalanır, uygulamadan çıkmaz.
+> - **Menü:** 2 birincil kart (Tek Kişilik → brifing, Çok Oyunculu → `multi` ekranı) + 6 tek tip kutu + Devam Et +
+>   Nasıl Oynanır (10 konulu modal). Chrome: sol üst cüzdan, sağ üst **tam ekran + ayarlar + arkadaşlar**.
+> - **Oyun sistemleri (değişmedi):** arena tur sistemi (2dk/en çok öldüren/ilk 5), PvP (%10 + kan), ölüm cezası
+>   (3sn haritada don), asker müttefiki, 50 başarım, SP devam kaydı, dükkân sekmeleri.
+> Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
+> hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-14 #8 — Ön yüz cilası + geri döngüsü düzeltmesi (CANLI)
+`next build` + tsc temiz. (commit `a829234`, `2ee4957`, `d0e2ebc`)
+- ✅ **Serif (tırnaklı) temizliği — TÜM sayfalar**: kök sebep `.btn` **Cinzel** kullanıyordu ("Oda Kur" oradan geliyordu)
+  ve `.screen`/`.menuscreen` **EB Garamond** miras veriyordu. Archivo'ya çevrilenler: `.btn`, `.topback`, `kbd`,
+  `.screen`, `.menuscreen`, `.mm-lore`, `.panel-p`, Günlük kart metinleri, oyun-içi "ENVANTER" başlıkları (Game+OnlineGame).
+  **Kural: Cinzel yalnız büyük başlıklarda** (bkz. üstteki özet).
+- ✅ **Nasıl Oynanır ESKİ haline döndü**: 10 konulu ızgara (Kontroller/Amaç/Kanlı Gelinler/Can-Ölüm/Mermi/Dükkân/
+  Envanter/Duvak/Fırsatlar/Ölüm Koşusu) → tıkla → detay → "← Geri". Kontroller platforma duyarlı (`isTouch`).
+- ✅ **Sayfalar büyütüldü**: ızgara kolonları (184→206, 232→258, 268→296, 340→374), kart dolgu/yazı (başlık 15.5→17,
+  açıklama 14→15), `.scr-title` (54→60), `.scr-sub` (15→16.5), dükkân eşya metinleri.
+- ✅ **Tam ekran butonu**: `MenuShell` sağ üst (menüde), Fullscreen API + `fullscreenchange` ile durum takibi (toggle ikonu).
+- ✅ **Günlük müziği**: Günlük artık Sırlar ile aynı hikâye müziğini (`sirlar.mp3`) çalar (`screen === "secrets" || "journal"`).
+- ✅ **GERİ DÖNGÜSÜ DÜZELTİLDİ (gerçek hata)**: geri yığınına oyun ekranları da giriyordu →
+  `modlar → arenaplay → arenaresult → geri → arenaplay → …` sonsuz döngü. Artık `isPlayScreen()` olanlar yığına
+  **eklenmez** + aynı ekran üst üste iki kez eklenmez. Sonuç ekranından geri = **modlar**. `isPlayScreen` tek kaynak
+  (kabuk + geri yığını aynı fonksiyonu kullanır).
+- ✅ **Çift geri butonu kaldırıldı**: arena/endless/mission sonuç ekranlarında hem kabuğun ikonu hem eski `.topback`
+  vardı → eskiler silindi. Projede `.topback` kullanımı **sıfır**.
+- ✅ **Oyun-içi ekranlar tasarım diline**: mod **brifingi**, **duraklat**, **hazırlık** — geri artık sol üst 46px ikon
+  (`.shell-icon.shell-back`), eyebrow (bakır) + Cinzel başlık + `.panel` + `.btn-primary-x`.
+  NOT: OnlineGame'deki "bağlantı koptu / tek kaldın / maç bitti" ekranlarındaki büyük "← Geri" **bilerek** kaldı —
+  onlar geri navigasyonu değil, tek çıkış eylemi.
 
 ## OTURUM 2026-07-14 #7 — YENİ ÖN YÜZ (design handoff) — TÜM EKRANLAR (CANLI)
 Kullanıcı `Blackout frontend.zip` (design_handoff_blackout_menu: README + `Ana Menu.dc.html`) verdi.
@@ -428,8 +455,12 @@ npm run dev        # http://localhost:3007  (script: next dev; port'u -p 3007 il
 ## 5) Dosya haritası
 | Dosya | Görevi |
 |---|---|
-| `app/page.tsx` | Menü + ekran akışı (Tek Kişilik / Online Yarış / ekranlar) |
-| `components/Game.tsx` | Tek kişilik: canvas döngüsü, HUD, klavye/joystick |
+| `app/page.tsx` | Ekran yönlendirme (`screen`) + `chrome()` kabuk sarmalayıcı + `backStack`/`goBack` + `isPlayScreen` |
+| `app/globals.css` | **Tasarım tokenları + ortak parçalar** (`.shell*`, `.scr*`, `.panel`, `.card`, `.grid-*`, `.seg`, `.mm-*`) |
+| `components/MenuShell.tsx` | **ORTAK KABUK**: labirent/scrim/grain/vinyet canvas + chrome (geri / cüzdan / tam ekran / ayarlar / arkadaşlar) |
+| `components/MainMenu.tsx` | Ana menü içeriği (2 kart + 6 kutu + Devam Et + Nasıl Oynanır modalı) — arka planı KABUK çizer |
+| `components/Icon.tsx` | Ortak ince (line) ikon seti — emoji yerine |
+| `components/Game.tsx` | Tek kişilik: canvas döngüsü, HUD, klavye/joystick, brifing/duraklat/hazırlık ekranları |
 | `components/OnlineGame.tsx` | Online yarış: ortak-dünya senkron, HUD, oynanış |
 | `components/OnlineLobby.tsx` | Oda kur / kodla katıl (lobi) |
 | `lib/engine.ts` | Tek kişilik oyun motoru (durum + güncelleme) |
@@ -522,6 +553,17 @@ ses (ateş/toplama/hasar/kapı/ağlama).
   Çözüm işe yaradı: sunucu durdur + `.next` & `node_modules/.cache` sil + dosyayı zorla yeniden yaz + restart.
 
 ## 10) Son commitler (git log)
+- `d0e2ebc` Oyun-içi brifing/duraklat/hazırlık → tasarım dili (geri = sol üst 46px ikon)
+- `2ee4957` Günlüğe sırlar müziği + GERİ DÖNGÜSÜ düzeltmesi + çift geri butonu kaldırıldı
+- `a829234` Serif temizliği (Archivo) + Nasıl Oynanır eski hali + sayfalar büyütüldü + tam ekran butonu
+- `dbe319e` Yeni ön yüz Faz 3-5 (Dükkân/Görevler/Modlar/Başarım/Günlük/Sırlar/Ayarlar/Arkadaşlar/Online/Lobi)
+- `72be12b` Yeni ön yüz Faz 1-2 (MenuShell kabuk + fontlar + tokenlar + ana menü + brifing + çok oyunculu)
+- `81e42c4` Online CANLI skor tablosu + ölüm donması sıfırlama + arena ara temiz
+- `f4e482f` Arena kurallar ekranı (4sn + "?") + kendi öldürme sayısı + tur arası kazanan
+- `219c834` Online/UI paketi (davet/isim/ayarlar/PvP kan/arena ROUND/ölüm cezası/mobil butonlar)
+- `5a4a0ab` Dükkân/menü paketi (kozmetik 4+4, asker müttefiki, sekmeler, menü okunabilirliği)
+- `b23ad57` 10 istek (online Arena, 50 başarım, devam et, menüye dön, mobil geri tuşu…)
+- `efd836f` 11 istek (mobil zoom, sekme müzik, PvP modu, çağıran çığlık, Faz 9 ikonlar…)
 - `e43f9e3` Dilim B: gelin çeşitleri + tuzak online'a (host-otoriter)
 - `00db9a8` Müzik + kozmetik sahiplik + radar oku + MP ikonu + mobil
 - `c56095e` Faz F: Başarımlar + Günlük
