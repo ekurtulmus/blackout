@@ -264,13 +264,10 @@ export default function OnlineLobby({
 
   if (!online) {
     return (
-      <div className="screen">
-        <button className="topback" onClick={onBack}>← Geri</button>
-        <div className="big" style={{ color: "#ff6b6b" }}>
-          Online kullanılamıyor
-        </div>
-        <div className="subtitle">
-          Supabase ayarları eksik (.env.local). Tek kişilik oynayabilirsin.
+      <div className="scr">
+        <div className="scr-head">
+          <h2 className="scr-title" style={{ color: "#ff6b6b" }}>ONLINE KULLANILAMIYOR</h2>
+          <p className="scr-sub">Supabase ayarları eksik (.env.local). Tek kişilik oynayabilirsin.</p>
         </div>
       </div>
     );
@@ -289,10 +286,10 @@ export default function OnlineLobby({
   );
 
   return (
-    <div className="screen">
-      <button className="topback" onClick={onBack}>← Geri</button>
-      <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-        ÖLÜM KOŞUSU
+    <div className="scr lobby">
+      <div className="scr-head">
+        <div className="scr-eyebrow">{mode === "host" ? "Bekleme Lobisi" : mode === "join" ? "Odaya Katıl" : "Çok Oyunculu"}</div>
+        <h2 className="scr-title">ÖLÜM KOŞUSU</h2>
       </div>
 
       {mode === "choose" && (

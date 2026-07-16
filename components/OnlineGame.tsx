@@ -2047,7 +2047,7 @@ export default function OnlineGame({
 
       {/* Oyun-içi dükkân (market) — tam ekran overlay; alttaki oyun sürer */}
       {shopOpen && (
-        <Shop title="ÖLÜM KOŞUSU DÜKKÂNI" onBack={closeShop} />
+        <Shop title="DÜKKÂN" onBack={closeShop} standalone />
       )}
 
       <div className="hint">

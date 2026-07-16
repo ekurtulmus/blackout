@@ -125,6 +125,7 @@ export default function Page() {
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [deadCrushed, setDeadCrushed] = useState(false); // ölüm sebebi: çıkış çöktü (mesaj ayrımı)
   const [settingsReturn, setSettingsReturn] = useState<Screen>("menu"); // ayarlardan çıkınca dönülecek ekran
+  const [openMission, setOpenMission] = useState<number | null>(null); // görev brifingi modalı (index)
   const [achList, setAchList] = useState<string[]>([]); // açılan başarımlar (menü)
   const [achClaimed, setAchClaimed] = useState<string[]>([]); // ödülü alınan başarımlar
   const [journalGot, setJournalGot] = useState<number[]>([]); // toplanan günlük sayfaları
@@ -633,44 +634,48 @@ export default function Page() {
 
   if (screen === "achievements") {
     return chrome(
-      <div className="menuscreen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-        <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
-          <div className="big" style={{ color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 10 }}><Icon name="trophy" size={30} /> Başarımlar</div>
-          <div className="subtitle">
-            {achList.length}/{ACHIEVEMENTS.length} açıldı · Cüzdan: <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4, verticalAlign: "middle" }}><Icon name="coin" size={14} /> {menuCoins}</b>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12, marginTop: 16 }}>
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Karanlıkta Bıraktıkların</div>
+          <h2 className="scr-title">BAŞARIMLAR</h2>
+          <p className="scr-sub">{achList.length}/{ACHIEVEMENTS.length} açıldı · Açtığın her rozetin altın ödülü var.</p>
+        </div>
+        <div className="scr-body" style={{ maxWidth: 1160 }}>
+          <div className="grid grid-268">
             {[...ACHIEVEMENTS].sort((a, b) => ({ kolay: 0, orta: 1, zor: 2 })[a.tier] - ({ kolay: 0, orta: 1, zor: 2 })[b.tier]).map((a) => {
               const got = achList.includes(a.id);
               const claimed = achClaimed.includes(a.id);
               const ts = TIER_STYLE[a.tier];
               return (
-                <div key={a.id} className="card-parch" style={{ padding: 14, opacity: got ? 1 : 0.5, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <div style={{ fontSize: 26, color: got ? "#e0a24a" : "var(--muted)" }}>{got ? <Icon name={ACH_ICON[a.id] ?? "trophy"} size={26} /> : <Icon name="lock" size={24} />}</div>
-                    <span style={{ fontSize: 10, fontWeight: 800, letterSpacing: "0.08em", textTransform: "uppercase", color: ts.color, border: `1px solid ${ts.color}`, borderRadius: 6, padding: "2px 7px", opacity: 0.85 }}>{ts.label}</span>
+                <div key={a.id} className={"card" + (got ? "" : " is-locked")}>
+                  <div className="card-row">
+                    <div className="item-ico" style={got ? undefined : { color: "var(--ink-dimmer)", background: "rgba(206,186,156,.06)", borderColor: "rgba(206,186,156,.18)" }}>
+                      <Icon name={got ? (ACH_ICON[a.id] ?? "trophy") : "lock"} size={22} stroke={1.6} />
+                    </div>
+                    <span className="badge-tier" style={{ color: ts.color }}>{ts.label}</span>
                   </div>
-                  <div style={{ fontWeight: 800 }}>{a.title}</div>
-                  <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{a.desc}</div>
-                  <div style={{ fontSize: 12, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}>Ödül: <Icon name="coin" size={12} /> {a.reward}</div>
+                  <div className="card-t">{a.title}</div>
+                  <div className="card-d">{a.desc}</div>
+                  <div className="card-meta">
+                    <span className="card-gold"><Icon name="coin" size={13} /> {a.reward}</span>
+                    <span style={{ color: got ? "var(--ok-text)" : "var(--ink-dimmer)" }}>{got ? "Açıldı" : "Kilitli"}</span>
+                  </div>
                   {got && !claimed && (
                     <button
-                      className="btn btn-primary"
-                      style={{ padding: "7px 10px", fontSize: 13 }}
+                      className="buy-btn"
+                      style={{ alignSelf: "stretch", justifyContent: "center" }}
                       onClick={() => {
                         const r = claimReward(a.id);
-                        if (r.ok) {
-                          setMenuCoins(r.coins);
-                          setAchClaimed(getClaimed());
-                        }
+                        if (r.ok) { setMenuCoins(r.coins); setAchClaimed(getClaimed()); }
                       }}
                     >
-                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> Ödülü Al (+{a.reward})</span>
+                      <Icon name="coin" size={13} /> Ödülü Al (+{a.reward})
                     </button>
                   )}
                   {got && claimed && (
-                    <div style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="check" size={13} /> Ödül alındı</div>
+                    <div className="item-own" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Icon name="check" size={13} /> Ödül alındı
+                    </div>
                   )}
                 </div>
               );
@@ -682,26 +687,31 @@ export default function Page() {
   }
 
   if (screen === "journal") {
+    const roman = (n: number) =>
+      ["I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X", "XI", "XII", "XIII", "XIV"][n - 1] ?? String(n);
     return chrome(
-      <div className="menuscreen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-        <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
-          <div className="big" style={{ color: "#e9e0c4", display: "inline-flex", alignItems: "center", gap: 10 }}><Icon name="book" size={28} /> Günlük</div>
-          <div className="subtitle" style={{ fontStyle: "italic", lineHeight: 1.7, maxWidth: 560, margin: "6px auto 2px" }}>
-            Karanlıkta yürürken kâğıt parçalarına bir şeyler karaladım — korkumu, gördüklerimi,
-            aklımdan geçenleri. Sayfalar bölümlere dağıldı. Onları bulup üstünden geçtikçe buraya eklenir;
-            hepsini toplarsan bu gecenin gerçek hikâyesi ortaya çıkar.
-          </div>
-          <div className="subtitle" style={{ marginTop: 4 }}>{journalGot.length}/{JOURNAL.length} sayfa bulundu</div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-            {JOURNAL.map((e) => {
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Kendi Elimden</div>
+          <h2 className="scr-title">GÜNLÜK</h2>
+          <p className="scr-sub" style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic", fontSize: 16.5 }}>
+            Karanlıkta yürürken kâğıt parçalarına bir şeyler karaladım — korkumu, gördüklerimi, aklımdan
+            geçenleri. Sayfalar bölümlere dağıldı; bulup üstünden geçtikçe buraya eklenir.
+          </p>
+          <p className="scr-sub" style={{ marginTop: 6 }}>{journalGot.length}/{JOURNAL.length} sayfa bulundu</p>
+        </div>
+        <div className="scr-body" style={{ maxWidth: 840 }}>
+          <div className="grid grid-340">
+            {JOURNAL.map((e, i) => {
               const got = journalGot.includes(e.id);
               return (
-                <div key={e.id} className="card-parch" style={{ padding: 16 }}>
-                  <div style={{ fontWeight: 800, color: got ? "#e9e0c4" : "var(--muted)" }}>
-                    {got ? `“${e.title}”` : <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="lock" size={15} /> Kayıp Sayfa</span>}
+                <div key={e.id} className={"card card-strip" + (got ? "" : " is-locked")}>
+                  <div className="card-row">
+                    <span className="roman">{roman(i + 1)}</span>
+                    {!got && <Icon name="lock" size={15} />}
                   </div>
-                  <div style={{ fontSize: 14, lineHeight: 1.6, color: got ? "#cfc7ad" : "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
+                  <div className="card-t">{got ? e.title : "Kayıp Sayfa"}</div>
+                  <div className="card-d" style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic", fontSize: 15.5 }}>
                     {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
                   </div>
                 </div>
@@ -717,132 +727,57 @@ export default function Page() {
     const all = unlockedSecrets.length >= SECRET_COUNT;
     const sel = openSecret != null ? SECRETS[openSecret] : null;
     return chrome(
-      <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-        <div className="title" style={{ fontSize: "clamp(30px,8vw,56px)" }}>
-          SIRLAR
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">O Gecenin Kalıntıları</div>
+          <h2 className="scr-title">SIRLAR</h2>
+          <p className="scr-sub">
+            Görevleri tamamladıkça gelinin hikâyesinden bir sır açılır — <b style={{ color: "var(--gold-lite)" }}>{unlockedSecrets.length}/{SECRET_COUNT}</b>.
+            Açık bir sırra dokun, fotoğrafı ve hikâyesini gör.
+          </p>
         </div>
-        <div className="subtitle">
-          <b style={{ color: "#efc987" }}>Görevleri tamamladıkça</b> gelinin hikâyesinden bir sır
-          açılır — <b>{unlockedSecrets.length}/{SECRET_COUNT}</b>. Açık bir sırra tıkla, fotoğrafı gör.
-        </div>
-
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))",
-            gap: 10,
-            width: "100%",
-            maxWidth: 520,
-          }}
-        >
-          {SECRETS.map((s, i) => {
-            const got = unlockedSecrets.includes(i);
-            return (
-              <button
-                key={s.id}
-                className="how"
-                onClick={() => got && setOpenSecret(i)}
-                disabled={!got}
-                style={{
-                  margin: 0,
-                  padding: 8,
-                  cursor: got ? "pointer" : "default",
-                  opacity: got ? 1 : 0.45,
-                  borderColor: got ? "rgba(239,201,135,0.5)" : undefined,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 6,
-                }}
-              >
-                <div
-                  style={{
-                    width: "100%",
-                    aspectRatio: "4 / 3",
-                    borderRadius: 4,
-                    overflow: "hidden",
-                    filter: got ? "none" : "grayscale(1) brightness(0.4)",
-                    background: "#000",
-                    display: "grid",
-                    placeItems: "center",
-                  }}
-                >
-                  {got ? (
-                    <div
-                      style={{ width: "100%", height: "100%" }}
-                      dangerouslySetInnerHTML={{ __html: s.svg }}
-                    />
-                  ) : (
-                    <span style={{ opacity: 0.6, color: "#efc987" }}><Icon name="lock" size={28} /></span>
-                  )}
+        <div className="scr-body" style={{ maxWidth: 1000 }}>
+          <div className="grid grid-184">
+            {SECRETS.map((s, i) => {
+              const got = unlockedSecrets.includes(i);
+              return got ? (
+                <button key={s.id} className="card" onClick={() => setOpenSecret(i)} style={{ padding: 10, gap: 9 }}>
+                  <div className="secret-img" dangerouslySetInnerHTML={{ __html: s.svg }} />
+                  <div className="card-t" style={{ fontSize: 13.5, color: "var(--gold-lite)" }}>{s.title}</div>
+                </button>
+              ) : (
+                <div key={s.id} className="card is-locked" style={{ padding: 10, gap: 9 }}>
+                  <div className="secret-img"><Icon name="lock" size={30} /></div>
+                  <div className="card-t" style={{ fontSize: 13.5, color: "var(--ink-dimmer)" }}>Sır {i + 1}</div>
                 </div>
-                <b style={{ fontSize: 13, color: got ? "#efc987" : "var(--muted)" }}>
-                  {got ? s.title : `Sır ${i + 1}`}
-                </b>
-              </button>
-            );
-          })}
+              );
+            })}
+          </div>
+
+          {all && (
+            <div className="panel panel-gold" style={{ marginTop: 18, textAlign: "center" }}>
+              <h2 className="scr-title" style={{ fontSize: "clamp(24px,4vw,36px)", color: "var(--gold-lite)" }}>
+                {SECRET_ENDING_TITLE}
+              </h2>
+              {SECRET_ENDING.map((line, i) => (
+                <p key={i} className="panel-p" style={{ marginTop: 10 }}>{line}</p>
+              ))}
+            </div>
+          )}
         </div>
 
-        {all && (
-          <div
-            className="how"
-            style={{ maxWidth: 520, borderColor: "rgba(239,201,135,0.6)", lineHeight: 1.6 }}
-          >
-            <div className="title" style={{ fontSize: "clamp(22px,5vw,34px)", color: "#efc987" }}>
-              {SECRET_ENDING_TITLE}
-            </div>
-            {SECRET_ENDING.map((line, i) => (
-              <p key={i} style={{ margin: "8px 0 0" }}>
-                {line}
-              </p>
-            ))}
-          </div>
-        )}
-
-        {/* Sır popup'ı: fotoğraf + altında metin */}
+        {/* Sır detayı modalı */}
         {sel && (
-          <div
-            className="screen"
-            style={{ background: "rgba(0,0,0,0.88)", cursor: "pointer", padding: 20 }}
-            onClick={() => setOpenSecret(null)}
-          >
-            <div
-              className="how"
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                maxWidth: 440,
-                cursor: "default",
-                borderColor: "rgba(239,201,135,0.6)",
-                lineHeight: 1.6,
-              }}
-            >
+          <div className="mm-modal" onClick={(e) => { if (e.target === e.currentTarget) setOpenSecret(null); }}>
+            <div className="mm-modal-card">
               <div
-                style={{
-                  width: "100%",
-                  maxWidth: 360,
-                  margin: "0 auto 12px",
-                  borderRadius: 6,
-                  overflow: "hidden",
-                  boxShadow: "0 6px 30px rgba(0,0,0,0.6)",
-                }}
+                style={{ width: "100%", maxWidth: 380, margin: "0 auto 16px", borderRadius: 9, overflow: "hidden", boxShadow: "0 6px 30px rgba(0,0,0,0.6)" }}
                 dangerouslySetInnerHTML={{ __html: sel.svg }}
               />
-              <div
-                className="title"
-                style={{ fontSize: "clamp(20px,5vw,30px)", color: "#efc987", marginBottom: 6 }}
-              >
-                {sel.title}
-              </div>
-              <p style={{ margin: 0 }}>{sel.text}</p>
-              <button
-                className="btn btn-primary"
-                onClick={() => setOpenSecret(null)}
-                style={{ marginTop: 14 }}
-              >
-                Kapat
-              </button>
+              <div className="scr-eyebrow" style={{ textAlign: "center" }}>Sır {(openSecret ?? 0) + 1}</div>
+              <h2 className="mm-modal-title" style={{ marginTop: 6 }}>{sel.title}</h2>
+              <p className="panel-p" style={{ textAlign: "center" }}>{sel.text}</p>
+              <button className="mm-modal-close" onClick={() => setOpenSecret(null)}>Kapat</button>
             </div>
           </div>
         )}
@@ -917,30 +852,33 @@ export default function Page() {
   }
 
   if (screen === "modes") {
-    const sBest = (m: Mission, unit: string) => (survBest[m.id] > 0 ? `en iyi ${survBest[m.id]}${unit}` : undefined);
-    const modeList: { title: string; desc: string; onClick: () => void; best?: string }[] = [
-      { title: "♾️ Bitmeyen Gece", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: () => playEndless(ENDLESS), best: sBest(ENDLESS, "s") },
-      { title: "🌑 Kör Gece", desc: "Fenersiz, kapkaranlıkta hayatta kalma. Sesle ve refleksle dayan.", onClick: () => playEndless(KOR_GECE), best: sBest(KOR_GECE, "s") },
-      { title: "⚔️ Arena", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, ". dalga") },
-      { title: "🐝 Sürü Gecesi", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, ". dalga") },
+    const sBest = (m: Mission, unit: string) => (survBest[m.id] > 0 ? `En iyi ${survBest[m.id]}${unit}` : undefined);
+    const modeList: { title: string; icon: IconName; desc: string; onClick: () => void; best?: string }[] = [
+      { title: "Bitmeyen Gece", icon: "infinity", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: () => playEndless(ENDLESS), best: sBest(ENDLESS, "s") },
+      { title: "Kör Gece", icon: "moon", desc: "Fenersiz, kapkaranlıkta hayatta kalma. Sesle ve refleksle dayan.", onClick: () => playEndless(KOR_GECE), best: sBest(KOR_GECE, "s") },
+      { title: "Arena", icon: "swords", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, ". dalga") },
+      { title: "Sürü Gecesi", icon: "swarm", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, ". dalga") },
     ];
     return chrome(
-      <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-        <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>MODLAR</div>
-        <div className="subtitle">Ana hikâye dışı hayatta kalma modları.</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 12, width: "100%", maxWidth: 460 }}>
-          {modeList.map((m) => (
-            <button
-              key={m.title}
-              className="btn"
-              onClick={m.onClick}
-              style={{ display: "flex", flexDirection: "column", alignItems: "flex-start", textAlign: "left", gap: 4 }}
-            >
-              <b>{m.title}{m.best ? <span style={{ fontWeight: 400, opacity: 0.7, fontSize: 12 }}> · {m.best}</span> : null}</b>
-              <span style={{ fontSize: 12, opacity: 0.75, fontWeight: 400, lineHeight: 1.4 }}>{m.desc}</span>
-            </button>
-          ))}
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Hayatta Kalma</div>
+          <h2 className="scr-title">MODLAR</h2>
+          <p className="scr-sub">Ana hikâye dışı, bitmeyen hayatta kalma modları.</p>
+        </div>
+        <div className="scr-body" style={{ maxWidth: 800 }}>
+          <div className="grid grid-340">
+            {modeList.map((m) => (
+              <button key={m.title} className="card" onClick={m.onClick}>
+                <div className="card-row">
+                  <div className="item-ico"><Icon name={m.icon} size={22} stroke={1.6} /></div>
+                  {m.best && <span className="badge-ok">{m.best}</span>}
+                </div>
+                <div className="card-t">{m.title}</div>
+                <div className="card-d">{m.desc}</div>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     );
@@ -1012,51 +950,60 @@ export default function Page() {
   }
 
   if (screen === "missions") {
+    const sel = openMission != null ? MISSIONS[openMission] : null;
     return chrome(
-      <div className="screen">
-        <button className="topback" onClick={() => setScreen("menu")}>← Geri</button>
-        <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-          KARANLIK GÖREVLER
+      <div className="scr">
+        <div className="scr-head">
+          <div className="scr-eyebrow">Tek Kişilik</div>
+          <h2 className="scr-title">KARANLIK GÖREVLER</h2>
+          <p className="scr-sub">
+            {cleared.length}/{MISSIONS.length} tamamlandı · Her görev bir sır açar.
+          </p>
         </div>
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-            width: "100%",
-            maxWidth: 460,
-          }}
-        >
-          {MISSIONS.map((m, i) => {
-            const done = cleared.includes(m.id);
-            return (
-              <button
-                key={m.id}
-                className="btn"
-                onClick={() => playMission(i)}
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                  textAlign: "left",
-                  gap: 12,
-                  borderColor: done ? "rgba(125,255,176,0.5)" : undefined,
-                }}
-              >
-                <span>
-                  <b>{m.id}. {m.title}</b>
-                  <span style={{ display: "block", fontSize: 12, opacity: 0.7 }}>
-                    {m.objectiveHint}
-                    {missionBest[m.id] ? ` · en iyi ${missionBest[m.id]}s` : ""}
-                  </span>
-                </span>
-                <span style={{ color: done ? "#7dffb0" : "var(--muted)", fontSize: 20 }}>
-                  {done ? "✓" : "▶"}
-                </span>
-              </button>
-            );
-          })}
+        <div className="scr-body" style={{ maxWidth: 840 }}>
+          <div className="grid grid-232">
+            {MISSIONS.map((m, i) => {
+              const done = cleared.includes(m.id);
+              return (
+                <button key={m.id} className="card" onClick={() => setOpenMission(i)}>
+                  <div className="card-row">
+                    <span className="badge-num">{m.id}</span>
+                    {done && <span className="badge-ok">Tamam</span>}
+                  </div>
+                  <div className="card-t">{m.title}</div>
+                  <div className="card-d">{m.objectiveHint}</div>
+                  <div className="card-meta">
+                    {missionBest[m.id] ? <span>En iyi {missionBest[m.id]}s</span> : <span>Henüz süre yok</span>}
+                  </div>
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* Görev brifingi modalı */}
+        {sel && (
+          <div className="mm-modal" onClick={(e) => { if (e.target === e.currentTarget) setOpenMission(null); }}>
+            <div className="mm-modal-card">
+              <div className="card-row" style={{ justifyContent: "center", gap: 12, marginBottom: 12 }}>
+                <span className="badge-num">{sel.id}</span>
+                {cleared.includes(sel.id) && <span className="badge-ok">Tamam</span>}
+              </div>
+              <h2 className="mm-modal-title" style={{ marginBottom: 12 }}>{sel.title}</h2>
+              <p className="panel-p" style={{ textAlign: "center" }}>{sel.brief}</p>
+              <div className="panel" style={{ marginTop: 16, padding: "12px 14px", textAlign: "center" }}>
+                <span className="scr-eyebrow" style={{ marginBottom: 0 }}>Hedef</span>
+                <div style={{ marginTop: 6, color: "var(--ink-body)", fontSize: 14.5 }}>{sel.objectiveHint}</div>
+              </div>
+              <div className="cta-row" style={{ marginTop: 20 }}>
+                <button className="btn-primary-x" onClick={() => { const i = openMission!; setOpenMission(null); playMission(i); }}>
+                  Göreve Başla
+                </button>
+                <button className="mm-ghost" onClick={() => setOpenMission(null)}>Kapat</button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }

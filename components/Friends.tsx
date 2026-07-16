@@ -68,48 +68,47 @@ export default function Friends({
   const onlineCount = friends.filter((f) => presence?.isOnline(f.code)).length;
 
   return (
-    <div className="menuscreen">
-      <button className="topback" onClick={onBack}>← Geri</button>
-      <div style={{ maxWidth: 560, margin: "0 auto", width: "100%" }}>
-        <div className="big" style={{ color: "#7dffb0", display: "flex", alignItems: "center", gap: 10 }}>
-          <Icon name="people" size={30} stroke={1.6} /> Arkadaşlar
-        </div>
-        <div className="subtitle">
-          {friends.length} arkadaş · <b style={{ color: "#7dffb0" }}>{onlineCount} çevrimiçi</b>
-        </div>
+    <div className="scr">
+      <div className="scr-head">
+        <div className="scr-eyebrow">Karanlıkta Yalnız Değilsin</div>
+        <h2 className="scr-title">ARKADAŞLAR</h2>
+        <p className="scr-sub">
+          {friends.length} arkadaş · <b style={{ color: "var(--ok-text)" }}>{onlineCount} çevrimiçi</b>
+        </p>
+      </div>
 
-        <div style={{ minHeight: 20, color: "#8be9ff", fontWeight: 700, margin: "4px 0" }}>{msg}</div>
+      <div className="scr-body" style={{ maxWidth: 780, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ minHeight: 18, color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5, textAlign: "center" }}>{msg}</div>
 
-        {/* Kendi kodun */}
-        <div className="card-parch" style={{ padding: 14, marginBottom: 12 }}>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>Senin arkadaş kodun (paylaş):</div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6 }}>
-            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: "0.22em", color: "#7dffb0" }}>{myCode}</div>
-            <button className="btn" style={{ padding: "6px 12px" }} onClick={copyCode}>Kopyala</button>
+        {/* Senin kodun */}
+        <div className="panel">
+          <div className="field-d" style={{ marginTop: 0 }}>Senin arkadaş kodun — paylaş:</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8, flexWrap: "wrap" }}>
+            <div style={{ fontSize: 28, fontWeight: 800, letterSpacing: "0.22em", color: "var(--ok-text)" }}>{myCode}</div>
+            <button className="mm-ghost" onClick={copyCode}>Kopyala</button>
           </div>
         </div>
 
         {/* Arkadaş ekle */}
-        <div className="card-parch" style={{ padding: 14, marginBottom: 12, display: "flex", flexDirection: "column", gap: 8 }}>
-          <div style={{ fontWeight: 800, color: "#e0a24a" }}>Arkadaşlık isteği gönder</div>
-          <div style={{ fontSize: 12, color: "var(--muted)" }}>
-            Kodu gir, istek at. Karşı taraf çevrimiçiyse kabul edince arkadaş olursunuz.
-          </div>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div className="panel">
+          <span className="field-t">Arkadaşlık isteği gönder</span>
+          <div className="field-d">Kodu gir, istek at. Karşı taraf çevrimiçiyse kabul edince arkadaş olursunuz.</div>
+          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
             <input
+              className="field-input"
+              style={{ marginTop: 0, flex: 1 }}
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               placeholder="Arkadaş kodu (örn. K7M2QP)"
               maxLength={6}
-              style={{ ...inputStyle, flex: 1, minWidth: 140 }}
             />
             <button
-              className="btn btn-primary"
+              className="buy-btn"
               onClick={doAdd}
               disabled={code.trim().length < 4}
               title="Arkadaş ekle"
               aria-label="Arkadaş ekle"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4 }}
+              style={{ alignSelf: "stretch", padding: "0 14px" }}
             >
               <span style={{ fontSize: 18, fontWeight: 800, lineHeight: 1 }}>+</span>
               <Icon name="people" size={18} />
@@ -118,49 +117,50 @@ export default function Friends({
         </div>
 
         {/* Liste */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {friends.length === 0 && (
-            <div style={{ fontSize: 14, color: "var(--muted)", textAlign: "center", padding: 16 }}>
-              Henüz arkadaşın yok. Kodunu paylaş ya da bir arkadaşının kodunu ekle.
-            </div>
-          )}
-          {friends.map((f) => {
-            const on = presence?.isOnline(f.code);
-            return (
-              <div
-                key={f.code}
-                className="card-parch"
-                style={{ padding: 12, display: "flex", alignItems: "center", gap: 12 }}
-              >
-                <span
-                  title={on ? "Çevrimiçi" : "Çevrimdışı"}
-                  style={{ width: 10, height: 10, borderRadius: "50%", background: on ? "#2e9e5b" : "#555", boxShadow: on ? "0 0 8px #2e9e5b" : "none", flex: "none" }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800 }}>{f.name}</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", letterSpacing: "0.1em" }}>{f.code}</div>
+        {friends.length === 0 ? (
+          <div className="panel" style={{ textAlign: "center", color: "var(--ink-dimmer)", fontSize: 14 }}>
+            Henüz arkadaşın yok. Kodunu paylaş ya da bir arkadaşının kodunu ekle.
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {friends.map((f) => {
+              const on = presence?.isOnline(f.code);
+              return (
+                <div key={f.code} className="panel" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                  <span
+                    title={on ? "Çevrimiçi" : "Çevrimdışı"}
+                    style={{ width: 10, height: 10, borderRadius: "50%", background: on ? "var(--ok-dot)" : "#555", boxShadow: on ? "0 0 8px var(--ok-dot)" : "none", flex: "none" }}
+                  />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div className="card-t" style={{ fontSize: 15 }}>{f.name}</div>
+                    <div style={{ fontSize: 12, color: "var(--ink-dimmer)", letterSpacing: "0.1em" }}>{f.code}</div>
+                  </div>
+                  <span style={{ fontSize: 12, color: on ? "var(--ok-text)" : "var(--ink-dimmer)" }}>
+                    {on ? "çevrimiçi" : "çevrimdışı"}
+                  </span>
+                  <button
+                    className="danger-btn"
+                    style={{ marginTop: 0, padding: "6px 12px", letterSpacing: "0.08em" }}
+                    onClick={() => { presence?.unfriend(f.code); setFriends(getFriends()); }}
+                  >
+                    Sil
+                  </button>
                 </div>
-                <span style={{ fontSize: 12, color: on ? "#7dffb0" : "var(--muted)" }}>
-                  {on ? "çevrimiçi" : "çevrimdışı"}
-                </span>
-                <button className="btn" style={{ padding: "5px 10px", opacity: 0.7 }} onClick={() => { presence?.unfriend(f.code); setFriends(getFriends()); }}>
-                  Sil
-                </button>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
-        {/* Gönderilen (bekleyen) istekler — kabul/iptal edilene kadar durur */}
+        {/* Gönderilen (bekleyen) istekler */}
         {getSentRequests().length > 0 && (
           <>
-            <div style={{ fontWeight: 800, color: "#e0a24a", margin: "16px 0 8px" }}>Gönderilen istekler</div>
+            <div className="cos-label" style={{ marginTop: 8 }}>Gönderilen istekler</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {getSentRequests().map((c) => (
-                <div key={c} className="card-parch" style={{ padding: 10, display: "flex", alignItems: "center", gap: 10 }}>
+                <div key={c} className="panel" style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10 }}>
                   <div style={{ flex: 1, letterSpacing: "0.1em", fontWeight: 700 }}>{c}</div>
-                  <span style={{ fontSize: 12, color: "#ffd75a" }}>⏳ bekliyor</span>
-                  <button className="btn" style={{ padding: "5px 10px", opacity: 0.7 }} onClick={() => { clearSent(c); setTick((t) => t + 1); }}>
+                  <span style={{ fontSize: 12, color: "var(--gold)" }}>bekliyor</span>
+                  <button className="mm-ghost" style={{ padding: "6px 12px", letterSpacing: "0.08em" }} onClick={() => { clearSent(c); setTick((t) => t + 1); }}>
                     İptal
                   </button>
                 </div>
@@ -169,22 +169,11 @@ export default function Friends({
           </>
         )}
 
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 16, lineHeight: 1.5 }}>
-          Çevrimiçi bir arkadaşını oyuna çağırmak için <b>Arkadaşlarınla Oyna → Oda Kur</b> ekranındaki
-          arkadaş butonunu kullan.
+        <div className="field-d" style={{ textAlign: "center" }}>
+          Çevrimiçi bir arkadaşını oyuna çağırmak için <b>Çok Oyunculu → Arkadaşlarınla Oyna</b> ekranındaki
+          davet butonunu kullan.
         </div>
       </div>
     </div>
   );
 }
-
-const inputStyle: React.CSSProperties = {
-  background: "rgba(0,0,0,0.35)",
-  border: "1px solid rgba(150,140,120,0.35)",
-  borderRadius: 8,
-  padding: "9px 12px",
-  color: "#e8e0cc",
-  fontSize: 15,
-  letterSpacing: "0.08em",
-  outline: "none",
-};

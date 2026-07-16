@@ -3,37 +3,11 @@
 import { useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
 import { getCoins, addCoins } from "@/lib/coins";
-
-// Dükkân eşya id → line ikon
-const ITEM_ICON: Record<string, IconName> = {
-  radar: "radar",
-  shield: "shield",
-  trap: "trap",
-  veil: "veil",
-  ammoPack: "ammo",
-  healthPack: "heart",
-  permAmmo: "ammo",
-  extraLife: "heart",
-  soldier: "people",
-  flash_amber: "flame",
-  flash_crimson: "flame",
-  flash_toxic: "flame",
-  flash_ice: "flame",
-  flash_violet: "flame",
-  flash_rose: "flame",
-  flash_gold: "flame",
-  skin_gold: "people",
-  skin_violet: "people",
-  skin_cyan: "people",
-  skin_emerald: "people",
-  skin_rose: "people",
-  skin_ice: "people",
-  skin_crimson: "people",
-};
 import {
   SHOP_ITEMS,
   buyItem,
   getInventory,
+  saveInventory,
   ownsCosmetic,
   equippedCosmetic,
   FLASH_COLORS,
@@ -43,42 +17,89 @@ import {
 } from "@/lib/inventory";
 import { unlock } from "@/lib/achievements";
 
-// Oyun parası (altın) paketleri — GERÇEK ÖDEME YOK (deneme). Tıklayınca altın bedava verilir.
-// İleride gerçek satış eklenebilir; şimdilik ₺ fiyatı yalnızca sembolik gösterilir.
+// Dükkân eşya id → ince ikon (tutarlı çizgi-ikon seti)
+const ITEM_ICON: Record<string, IconName> = {
+  radar: "radar", shield: "shield", trap: "trap", veil: "veil",
+  ammoPack: "ammo", healthPack: "heart", permAmmo: "ammo",
+  extraLife: "heart", soldier: "people",
+};
+
+// Kozmetik değer → görünen ad (tasarım: swatch altında kısa isim)
+const FLASH_NAME: Record<string, string> = {
+  default: "Soğuk Beyaz", crimson: "Kızıl", toxic: "Zehir Yeşili", violet: "Mor", gold: "Altın",
+};
+const SKIN_NAME: Record<string, string> = {
+  default: "Halkasız", gold: "Altın", violet: "Mor", emerald: "Zümrüt", crimson: "Kızıl",
+};
+
+// Oyun parası (altın) paketleri — GERÇEK ÖDEME YOK (deneme).
 const GOLD_PACKS: { gold: number; price: string; tag?: string }[] = [
   { gold: 500, price: "12₺" },
   { gold: 1200, price: "25₺", tag: "%15 daha çok" },
   { gold: 3000, price: "55₺", tag: "en avantajlı" },
 ];
 
-// Dükkân sıralaması — ilişkili eşyalar yan yana (cephane grubu, can grubu, sonra kozmetikler)
-const SHOP_ORDER = [
-  "shield", "radar", "veil", "trap",
-  "ammoPack", "permAmmo",
-  "healthPack", "extraLife",
-  "flash_amber", "flash_crimson", "flash_toxic", "flash_ice", "flash_violet", "flash_rose", "flash_gold",
-  "skin_cyan", "skin_gold", "skin_violet", "skin_emerald", "skin_rose", "skin_ice", "skin_crimson",
-];
-const orderedShopItems = [...SHOP_ITEMS].sort(
-  (a, b) => (SHOP_ORDER.indexOf(a.id) + 1 || 99) - (SHOP_ORDER.indexOf(b.id) + 1 || 99)
+// Özellik sıralaması (ilişkili eşyalar yan yana)
+const ORDER = ["shield", "radar", "veil", "trap", "ammoPack", "healthPack", "permAmmo", "extraLife", "soldier"];
+const featureItems = SHOP_ITEMS.filter((i) => !i.cosmetic).sort(
+  (a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99)
+);
+const flashItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "flash");
+const skinItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "skin");
+
+// Küçük altın ikonu (fiyat/cüzdan)
+const Coin = ({ size = 13 }: { size?: number }) => (
+  <svg viewBox="0 0 24 24" width={size} height={size} fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden="true">
+    <circle cx="12" cy="12" r="8.2" />
+  </svg>
 );
 
-// Dükkân ekranı — parayla eşya al. Menüden veya bölüm arası açılır.
-export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => void; title?: string }) {
+// DÜKKÂN (tasarım handoff).
+// standalone=false → MenuShell içinde (kabuk zemini + geri butonu sağlar)
+// standalone=true  → OnlineGame overlay'i (kendi zemini + kapat butonu)
+export default function Shop({
+  onBack,
+  title = "DÜKKÂN",
+  standalone = false,
+}: {
+  onBack: () => void;
+  title?: string;
+  standalone?: boolean;
+}) {
   const [coins, setCoins] = useState(() => getCoins());
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
-  const [tab, setTab] = useState<"features" | "cosmetics">("features"); // özellikler / kişiselleştirme ayrımı
-  const featureItems = orderedShopItems.filter((it) => !it.cosmetic);
-  const cosmeticItems = orderedShopItems.filter((it) => it.cosmetic);
+  const [tab, setTab] = useState<"feat" | "cos">("feat");
 
+  function flash(m: string) {
+    setMsg(m);
+    window.setTimeout(() => setMsg(""), 1800);
+  }
   function buyGold(gold: number) {
-    // Deneme: ödeme alınmaz, altın doğrudan verilir.
-    setCoins(addCoins(gold));
-    setMsg(`✓ +${gold} altın hesabına eklendi (deneme — ücret alınmadı)`);
-    window.setTimeout(() => setMsg(""), 2200);
+    setCoins(addCoins(gold)); // Deneme: ödeme alınmaz
+    flash(`+${gold} altın eklendi (deneme — ücret alınmadı)`);
+  }
+  function handleBuy(it: ShopItem) {
+    const r = buyItem(it);
+    setCoins(r.coins);
+    setInv(getInventory());
+    if (r.ok) {
+      unlock("shopper");
+      flash(`${it.title} alındı`);
+    } else {
+      flash(r.reason === "yetersiz para" ? "Yetersiz altın" : "Zaten sahipsin");
+    }
+  }
+  // Ücretsiz varsayılan kozmetiğe dön (dükkân eşyası yok)
+  function selectDefault(slot: "flash" | "skin") {
+    const i = getInventory();
+    if (slot === "flash") i.flashColor = "default"; else i.skin = "default";
+    saveInventory(i);
+    setInv(getInventory());
+    flash("Seçildi");
   }
 
+  // Elindeki adet (tüketilebilirler)
   function ownedText(it: ShopItem): string {
     if (it.id === "radar") return `Elinde: ${inv.radars}`;
     if (it.id === "shield") return `Elinde: ${inv.shields}`;
@@ -86,191 +107,185 @@ export default function Shop({ onBack, title = "DÜKKÂN" }: { onBack: () => voi
     if (it.id === "veil") return `Elinde: ${inv.veils}`;
     if (it.id === "ammoPack") return `Elinde: ${inv.ammoPacks}`;
     if (it.id === "healthPack") return `Elinde: ${inv.healthPacks}`;
-    if (it.id === "permAmmo") return inv.permAmmo ? "✓ Sahipsin" : "";
     if (it.id === "extraLife") return inv.extraLives > 0 ? `+${inv.extraLives} can` : "";
-    if (it.cosmetic) {
-      const eq = equippedCosmetic(inv, it.cosmetic.slot) === it.cosmetic.value;
-      const owned = ownsCosmetic(inv, it.cosmetic.slot, it.cosmetic.value);
-      return eq ? "✓ Seçili" : owned ? "✓ Sahipsin" : "";
-    }
     return "";
   }
 
-  function handleBuy(it: ShopItem) {
-    const r = buyItem(it);
-    setCoins(r.coins);
-    setInv(getInventory());
-    if (r.ok) {
-      unlock("shopper"); // Faz F başarım
-      setMsg(`✓ ${it.title} alındı`);
-    } else {
-      setMsg(r.reason === "yetersiz para" ? "✗ Yetersiz para" : "✗ Zaten sahipsin");
-    }
-    window.setTimeout(() => setMsg(""), 1800);
-  }
+  const invStrip: { label: string; n: number | string; icon: IconName }[] = [
+    { label: "Kalkan", n: inv.shields, icon: "shield" },
+    { label: "Radar", n: inv.radars, icon: "radar" },
+    { label: "Tuzak", n: inv.traps, icon: "trap" },
+    { label: "Duvak", n: inv.veils, icon: "veil" },
+    { label: "Mermi", n: inv.ammoPacks, icon: "ammo" },
+    { label: "Can pk.", n: inv.healthPacks, icon: "heart" },
+  ];
 
-  return (
-    <div className="menuscreen">
-      <button className="topback" onClick={onBack}>← Geri</button>
-      <div style={{ maxWidth: 760, margin: "0 auto", width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
-          <div className="big" style={{ color: "#ffd75a", display: "flex", alignItems: "center", gap: 10 }}>
-            <Icon name="cart" size={28} stroke={1.6} /> {title}
+  const body = (
+    <div className="scr" style={standalone ? { paddingTop: 82 } : undefined}>
+      <div className="scr-body" style={{ maxWidth: 1200 }}>
+        {/* Başlık + cüzdan */}
+        <div className="shop-head">
+          <div>
+            <div className="scr-eyebrow">Kuşan ve Güçlen</div>
+            <h2 className="scr-title">{title}</h2>
           </div>
-          <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)", fontSize: 18 }}>
-            <span className="lbl">Cüzdan</span>
-            <span className="val" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <Icon name="coin" size={16} /> {coins}
-            </span>
+          <div className="wallet-lg">
+            <Coin size={18} /> {coins}
           </div>
         </div>
 
-        <div style={{ minHeight: 22, color: "#8be9ff", fontWeight: 700, margin: "6px 0 14px" }}>{msg}</div>
+        {/* Sekmeler */}
+        <div className="tabs">
+          <button className={"tab" + (tab === "feat" ? " is-on" : "")} onClick={() => setTab("feat")}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z" />
+            </svg>
+            Özellikler
+          </button>
+          <button className={"tab" + (tab === "cos" ? " is-on" : "")} onClick={() => setTab("cos")}>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="9" />
+            </svg>
+            Kişiselleştirme
+          </button>
+        </div>
 
-        {tab === "features" ? (
-          <>
-            {/* Oyun parası (altın) satın al — DENEME: ödeme alınmaz. */}
-            <div className="card-parch" style={{ padding: 16, marginBottom: 14, borderColor: "rgba(255,205,80,0.5)" }}>
-              <div style={{ fontWeight: 800, color: "#ffd75a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", display: "flex", alignItems: "center", gap: 8 }}><Icon name="coin" size={18} /> ALTIN SATIN AL</div>
-              <div style={{ fontSize: 12, color: "var(--muted)", margin: "4px 0 12px" }}>
-                Deneme sürümü — ödeme alınmaz, altın anında hesabına eklenir.
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(150px,1fr))", gap: 10 }}>
+        <div style={{ minHeight: 20, margin: "10px 0 0", color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5 }}>{msg}</div>
+
+        {tab === "feat" ? (
+          <div style={{ marginTop: 10 }}>
+            {/* Altın satın al */}
+            <div className="gold-band">
+              <div className="gold-band-t"><Coin size={17} /> Altın Satın Al</div>
+              <div className="gold-band-d">Deneme sürümü — ödeme alınmaz, altın anında eklenir.</div>
+              <div className="gold-grid">
                 {GOLD_PACKS.map((p) => (
-                  <div key={p.gold} style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "center", background: "rgba(255,215,90,0.06)", border: "1px solid rgba(255,205,80,0.3)", borderRadius: 8, padding: 12 }}>
-                    <div style={{ fontSize: 20, fontWeight: 900, color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="coin" size={18} /> {p.gold}</div>
-                    {p.tag && <div style={{ fontSize: 11, color: "#7dffb0" }}>{p.tag}</div>}
-                    <button className="btn btn-primary" style={{ width: "100%" }} onClick={() => buyGold(p.gold)}>
-                      {p.price}
-                    </button>
+                  <div key={p.gold} className="gold-pack">
+                    <div className="gold-pack-n">{p.gold}</div>
+                    <div className="gold-pack-tag">{p.tag ?? ""}</div>
+                    <button className="gold-pack-b" onClick={() => buyGold(p.gold)}>{p.price}</button>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Kişiselleştirme'ye geç — Altın satın al'ın ALTINDA */}
-            <div style={{ margin: "0 0 16px", textAlign: "center" }}>
-              <button className="btn" onClick={() => setTab("cosmetics")} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-                <Icon name="people" size={16} /> Kişiselleştirme →
-              </button>
-            </div>
-
-            {/* Envanter özeti — elindeki tüketilebilir eşyalar */}
-            <div className="card-parch" style={{ padding: "10px 14px", marginBottom: 16, display: "flex", flexWrap: "wrap", gap: "8px 16px", alignItems: "center" }}>
-              <span style={{ fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", color: "#e0a24a", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 13 }}>
-                <Icon name="box" size={16} /> ENVANTERİN
-              </span>
-              {([
-                { icon: "shield" as IconName, n: inv.shields, label: "Kalkan" },
-                { icon: "radar" as IconName, n: inv.radars, label: "Radar" },
-                { icon: "trap" as IconName, n: inv.traps, label: "Tuzak" },
-                { icon: "veil" as IconName, n: inv.veils, label: "Duvak" },
-                { icon: "ammo" as IconName, n: inv.ammoPacks, label: "Mermi paketi" },
-                { icon: "heart" as IconName, n: inv.healthPacks, label: "Can paketi" },
-              ]).map((it) => (
-                <span key={it.label} title={it.label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: it.n > 0 ? "#e4ddce" : "var(--muted)", opacity: it.n > 0 ? 1 : 0.5 }}>
-                  <Icon name={it.icon} size={16} /> {it.n}
+            {/* Envanter özeti */}
+            <div className="inv-strip">
+              <span className="inv-strip-t">Envanterin</span>
+              {invStrip.map((s) => (
+                <span key={s.label} className={"inv-item" + (Number(s.n) > 0 ? " has" : "")}>
+                  <Icon name={s.icon} size={15} /> {s.label} {s.n}
                 </span>
               ))}
-              {inv.hiredSoldier && (
-                <span title="Asker müttefiki" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>🪖 Asker</span>
-              )}
-              {inv.extraLives > 0 && (
-                <span title="Ekstra can" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#ff8a8a" }}>
-                  <Icon name="heart" size={16} /> +{inv.extraLives} can
-                </span>
-              )}
-              {inv.permAmmo && (
-                <span title="Sürekli cephane" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 14, color: "#7dffb0" }}>
-                  <Icon name="ammo" size={16} /> Sürekli
-                </span>
-              )}
+              {inv.extraLives > 0 && <span className="inv-item has" style={{ color: "#ff8a8a" }}>+{inv.extraLives} can</span>}
+              {inv.permAmmo && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Sürekli cephane</span>}
+              {inv.hiredSoldier && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Asker</span>}
             </div>
-          </>
+
+            {/* Eşya ızgarası */}
+            <div className="item-grid">
+              {featureItems.map((it) => {
+                const perm = it.kind === "perm";
+                const can = it.canBuy(inv);
+                const afford = coins >= it.price;
+                const own = ownedText(it);
+                return (
+                  <div key={it.id} className={"item-card" + (perm ? " is-perm" : "")}>
+                    {perm && <span className="perm-badge">KALICI</span>}
+                    <div className="item-ico"><Icon name={ITEM_ICON[it.id] ?? "box"} size={22} stroke={1.6} /></div>
+                    <div className="item-name">{it.title}</div>
+                    <div className="item-desc">{it.desc}</div>
+                    {own && <div className="item-own">{own}</div>}
+                    {can ? (
+                      <button className="buy-btn" disabled={!afford} onClick={() => handleBuy(it)} title={afford ? "Satın al" : "Yetersiz altın"}>
+                        <Coin /> {it.price}
+                      </button>
+                    ) : (
+                      <button className="buy-btn is-owned" disabled>
+                        <Icon name="check" size={13} /> Sahipsin
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         ) : (
-          // Kişiselleştirme sekmesi: geri tuşuyla değil, "Özellikler" butonuyla dönülür
-          <div style={{ margin: "0 0 16px" }}>
-            <button className="btn btn-primary" onClick={() => setTab("features")} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-              ← Özellikler
-            </button>
-            <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 8, fontStyle: "italic" }}>
-              Fener rengi ve görünüm halkası. Sahip olduğunu tekrar para vermeden kuşanırsın.
+          <div style={{ marginTop: 10 }}>
+            {/* Fener rengi */}
+            <div className="cos-label">Fener Rengi</div>
+            <div className="swatch-grid">
+              {/* Varsayılan (ücretsiz) */}
+              <button
+                className={"swatch" + (inv.flashColor === "default" ? " is-on" : "")}
+                onClick={() => selectDefault("flash")}
+              >
+                <span className="swatch-dot" style={{ background: `rgb(${FLASH_COLORS.default.join(",")})`, boxShadow: `0 0 16px 2px rgb(${FLASH_COLORS.default.join(",")})` }} />
+                <span className="swatch-name">{FLASH_NAME.default}</span>
+                {inv.flashColor === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+              </button>
+              {flashItems.map((it) => {
+                const v = it.cosmetic!.value;
+                const eq = equippedCosmetic(inv, "flash") === v;
+                const own = ownsCosmetic(inv, "flash", v);
+                const rgb = FLASH_COLORS[v]?.join(",") ?? "255,255,255";
+                return (
+                  <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
+                    <span className="swatch-dot" style={{ background: `rgb(${rgb})`, boxShadow: `0 0 16px 2px rgb(${rgb})` }} />
+                    <span className="swatch-name">{FLASH_NAME[v] ?? it.title}</span>
+                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                      : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Görünüm halkası */}
+            <div className="cos-label" style={{ margin: "24px 0 12px" }}>Görünüm Halkası</div>
+            <div className="swatch-grid">
+              <button
+                className={"swatch" + (inv.skin === "default" ? " is-on" : "")}
+                onClick={() => selectDefault("skin")}
+              >
+                <span className="swatch-ring" style={{ borderColor: "#6f695d", boxShadow: "none" }} />
+                <span className="swatch-name">{SKIN_NAME.default}</span>
+                {inv.skin === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+              </button>
+              {skinItems.map((it) => {
+                const v = it.cosmetic!.value;
+                const eq = equippedCosmetic(inv, "skin") === v;
+                const own = ownsCosmetic(inv, "skin", v);
+                const col = SKIN_RINGS[v] ?? "#888";
+                return (
+                  <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
+                    <span className="swatch-ring" style={{ borderColor: col, boxShadow: `0 0 12px ${col}` }} />
+                    <span className="swatch-name">{SKIN_NAME[v] ?? it.title}</span>
+                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                      : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
+                  </button>
+                );
+              })}
             </div>
           </div>
         )}
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill,minmax(220px,1fr))", gap: 12 }}>
-          {(tab === "features" ? featureItems : cosmeticItems).map((it) => {
-            const owned = ownedText(it);
-            const affordable = coins >= it.price;
-            // Kozmetik: seçili → kapalı; sahip → "Kullan" (ücretsiz); değil → satın al
-            let label: string;
-            let canClick: boolean;
-            if (it.cosmetic) {
-              const eq = equippedCosmetic(inv, it.cosmetic.slot) === it.cosmetic.value;
-              const own = ownsCosmetic(inv, it.cosmetic.slot, it.cosmetic.value);
-              if (eq) { label = "✓ Seçili"; canClick = false; }
-              else if (own) { label = "Kullan"; canClick = true; }
-              else { label = `${it.price} altın — Satın Al`; canClick = affordable; }
-            } else if (!it.canBuy(inv)) {
-              label = "Sahipsin"; canClick = false;
-            } else {
-              label = `${it.price} altın — Satın Al`; canClick = affordable;
-            }
-            const buyable = canClick;
-            return (
-              <div
-                key={it.id}
-                className="card-parch"
-                style={{
-                  padding: 14,
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: 8,
-                }}
-              >
-                {it.cosmetic ? (
-                  it.cosmetic.slot === "flash" ? (
-                    // Fener rengi önizleme: o renkte parlayan nokta
-                    <div
-                      title="Fener ışığı bu renkte olur"
-                      style={{
-                        width: 30, height: 30, borderRadius: "50%",
-                        background: `rgb(${FLASH_COLORS[it.cosmetic.value].join(",")})`,
-                        boxShadow: `0 0 14px 2px rgb(${FLASH_COLORS[it.cosmetic.value].join(",")})`,
-                      }}
-                    />
-                  ) : (
-                    // Görünüm önizleme: o renkte parlayan halka (oyuncu böyle görünür)
-                    <div
-                      title="Oyuncu bu renkte halkayla parlar"
-                      style={{
-                        width: 30, height: 30, borderRadius: "50%",
-                        border: `4px solid ${SKIN_RINGS[it.cosmetic.value] ?? "#888"}`,
-                        boxShadow: `0 0 12px ${SKIN_RINGS[it.cosmetic.value] ?? "#888"}`,
-                      }}
-                    />
-                  )
-                ) : (
-                  <div style={{ color: "#e0a24a" }}><Icon name={ITEM_ICON[it.id] ?? "box"} size={26} stroke={1.6} /></div>
-                )}
-                <div style={{ fontWeight: 800 }}>{it.title}</div>
-                <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.4, flex: 1 }}>{it.desc}</div>
-                {owned && <div style={{ fontSize: 12, color: "#7dffb0" }}>{owned}</div>}
-                <button
-                  className="btn btn-primary"
-                  disabled={!buyable}
-                  onClick={() => handleBuy(it)}
-                  style={{ opacity: buyable ? 1 : 0.45, cursor: buyable ? "pointer" : "not-allowed" }}
-                >
-                  {label}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-
       </div>
     </div>
   );
+
+  // Oyun-içi overlay: kendi zemini + kapat butonu (kabuk yok)
+  if (standalone) {
+    return (
+      <div className="shop-standalone">
+        <button className="shell-icon shell-back" onClick={onBack} title="Kapat" aria-label="Kapat">
+          <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 18l-6-6 6-6" />
+          </svg>
+        </button>
+        {body}
+      </div>
+    );
+  }
+  return body;
 }

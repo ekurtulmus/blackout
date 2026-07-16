@@ -45,50 +45,51 @@ export default function Online({
   const rooms = presence?.getRooms() ?? [];
 
   return (
-    <div className="screen">
-      <button className="topback" onClick={onBack}>← Geri</button>
-      <div style={{ maxWidth: 620, margin: "0 auto", width: "100%" }}>
-        <div className="big" style={{ color: "#6ee7ff" }}>Online Odalar</div>
-        <div className="subtitle">
-          Herkese açık odalar. Yeni bir oda kur ya da açık bir odaya katıl. Odaya girince
-          içindeki oyunculara arkadaşlık isteği gönderebilirsin.
-        </div>
+    <div className="scr">
+      <div className="scr-head">
+        <div className="scr-eyebrow">Herkese Açık</div>
+        <h2 className="scr-title">ONLINE ODALAR</h2>
+        <p className="scr-sub">
+          Yeni bir oda kur ya da açık bir masaya otur. Odaya girince içindeki oyunculara
+          arkadaşlık isteği gönderebilirsin.
+        </p>
+      </div>
 
-        <div style={{ textAlign: "center", margin: "6px 0 6px" }}>
-          <button className="btn btn-primary" onClick={createRoom} style={{ display: "inline-flex", alignItems: "center", gap: 7 }}><Icon name="home" size={16} /> Yeni Oda Kur ({ROOM_COST} <Icon name="coin" size={13} />)</button>
+      <div className="scr-body" style={{ maxWidth: 800, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ textAlign: "center" }}>
+          <button className="btn-primary-x" onClick={createRoom}>
+            <Icon name="home" size={16} /> Yeni Oda Kur · {ROOM_COST} altın
+          </button>
         </div>
         {warn && (
-          <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, margin: "0 0 12px" }}>{warn}</div>
+          <div style={{ color: "#ff9a3c", fontSize: 13.5, textAlign: "center" }}>{warn}</div>
         )}
 
-        <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.08em", margin: "8px 0" }}>
-          Açık Odalar
-        </div>
+        <div className="cos-label" style={{ marginTop: 8, marginBottom: 0 }}>Açık Odalar</div>
         {rooms.length === 0 ? (
-          <div style={{ fontSize: 14, color: "var(--muted)", padding: "6px 0" }}>
+          <div className="panel" style={{ textAlign: "center", color: "var(--ink-dimmer)", fontSize: 14 }}>
             Şu an açık oda yok. İlk odayı sen kur — herkes listede görsün.
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {rooms.map((r) => (
-              <div key={r.code} className="card-parch" style={{ padding: 12, display: "flex", alignItems: "center", gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 800 }}>
-                    {r.hostName}<span style={{ color: "var(--muted)", fontWeight: 400 }}> · oda {r.code}</span>
+              <div key={r.code} className="panel" style={{ padding: "12px 14px", display: "flex", alignItems: "center", gap: 12 }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div className="card-t" style={{ fontSize: 15 }}>
+                    {r.hostName}
+                    <span style={{ color: "var(--ink-dimmer)", fontWeight: 400 }}> · oda {r.code}</span>
                   </div>
-                  <div style={{ fontSize: 12, color: "var(--muted)", letterSpacing: "0.08em" }}>
-                    <Icon name="people" size={12} style={{ margin: "0 4px -2px 0" }} />{r.count} kişi
+                  <div style={{ fontSize: 12, color: "var(--ink-dimmer)", letterSpacing: "0.08em", display: "inline-flex", alignItems: "center", gap: 5, marginTop: 3 }}>
+                    <Icon name="people" size={13} /> {r.count} kişi
                   </div>
                 </div>
-                <button className="btn btn-primary" style={{ padding: "6px 14px" }} onClick={() => onJoin(r.code)}>
-                  Katıl
-                </button>
+                <button className="buy-btn" onClick={() => onJoin(r.code)}>Katıl</button>
               </div>
             ))}
           </div>
         )}
 
-        <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 16, lineHeight: 1.5 }}>
+        <div className="field-d" style={{ textAlign: "center" }}>
           Odalar birkaç saniyede bir güncellenir. Bir oda ancak kurucusu bekleme lobisindeyken
           listede görünür (yarış başlayınca kapanır).
         </div>

@@ -90,49 +90,37 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   }
 
   return (
-    <div className="screen">
-      <button className="topback" onClick={onBack}>← Geri</button>
-      <div className="title" style={{ fontSize: "clamp(32px,8vw,60px)" }}>
-        AYARLAR
+    <div className="scr">
+      <div className="scr-head">
+        <div className="scr-eyebrow">Tercihlerin</div>
+        <h2 className="scr-title">AYARLAR</h2>
       </div>
 
-      <div
-        className="how"
-        style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 440, width: "100%" }}
-      >
-        {/* Kalıcı oyuncu adı — online/çoklu/arkadaş listesinde kullanılır */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <b>Oyuncu Adın</b>
-            <span style={{ color: "#7dffb0", fontSize: 13 }}>{nameMsg}</span>
+      <div className="scr-body" style={{ maxWidth: 760, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* Kalıcı oyuncu adı */}
+        <div className="panel">
+          <div className="field-row">
+            <span className="field-t">Oyuncu Adın</span>
+            <span style={{ color: "var(--ok-text)", fontSize: 13 }}>{nameMsg}</span>
           </div>
           <input
+            className="field-input"
             value={name}
             onChange={(e) => saveName(e.target.value.slice(0, 8))}
             placeholder="Adını yaz…"
             maxLength={8}
-            style={{
-              width: "100%",
-              background: "rgba(0,0,0,0.35)",
-              border: "1px solid rgba(150,140,120,0.35)",
-              borderRadius: 8,
-              padding: "10px 12px",
-              color: "#e8e0cc",
-              fontSize: 16,
-              outline: "none",
-            }}
           />
-          <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6, lineHeight: 1.4 }}>
-            Başta arkadaş kodun yazılı — <b style={{ color: "#e0a24a" }}>istediğin gibi değiştirebilirsin</b>.
-            Bu isim online oyunlarda, çoklu oyunda ve arkadaş listende görünür.
+          <div className="field-d">
+            Başta arkadaş kodun yazılı — <b style={{ color: "var(--gold)" }}>istediğin gibi değiştirebilirsin</b>.
+            Bu isim online oyunlarda, çok oyunculuda ve arkadaş listende görünür.
           </div>
         </div>
 
-        {/* Ses seviyesi */}
-        <div>
-          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 8 }}>
-            <b>Ses Seviyesi</b>
-            <span style={{ color: "#e0a24a" }}>{vol}%</span>
+        {/* Ses */}
+        <div className="panel">
+          <div className="field-row">
+            <span className="field-t">Ses Seviyesi</span>
+            <span style={{ color: "var(--gold)", fontWeight: 700 }}>{vol}%</span>
           </div>
           <input
             type="range"
@@ -140,65 +128,56 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             max={100}
             value={vol}
             onChange={(e) => changeVol(Number(e.target.value))}
-            style={{ width: "100%", accentColor: "#e0a24a", cursor: "pointer" }}
+            className="field-range"
           />
-        </div>
 
-        {/* Müzik aç/kapa */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <b>Müzik</b>
-          <button className={"btn" + (music ? " btn-primary" : "")} onClick={toggleMusic} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {music ? <>Açık <Icon name="music" size={15} /></> : <>Kapalı <Icon name="mute" size={15} /></>}
-          </button>
-        </div>
-
-        {/* Tüm sesi aç/kapa */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <b>Tüm Sesler</b>
-          <button className={"btn" + (!muted ? " btn-primary" : "")} onClick={toggleMuted} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            {muted ? <>Kapalı <Icon name="mute" size={15} /></> : <>Açık <Icon name="music" size={15} /></>}
-          </button>
-        </div>
-
-        <div style={{ fontSize: 13, opacity: 0.7, lineHeight: 1.5 }}>
-          <b>İpucu:</b> Oyun içinde <kbd>Esc</kbd> / <kbd>P</kbd> ile duraklat, HUD'daki
-          ses düğmesiyle sesi hızlıca kıs. Ayarların bu cihazda saklanır.
-        </div>
-      </div>
-
-      {/* Tehlikeli bölge: oyunu sıfırla */}
-      <div
-        className="how"
-        style={{ maxWidth: 440, width: "100%", borderColor: "rgba(255,90,90,0.4)", display: "flex", flexDirection: "column", gap: 12 }}
-      >
-        <b style={{ color: "#ff6b6b", letterSpacing: "0.06em", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="warn" size={16} /> Oyunu Sıfırla</b>
-        {!confirmReset ? (
-          <>
-            <div style={{ fontSize: 13, color: "var(--muted)", lineHeight: 1.5 }}>
-              Tüm ilerlemen silinir: <b>para, envanter ve satın almalar</b>, tamamlanan görevler,
-              açılan sırlar, günlük sayfaları, başarımlar ve en iyi skorlar. <b>Geri alınamaz.</b>
-            </div>
-            <button className="btn" style={{ borderColor: "rgba(255,90,90,0.5)", color: "#ff9a3c" }} onClick={() => setConfirmReset(true)}>
-              Oyunu Sıfırla
+          <div className="field-row" style={{ marginTop: 18 }}>
+            <span className="field-t">Müzik</span>
+            <button className={"toggle" + (music ? " is-on" : "")} onClick={toggleMusic}>
+              <Icon name={music ? "music" : "mute"} size={14} />
+              {music ? "Açık" : "Kapalı"}
             </button>
-          </>
-        ) : (
-          <>
-            <div style={{ fontSize: 14, color: "#ff9a3c", lineHeight: 1.5, fontWeight: 700 }}>
-              Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.
-            </div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <button className="btn btn-primary" style={{ background: "#7a1f1f", borderColor: "#ff6b6b" }} onClick={resetProgress}>
-                Evet, hepsini sil
-              </button>
-              <button className="btn" onClick={() => setConfirmReset(false)}>
-                Vazgeç
-              </button>
-            </div>
-          </>
-        )}
-      </div>
+          </div>
+          <div className="field-row" style={{ marginTop: 12 }}>
+            <span className="field-t">Tüm Sesler</span>
+            <button className={"toggle" + (!muted ? " is-on" : "")} onClick={toggleMuted}>
+              <Icon name={muted ? "mute" : "music"} size={14} />
+              {muted ? "Kapalı" : "Açık"}
+            </button>
+          </div>
 
+          <div className="field-d" style={{ marginTop: 16 }}>
+            Oyun içinde <b>Esc</b> / <b>P</b> ile duraklat. Ayarların bu cihazda saklanır.
+          </div>
+        </div>
+
+        {/* Tehlikeli bölge */}
+        <div className="panel" style={{ borderColor: "rgba(255,90,90,0.4)", borderTop: "2px solid var(--blood)" }}>
+          <div className="field-t" style={{ color: "#ff6b6b", display: "inline-flex", alignItems: "center", gap: 7 }}>
+            <Icon name="warn" size={16} /> Tüm İlerlemeyi Sıfırla
+          </div>
+          {!confirmReset ? (
+            <>
+              <div className="field-d" style={{ marginTop: 8 }}>
+                Tüm ilerlemen silinir: <b>altın, envanter ve satın almalar</b>, tamamlanan görevler,
+                açılan sırlar, günlük sayfaları, başarımlar ve en iyi skorlar. <b>Geri alınamaz.</b>
+                {" "}Ses tercihlerin korunur.
+              </div>
+              <button className="danger-btn" onClick={() => setConfirmReset(true)}>Sıfırla</button>
+            </>
+          ) : (
+            <>
+              <div style={{ marginTop: 8, fontSize: 14, color: "#ff9a3c", lineHeight: 1.5, fontWeight: 700 }}>
+                Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.
+              </div>
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
+                <button className="danger-btn is-solid" onClick={resetProgress}>Evet, hepsini sil</button>
+                <button className="mm-ghost" onClick={() => setConfirmReset(false)}>Vazgeç</button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

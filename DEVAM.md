@@ -23,6 +23,31 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #7 — YENİ ÖN YÜZ (design handoff) — TÜM EKRANLAR (CANLI)
+Kullanıcı `Blackout frontend.zip` (design_handoff_blackout_menu: README + `Ana Menu.dc.html`) verdi.
+Kural: **oyun mantığı/dinamikleri DEĞİŞMEDİ** (`lib/*`, engine, netcode, denge aynı); yalnız sunum katmanı.
+`next build` + tsc temiz.
+- ✅ **Ortak kabuk `components/MenuShell.tsx`**: labirent canvas + scrim + grain + vinyet ARTIK TEK YERDE.
+  `page.tsx` `chrome()` her menü ekranını `<MenuShell>` ile sarar → kökte hep aynı tip → React mount'ta tutar →
+  **arka plan ekranlar arası KESİNTİSİZ** (eskiden her ekranda sıfırlanıyordu). Oyun ekranları kabuk kullanmaz.
+- ✅ **Tipografi**: Archivo (gövde/buton/etiket) + Cinzel (YALNIZ büyük başlık) + EB Garamond (italik lore).
+  `layout.tsx` font linki, `globals.css` gövde fontu + `button,input,select,textarea{font-family:inherit}`.
+- ✅ **Tasarım tokenları** (`globals.css :root`): ink/gold/copper/blood, --card/--box/--edge*.
+- ✅ **Chrome**: sol üst TEK geri butonu (46px, yalnız ok; `goBack()` geçmiş yığınından bir önceki ekran);
+  menüde sol üst cüzdan çipi + sağ üst Ayarlar/Arkadaşlar (rozetli).
+- ✅ **Ortak parçalar**: `.scr` (82px üst dolgu iskeleti) · `.panel` · `.seg` (segment) · `.btn-primary-x` ·
+  `.card`+`.grid-184/232/268/340` · `.mm-modal` (modal) · `.toggle`/`.field-*` · `.danger-btn`.
+- ✅ **Ekranlar**: Ana menü (2 kart + 6 tek tip kutu + Devam Et + Nasıl Oynanır modal) · Tek Kişilik brifing
+  (zorluk segmenti) · **Çok Oyunculu (yeni `multi` ekranı)** · Dükkân (Özellikler/Kişiselleştirme sekmeleri,
+  altın bandı, envanter şeridi, eşya ızgarası + KALICI rozeti, fener/görünüm swatch'ları) · Görevler
+  (kart ızgarası + **brifing modalı**) · Modlar · Başarımlar (zorluk rozeti + ödül al) · Günlük (Roma rakamı +
+  altın şerit) · Sırlar (ızgara + **detay modalı**) · Ayarlar · Arkadaşlar · Online Odalar · Lobi.
+- ✅ **Shop çift kullanım**: `standalone` prop — MenuShell içinde çıplak, OnlineGame overlay'inde kendi zemini+kapat.
+- ⏳ KALAN: Lobi'nin tasarımdaki "oyuncu yuvaları / hazır noktaları / boş yuva" detayı (şu an işlevsel ama
+  eski iç düzen); sonuç ekranları (dead/levelclear/gameover/win) hâlâ eski `.screen` görünümünde (tasarımda yok).
+- ⚠️ **ÇELİŞKİ (kullanıcı kararı bekliyor)**: Önceki istek "ayarlar her sayfada sağ üstte" idi; tasarım
+  "ayarlar YALNIZ menüde" diyor. Şu an **tasarıma uyuldu**.
+
 ## OTURUM 2026-07-14 #6 — Arena kurallar/tur-arası (CANLI)
 `next build` + tsc temiz:
 - ✅ **Arena kuralları ekranı**: oyun başında **4 sn otomatik** (`rulesOpen` + timeout), HUD'daki **"?"**
