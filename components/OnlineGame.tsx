@@ -110,6 +110,14 @@ export default function OnlineGame({
     const inv = getInventory();
     if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
   };
+  // Arena: oyun başlamadan kuralları 4 sn göster (sonra HUD'daki "?" ile tekrar açılır)
+  useEffect(() => {
+    if (!arenaMode) return;
+    setRulesOpen(true);
+    const t = window.setTimeout(() => setRulesOpen(false), 4000);
+    return () => window.clearTimeout(t);
+  }, [arenaMode]);
+
   // Öl → 3 sn ölü yerinde don (anında doğma yok). step() donmayı ve doğmayı yönetir.
   const die = (now: number) => {
     if (deadUntil.current > 0) return; // zaten ölü/bekliyor
@@ -171,6 +179,9 @@ export default function OnlineGame({
   const roundKills = useRef(0); // bu turda öldürdüğün gelin (tur sonu tally)
   const roundNum = useRef(1); // kaçıncı tur
   const [arenaOver, setArenaOver] = useState<{ scores: number[]; winner: number } | null>(null);
+  const [rulesOpen, setRulesOpen] = useState(false); // arena kuralları (başta 4sn + "?" ile)
+  // Tur arası: kazananı HERKES görsün (yeni tur başlamadan önce ~4 sn)
+  const [roundInfo, setRoundInfo] = useState<{ winner: number; kills: number; scores: number[] } | null>(null);
   const invulnUntil = useRef(0);
   const deadUntil = useRef(0); // öldüysen bu ana kadar ölü yerinde donarsın (sonra doğarsın)
   const hurt = useRef(0);
@@ -567,6 +578,12 @@ export default function OnlineGame({
         // Madde 8: bir oyuncu görünmez oldu/bozuldu → host AI hedeflemesi için sakla
         const seat = m.seat as number;
         veiledUntil.current[seat] = m.on ? performance.now() + TUNING.veilSec * 1000 : 0;
+      } else if (m.t === "roundend") {
+        // Arena ARA: turu kim kazandı — yeni tur başlamadan HERKES görsün
+        scores.current = m.scores as number[];
+        roundEndsAt.current = 0;
+        setShopOpen(false);
+        setRoundInfo({ winner: m.winner as number, kills: (m.kills as number) ?? 0, scores: m.scores as number[] });
       } else if (m.t === "round") {
         // Arena: host yeni tur başlattı (puanlar + kalan süre)
         scores.current = m.scores as number[];
@@ -577,6 +594,7 @@ export default function OnlineGame({
         hp.current = PLAYER_MAX_HP;
         selfPos.current = { ...mySpawn.current };
         bullets.current = [];
+        setRoundInfo(null); // ara bitti
         setShopOpen(false); // #37: yeni tur → dükkân kapansın, oyuna dön
       } else if (m.t === "arenaover") {
         scores.current = m.scores as number[];
@@ -851,19 +869,28 @@ export default function OnlineGame({
             resultPending.current = true;
             setArenaOver({ scores: sc, winner });
           } else {
-            roundNum.current += 1;
-            roundKills.current = 0;
-            arenaWave.current = 1;
-            roundEndsAt.current = now + ARENA_ROUND_MS;
-            hostBrides.current = []; // yeni tur temiz başlasın
+            // ARA: turu kim kazandı — HERKES görsün (4 sn), sonra yeni tur başlar.
+            roundEndsAt.current = 0; // sayaç dursun (ara boyunca)
+            hostBrides.current = []; // ara boyunca kimse saldırmasın
             brideRespawnQueue.current = [];
-            // host da kendi oyuncusunu diriltip başlangıca al
-            deadUntil.current = 0;
-            hp.current = PLAYER_MAX_HP;
-            selfPos.current = { ...mySpawn.current };
-            bullets.current = [];
-            setShopOpen(false); // dükkândaysan yeni tur seni oyuna atar (#37)
-            room.send({ t: "round", scores: sc, winner, remainMs: ARENA_ROUND_MS, roundNum: roundNum.current });
+            setShopOpen(false); // dükkândaysan oyuna at (#37)
+            room.send({ t: "roundend", winner, kills: best, scores: sc });
+            setRoundInfo({ winner, kills: best, scores: sc });
+            window.setTimeout(() => {
+              const t2 = performance.now();
+              roundNum.current += 1;
+              roundKills.current = 0;
+              arenaWave.current = 1;
+              roundEndsAt.current = t2 + ARENA_ROUND_MS;
+              arenaNextWaveAt.current = t2 + ARENA_WAVE_MS;
+              // host da kendi oyuncusunu diriltip başlangıca al
+              deadUntil.current = 0;
+              hp.current = PLAYER_MAX_HP;
+              selfPos.current = { ...mySpawn.current };
+              bullets.current = [];
+              setRoundInfo(null);
+              room.send({ t: "round", scores: sc, winner, remainMs: ARENA_ROUND_MS, roundNum: roundNum.current });
+            }, 4000);
           }
         }
       }
@@ -1760,9 +1787,13 @@ export default function OnlineGame({
               <span className="lbl">Süre</span>
               <span className="val" style={{ color: hud.surv <= 15 ? "#ff7a7a" : undefined }}>{Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}</span>
             </div>
+            <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
+              <span className="lbl">Öldürdüğün</span>
+              <span className="val" style={{ color: "#ff9a9a" }}>{hud.rk}</span>
+            </div>
             <div className="chip">
-              <span className="lbl">Turda</span>
-              <span className="val">{hud.rk} kill</span>
+              <span className="lbl">Toplam</span>
+              <span className="val">{hud.kills}</span>
             </div>
             <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
               <span className="lbl">Puanın</span>
@@ -1810,6 +1841,11 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Sen</span>
           <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
+        {arenaMode && (
+          <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title="Arena kuralları">
+            <span className="val" style={{ fontWeight: 900 }}>?</span>
+          </button>
+        )}
         <button className="chip mutebtn" onClick={openShop} title="Dükkân — parayla eşya al">
           <span className="val" style={{ display: "inline-flex" }}><Icon name="cart" size={16} /></span>
         </button>
@@ -1915,6 +1951,47 @@ export default function OnlineGame({
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
             <Icon name="cart" size={16} /> Dükkâna Uğra ({coins} <Icon name="coin" size={13} />)
           </button>
+        </div>
+      )}
+
+      {/* Arena KURALLARI — oyun başında 4 sn otomatik, sonra HUD'daki "?" ile */}
+      {arenaMode && rulesOpen && !arenaOver && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.88)", zIndex: 28 }}>
+          <div className="big" style={{ color: "#ffb45a", display: "inline-flex", alignItems: "center", gap: 10 }}>
+            <Icon name="swords" size={28} /> ARENA KURALLARI
+          </div>
+          <div className="how" style={{ textAlign: "left", maxWidth: 480 }}>
+            <p style={{ margin: 0 }}><b>Amaç:</b> Turu <b>en çok gelin öldüren</b> kazanır (+1 puan).</p>
+            <p style={{ margin: "10px 0 0" }}><b>Kazanma:</b> İlk <b>{ARENA_WIN_POINTS} puana</b> ulaşan maçı alır.</p>
+            <p style={{ margin: "10px 0 0" }}><b>Tur süresi:</b> 2 dakika. Süre bitince tur sonuçlanır.</p>
+            <p style={{ margin: "10px 0 0" }}><b>Çıkış yok:</b> Açık arenada dalga dalga gelin gelir; turlar ilerledikçe artar.</p>
+            <p style={{ margin: "10px 0 0" }}><b>Ölüm:</b> Ölürsen <b>3 sn</b> yerinde beklersin (kill süresinden kaybedersin), sonra doğarsın.</p>
+            <p style={{ margin: "10px 0 0" }}><b>Can:</b> Arenada can paketi seyrektir — dikkatli oyna.</p>
+            <p style={{ margin: "10px 0 0", color: "#8f8776", fontStyle: "italic" }}>Bu ekranı oyun içinde <b>?</b> düğmesiyle tekrar açabilirsin.</p>
+          </div>
+          <button className="btn btn-primary" onClick={() => setRulesOpen(false)}>Anladım</button>
+        </div>
+      )}
+
+      {/* Tur ARASI — turu kim kazandı (yeni tur başlamadan herkes görür) */}
+      {roundInfo && !arenaOver && (
+        <div className="screen" style={{ background: "rgba(0,0,0,0.86)", zIndex: 29 }}>
+          <div className="big" style={{ color: roundInfo.winner === mySeat ? "#7dffb0" : "#ffb45a" }}>
+            {roundInfo.winner === mySeat
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>TURU SEN KAZANDIN! <Icon name="trophy" size={26} /></span>
+              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={24} /> {nameOf(roundInfo.winner)} turu kazandı</span>}
+          </div>
+          <div className="subtitle" style={{ fontSize: "clamp(15px,3.6vw,20px)" }}>
+            {roundInfo.kills} gelin öldürdü · +1 puan
+          </div>
+          <div className="subtitle" style={{ fontSize: "clamp(14px,3.4vw,18px)", lineHeight: 1.8 }}>
+            {roundInfo.scores.map((s, seat) => (
+              <div key={seat}>
+                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>{nameOf(seat)}</b>: {s}/{ARENA_WIN_POINTS}
+              </div>
+            ))}
+          </div>
+          <div className="subtitle" style={{ color: "#8f8776" }}>Yeni tur başlıyor…</div>
         </div>
       )}
 

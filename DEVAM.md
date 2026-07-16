@@ -23,6 +23,16 @@
 > bazen SAHTE hata gösterir (ör. "ROOM_COST defined multiple times") — `next build` temizse gerçek değildir. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-14 #6 — Arena kurallar/tur-arası (CANLI)
+`next build` + tsc temiz:
+- ✅ **Arena kuralları ekranı**: oyun başında **4 sn otomatik** (`rulesOpen` + timeout), HUD'daki **"?"**
+  düğmesiyle istendiği an tekrar açılır ("Anladım" ile kapanır). İçerik: amaç (en çok öldüren turu kazanır),
+  ilk {5} puan maçı alır, 2 dk tur, çıkış yok, ölüm=3sn bekleme, can seyrek.
+- ✅ **Kendi öldürme sayın**: arena HUD'ında **"Öldürdüğün"** (bu tur, kırmızı çip) + **"Toplam"** (maç geneli).
+- ✅ **Tur arası kazanan**: tur bitince yeni tur BAŞLAMADAN ~4 sn **herkese** "X turu kazandı · N gelin · +1 puan"
+  + güncel puan tablosu gösterilir. Host `{t:roundend}` yayınlar → 4 sn sonra `{t:round}` ile yeni tur.
+  Ara boyunca gelinler temizlenir (kimse saldırmaz), sayaç durur, dükkân kapanır.
+
 ## OTURUM 2026-07-14 #5 — Online/UI paketi (CANLI)
 `next build` + tsc temiz:
 - ✅ **Davet Et**: davet edilince buton kaybolur ("✓ Davet edildi" metni; `invited` kalıcı, timeout kaldırıldı).
