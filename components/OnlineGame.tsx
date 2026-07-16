@@ -316,6 +316,7 @@ export default function OnlineGame({
     }
     resultPending.current = false;
     sentReach.current = false;
+    deadUntil.current = 0; // yeni bölüm/tur → ölüm donması kalkar (donmuş başlama)
     ready.current = true;
     // Arena: tur sistemi + dalga zamanlayıcısını bir kez başlat (2dk tur, en çok öldüren kazanır)
     if (arenaMode && arenaStartMs.current === 0) {
@@ -831,7 +832,8 @@ export default function OnlineGame({
           brideRespawnQueue.current = remain;
         }
         // Arena: dalga dalga gelin ekle (host-otoriter). İLERİKİ TURLARDA daha kalabalık ama YAVAŞ.
-        if (arenaMode && now >= arenaNextWaveAt.current) {
+        // roundEndsAt=0 → tur ARASI (kazanan ekranı): ara boyunca yeni gelin gelmez.
+        if (arenaMode && roundEndsAt.current > 0 && now >= arenaNextWaveAt.current) {
           arenaWave.current += 1;
           arenaNextWaveAt.current = now + ARENA_WAVE_MS;
           // Üst sınır tur numarasıyla yavaşça büyür (çok hızlı artmasın)
@@ -1841,6 +1843,33 @@ export default function OnlineGame({
         <div className="chip"><span className="lbl">Sen</span>
           <span className="val" style={{ color: myColor }}>{nameOf(mySeat)}</span>
         </div>
+        {/* CANLI SKOR TABLOSU — kimin kazandığı her an ekranda (yarış: tur galibiyeti, arena: puan) */}
+        {hud.scores.length > 1 && (
+          <div className="chip" style={{ borderColor: "rgba(255,205,80,0.55)" }}>
+            <span className="lbl" style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+              <Icon name="trophy" size={12} /> {arenaMode ? `Puan (ilk ${ARENA_WIN_POINTS})` : "Skor"}
+            </span>
+            <span className="val" style={{ display: "inline-flex", gap: 7, flexWrap: "wrap" }}>
+              {hud.scores.map((s, seat) => {
+                const lead = s === Math.max(...hud.scores) && s > 0;
+                return (
+                  <span
+                    key={seat}
+                    title={nameOf(seat)}
+                    style={{
+                      color: SEAT_COLORS[seat % SEAT_COLORS.length],
+                      fontWeight: lead ? 900 : 700,
+                      opacity: lead ? 1 : 0.75,
+                    }}
+                  >
+                    {nameOf(seat)}&nbsp;{s}
+                    {lead ? "★" : ""}
+                  </span>
+                );
+              })}
+            </span>
+          </div>
+        )}
         {arenaMode && (
           <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title="Arena kuralları">
             <span className="val" style={{ fontWeight: 900 }}>?</span>
