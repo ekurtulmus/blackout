@@ -694,7 +694,7 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Kendi Elimden</div>
           <h2 className="scr-title">GÜNLÜK</h2>
-          <p className="scr-sub" style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic", fontSize: 16.5 }}>
+          <p className="scr-sub" style={{ fontStyle: "italic" }}>
             Karanlıkta yürürken kâğıt parçalarına bir şeyler karaladım — korkumu, gördüklerimi, aklımdan
             geçenleri. Sayfalar bölümlere dağıldı; bulup üstünden geçtikçe buraya eklenir.
           </p>
@@ -711,7 +711,7 @@ export default function Page() {
                     {!got && <Icon name="lock" size={15} />}
                   </div>
                   <div className="card-t">{got ? e.title : "Kayıp Sayfa"}</div>
-                  <div className="card-d" style={{ fontFamily: "'EB Garamond', Georgia, serif", fontStyle: "italic", fontSize: 15.5 }}>
+                  <div className="card-d" style={{ fontStyle: "italic" }}>
                     {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
                   </div>
                 </div>

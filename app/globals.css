@@ -264,11 +264,10 @@ button {
 .mm-rule-r { background: linear-gradient(90deg, rgba(209, 26, 26, 0.55), transparent); }
 .mm-lore {
   margin-top: 18px;
-  max-width: 560px;
+  max-width: 620px;
   text-align: center;
-  font-family: "EB Garamond", Georgia, serif;
   font-style: italic;
-  font-size: 16.5px;
+  font-size: 17px;
   line-height: 1.7;
   color: var(--ink-dim);
   letter-spacing: 0.02em;
@@ -428,17 +427,46 @@ button {
   text-align: center;
   margin-bottom: 18px;
 }
-.mm-help { list-style: none; display: grid; gap: 13px; }
-.mm-help li { font-size: 14.5px; color: var(--ink-2); line-height: 1.55; }
+.mm-help { list-style: none; display: grid; gap: 14px; }
+.mm-help li { font-size: 15.5px; color: var(--ink-2); line-height: 1.6; }
 .mm-help li b {
   display: block;
   color: var(--gold-lite);
-  font-size: 12px;
+  font-size: 12.5px;
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   margin-bottom: 3px;
 }
+/* Nasıl Oynanır — konu ızgarası + detay */
+.mm-help-lead {
+  font-size: 14px;
+  color: var(--ink-dimmer);
+  font-style: italic;
+  margin: 0 0 16px;
+  text-align: center;
+}
+.mm-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+.mm-help-topic {
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #c9bfa8;
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(206, 186, 156, 0.2);
+  border-radius: 9px;
+  padding: 14px 12px;
+  text-align: center;
+  line-height: 1.3;
+  transition: color 0.2s, background 0.2s, border-color 0.2s;
+}
+.mm-help-topic:hover {
+  color: var(--gold-lite);
+  background: rgba(224, 162, 74, 0.08);
+  border-color: rgba(224, 162, 74, 0.45);
+}
+.mm-help-back { align-self: flex-start; margin-bottom: 14px; padding: 8px 14px; letter-spacing: 0.1em; }
+@media (max-width: 420px) { .mm-help-grid { grid-template-columns: 1fr; } }
 .mm-modal-close {
   margin-top: 22px;
   width: 100%;
@@ -478,17 +506,17 @@ button {
 .scr-title {
   font-family: "Cinzel", serif;
   font-weight: 800;
-  font-size: clamp(34px, 5vw, 54px);
+  font-size: clamp(38px, 5.6vw, 60px);
   letter-spacing: 0.06em;
   color: var(--ink-title);
   line-height: 1.05;
   text-shadow: 0 2px 18px rgba(0, 0, 0, 0.9);
 }
 .scr-sub {
-  margin: 10px auto 0;
-  max-width: 560px;
-  font-size: 15px;
-  line-height: 1.65;
+  margin: 11px auto 0;
+  max-width: 640px;
+  font-size: 16.5px;
+  line-height: 1.7;
   color: var(--ink-dim);
   text-wrap: pretty;
 }
@@ -509,9 +537,8 @@ button {
 .panel-blood { border-top: 2px solid var(--blood); }
 .panel-gold { border-color: var(--edge-gold); }
 .panel-p {
-  font-family: "EB Garamond", Georgia, serif;
   font-style: italic;
-  font-size: 16.5px;
+  font-size: 16px;
   line-height: 1.7;
   color: var(--ink-2);
 }
@@ -757,10 +784,10 @@ button {
   color: var(--gold);
 }
 .item-card.is-perm .item-ico { background: rgba(224, 162, 74, 0.14); border-color: rgba(224, 162, 74, 0.3); }
-.item-name { font-size: 15px; font-weight: 700; color: var(--ink-title); }
-.item-name small { color: var(--ink-2); font-size: 12px; font-weight: 400; }
-.item-desc { font-size: 14px; color: var(--ink-2); line-height: 1.45; flex: 1; }
-.item-own { font-size: 12px; color: var(--ok-text); }
+.item-name { font-size: 16.5px; font-weight: 700; color: var(--ink-title); }
+.item-name small { color: var(--ink-2); font-size: 13px; font-weight: 400; }
+.item-desc { font-size: 15px; color: var(--ink-2); line-height: 1.5; flex: 1; }
+.item-own { font-size: 13px; color: var(--ok-text); }
 .buy-btn {
   align-self: flex-start;
   display: inline-flex;
@@ -823,19 +850,19 @@ button {
 /* ==========================================================================
    ORTAK KART / IZGARA SİSTEMİ (görevler, modlar, başarım, günlük, sırlar)
    ========================================================================== */
-.grid { display: grid; gap: 12px; margin-top: 6px; }
-.grid-184 { grid-template-columns: repeat(auto-fill, minmax(184px, 1fr)); }
-.grid-232 { grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); }
-.grid-268 { grid-template-columns: repeat(auto-fill, minmax(268px, 1fr)); }
-.grid-340 { grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); }
+.grid { display: grid; gap: 14px; margin-top: 6px; }
+.grid-184 { grid-template-columns: repeat(auto-fill, minmax(206px, 1fr)); }
+.grid-232 { grid-template-columns: repeat(auto-fill, minmax(258px, 1fr)); }
+.grid-268 { grid-template-columns: repeat(auto-fill, minmax(296px, 1fr)); }
+.grid-340 { grid-template-columns: repeat(auto-fill, minmax(374px, 1fr)); }
 
 .card {
   position: relative;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 16px;
-  border-radius: 12px;
+  gap: 9px;
+  padding: 19px;
+  border-radius: 13px;
   background: var(--card);
   border: 1px solid var(--edge);
   text-align: left;
@@ -846,14 +873,14 @@ button.card:hover {
   box-shadow: 0 0 20px rgba(224, 162, 74, 0.12);
 }
 .card.is-locked { opacity: 0.55; }
-.card-t { font-size: 15.5px; font-weight: 700; color: var(--ink-title); letter-spacing: 0.02em; }
-.card-d { font-size: 14px; color: var(--ink-2); line-height: 1.45; flex: 1; }
+.card-t { font-size: 17px; font-weight: 700; color: var(--ink-title); letter-spacing: 0.02em; }
+.card-d { font-size: 15px; color: var(--ink-2); line-height: 1.5; flex: 1; }
 .card-meta {
   display: flex;
   align-items: center;
   gap: 10px;
   flex-wrap: wrap;
-  font-size: 12.5px;
+  font-size: 13.5px;
   color: var(--ink-dimmer);
 }
 .card-gold { display: inline-flex; align-items: center; gap: 4px; color: var(--gold-lite); }
@@ -1029,7 +1056,6 @@ button.card:hover {
       rgba(12, 3, 3, 0.85) 100%
     ),
     #060404;
-  font-family: "EB Garamond", Georgia, serif;
   color: var(--veil);
   z-index: 20;
 }
@@ -1071,9 +1097,9 @@ button.card:hover {
   background: linear-gradient(180deg, rgba(30, 24, 21, 0.95), rgba(16, 12, 10, 0.95));
   color: var(--veil);
   border: 1px solid var(--parch-border);
-  border-radius: 8px;
+  border-radius: 9px;
   padding: 13px 26px;
-  font-family: "Cinzel", serif;
+  /* Tasarım: butonlar Archivo (serif YOK) */
   font-size: 15px;
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -1145,8 +1171,8 @@ button.card:hover {
   border-radius: 4px;
   padding: 1px 7px;
   color: var(--veil);
-  font-family: "Cinzel", serif;
   font-size: 11px;
+  font-weight: 600;
   margin: 0 1px;
 }
 
@@ -1173,7 +1199,6 @@ button.card:hover {
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
   padding: 26px 16px 40px;
-  font-family: "EB Garamond", Georgia, serif;
   color: var(--veil);
   background: radial-gradient(
       1000px 520px at 50% -8%,
@@ -1204,7 +1229,6 @@ button.card:hover {
   border: 1.5px solid rgba(224, 162, 74, 0.65);
   border-radius: 9px;
   color: #f2d9a8;
-  font-family: "Cinzel", serif;
   font-size: 14px;
   font-weight: 700;
   letter-spacing: 0.12em;

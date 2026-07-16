@@ -1887,7 +1887,7 @@ export default function OnlineGame({
       {invOpen && (
         <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}>
           <div className="invcard">
-            <div style={{ fontWeight: 800, color: "#e0a24a", fontFamily: "'Cinzel',serif", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
+            <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
             {([
               { kind: "shield", icon: "shield" as IconName, name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 // BLACKOUT — ORTAK EKRAN KABUĞU (tasarım handoff).
 // Sabit arka plan (z sırası): labirent canvas → radyal scrim → film taneciği → vinyet (nabız).
@@ -29,6 +29,23 @@ export default function MenuShell({
 }) {
   const gameRef = useRef<HTMLCanvasElement | null>(null);
   const grainRef = useRef<HTMLCanvasElement | null>(null);
+
+  // --- Tam ekran (oyunu tam ekran oyna) ---
+  const [isFs, setIsFs] = useState(false);
+  useEffect(() => {
+    const sync = () => setIsFs(!!document.fullscreenElement);
+    sync();
+    document.addEventListener("fullscreenchange", sync);
+    return () => document.removeEventListener("fullscreenchange", sync);
+  }, []);
+  const toggleFullscreen = () => {
+    try {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen();
+    } catch {
+      /* tarayıcı izin vermezse geç */
+    }
+  };
 
   // --- Grain (film taneciği) ---
   useEffect(() => {
@@ -342,9 +359,25 @@ export default function MenuShell({
         )
       )}
 
-      {/* Sağ üst (yalnız menüde): Ayarlar + Arkadaşlar */}
+      {/* Sağ üst (yalnız menüde): Tam ekran + Ayarlar + Arkadaşlar */}
       {menu && (
         <div className="shell-top-right">
+          <button
+            className="shell-icon"
+            onClick={toggleFullscreen}
+            title={isFs ? "Tam ekrandan çık" : "Tam ekran oyna"}
+            aria-label={isFs ? "Tam ekrandan çık" : "Tam ekran oyna"}
+          >
+            {isFs ? (
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" />
+              </svg>
+            )}
+          </button>
           <button className="shell-icon" onClick={onSettings} title="Ayarlar" aria-label="Ayarlar">
             <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3.2" />

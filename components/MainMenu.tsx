@@ -32,6 +32,7 @@ export default function MainMenu({
   onContinue?: () => void;
 }) {
   const [help, setHelp] = useState(false);
+  const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false);
   const anim = !introShown;
   useEffect(() => {
@@ -51,6 +52,117 @@ export default function MainMenu({
   // Giriş animasyonu yardımcıları (menüye dönüşte anında görünsün)
   const fx = (delay: string): React.CSSProperties =>
     anim ? { opacity: 0, animation: `mm-fade 1s ease-out ${delay} both` } : {};
+
+  // Nasıl Oynanır — konu-konu bilgi (kullanıcı merak ettiğine tıklar)
+  const helpTopics: { key: string; title: string; items: { k?: string; t: string }[] }[] = [
+    {
+      key: "kontrol",
+      title: "Kontroller",
+      items: isTouch
+        ? [
+            { k: "Hareket", t: "Sol alttaki joystick'i sürükle — çektiğin yöne yürürsün." },
+            { k: "Ateş", t: "Sağ alttaki ATEŞ düğmesi; baktığın yöne mermi atar." },
+            { k: "Bariyer / Tuzak", t: "Sağ alttaki BARİYER ve tuzak düğmeleriyle yere koyarsın." },
+            { k: "Envanter / Dükkân", t: "Ateşin yanındaki envanter ve dükkân düğmeleri." },
+          ]
+        : [
+            { k: "Hareket", t: "WASD veya ok tuşları · Shift ile koş (nefes barı tükenir)." },
+            { k: "Ateş", t: "Boşluk tuşu — baktığın yöne ateş eder." },
+            { k: "Eşya", t: "Q kalkan · R radar · E bariyer · T tuzak/duvak." },
+            { k: "Envanter", t: "Envanter düğmesiyle çantanı aç, eşyanı kuşan." },
+          ],
+    },
+    {
+      key: "amac",
+      title: "Amaç & Bölüm",
+      items: [
+        { t: "Kapkaranlık labirentte fenerinle yolunu bul." },
+        { k: "Çıkış kilidi", t: "Çıkış önce KİLİTLİ. En az 1 gelini yok edince açılır." },
+        { k: "Bölüm geç", t: "Yeşil parlayan kapıya ulaş → sonraki bölüm. Yalnız Kaçış'ta 10 bölüm." },
+      ],
+    },
+    {
+      key: "gelinler",
+      title: "Kanlı Gelinler",
+      items: [
+        { k: "Kanlı Gelin", t: "Klasik avcı. Görünce koşar, asla vazgeçmez; bölümle zekileşir." },
+        { k: "Karanlık Gelin", t: "Işıkta yavaş, karanlıkta hızlanır. Karanlıkta gözleri kırmızı parlar." },
+        { k: "Mukus Gelini", t: "Öldüğünde 10 sn zehirli yeşil leke bırakır; üstünden geçme." },
+        { k: "Çağıran Gelin", t: "Çığlık atıp yakındaki uyuyan gelinleri uyandırır, sürü çeker." },
+        { k: "Bölünen Gelin", t: "Öldürünce iki hızlı yavruya bölünür. Köşede sıkışma." },
+        { k: "Duvar Aşan Gelin", t: "Duvarların içinden yavaşça süzülür; labirent durduramaz." },
+        { k: "Kraliçe Gelin", t: "Dev boss, birkaç bölümde bir. Taçlı, kızıl auralı, çok tehlikeli." },
+      ],
+    },
+    {
+      key: "can",
+      title: "Can & Ölüm",
+      items: [
+        { k: "3 can", t: "Gelin teması can barını düşürür. Bar bitince bir can gider." },
+        { k: "Yeniden doğuş", t: "Ölünce bölüm başında kısa dokunulmazlıkla doğarsın." },
+        { k: "Kalp atışı", t: "Karanlıkta kalbin hızlanır — yakında gelin var demektir." },
+      ],
+    },
+    {
+      key: "mermi",
+      title: "Mermi & Ateş",
+      items: [
+        { k: "Sınırlı mermi", t: "Yerdeki parlayan mermileri topla; boşa harcama." },
+        { k: "Ses çeker", t: "Ateş sesi gelinleri üstüne çeker." },
+        { k: "Geri doğar", t: "Toplanan mermi 10 sn sonra yerinde geri belirir." },
+      ],
+    },
+    {
+      key: "para",
+      title: "Dükkân & Altın",
+      items: [
+        { k: "Altın kazan", t: "Gelin öldürünce ve bölüm geçince altın kazanırsın." },
+        { k: "Dükkân", t: "Dükkân'dan kalkan, radar, tuzak, ekstra can, kalıcı geliştirme ve kozmetik al." },
+        { k: "Her yerde geçerli", t: "Aldığın eşya tüm modlarda ve bölümlerde kullanılır." },
+      ],
+    },
+    {
+      key: "envanter",
+      title: "Envanter",
+      items: [
+        { k: "Kalkan", t: "Kısa süre dokunulmazlık — sıkıştığında kullan." },
+        { k: "Radar", t: "Çıkış yönünü bir kez ok olarak gösterir." },
+        { k: "Tuzak", t: "Yere koy; üstünden geçen gelin bir süre yavaşlar (durdurmaz)." },
+        { t: "Eşyanı envanterden kuşanıp istediğin an tetikle." },
+      ],
+    },
+    {
+      key: "duvak",
+      title: "Duvak (Görünmezlik)",
+      items: [
+        { k: "Duvak eşyası", t: "Yerde bulursun; alınca 5 sn görünmez olursun." },
+        { k: "Gizlen", t: "Görünmezken gelinler seni göremez — köşeden sıvış." },
+        { k: "Dikkat", t: "Ateş edersen görünmezlik anında bozulur." },
+      ],
+    },
+    {
+      key: "firsat",
+      title: "Fırsatlar (Yüzük, Ayna, Çan…)",
+      items: [
+        { t: "Bölümlerde ara sıra opsiyonel 'Fırsat' hedefleri çıkar. Çıkışı geciktirmez." },
+        { k: "Yüzük", t: "Ekstra altın verir — ama bir gelini çıldırtıp hızlandırır." },
+        { k: "Ayna", t: "Kehanet: birkaç sn beklersen çıkışın yönünü gösterir." },
+        { k: "Çan", t: "Tüm gelinleri çana çeker — tuzak kurmak için birebir." },
+        { k: "Mumlar / Kan izi", t: "Mumları yak ya da doğru kan izini takip et → ödül." },
+      ],
+    },
+    {
+      key: "yaris",
+      title: "Ölüm Koşusu (Online)",
+      items: [
+        { t: "2-6 kişi aynı labirentte yarışır; ilk çıkan bölümü kazanır, puan birikir." },
+        { k: "Bariyer", t: "Bölüm başına 3 hakkın var; koyduğun bariyer rakibin yolunu kapar, bir atışla yıkılır." },
+        { k: "Dükkân", t: "Turlar arası dükkândan kazandığın altınla eşya al." },
+        { k: "Ölüm", t: "Can barın bitince 3 sn bekleyip başta güvenle doğarsın; yarış sürer." },
+      ],
+    },
+  ];
+  const openTopic = topic ? helpTopics.find((h) => h.key === topic) : null;
 
   const boxes: { label: string; onClick: () => void; icon: React.ReactNode }[] = [
     {
@@ -153,19 +265,37 @@ export default function MainMenu({
         </button>
       </div>
 
-      {/* Nasıl Oynanır modalı */}
+      {/* Nasıl Oynanır modalı — konu-bazlı (tıkla → detay) */}
       {help && (
-        <div className="mm-modal" onClick={(e) => { if (e.target === e.currentTarget) setHelp(false); }}>
+        <div
+          className="mm-modal"
+          onClick={(e) => { if (e.target === e.currentTarget) { setHelp(false); setTopic(null); } }}
+        >
           <div className="mm-modal-card">
-            <h2 className="mm-modal-title">Nasıl Oynanır</h2>
-            <ul className="mm-help">
-              <li><b>Hareket</b>{isTouch ? "Sol alttaki joystick'i sürükle; Shift yerine KOŞ düğmesi." : "WASD / ok tuşları · Shift ile koş (nefes barı tükenir)."}</li>
-              <li><b>Ateş</b>{isTouch ? "Sağ alttaki ATEŞ düğmesi — baktığın yöne atar." : "Boşluk tuşu — baktığın yöne atar. Ses gelinleri çeker."}</li>
-              <li><b>Amaç</b>Kapkaranlık labirentte fenerinle yolunu bul. Çıkış KİLİTLİ; en az 1 gelini yok edince açılır.</li>
-              <li><b>Can</b>Gelin teması can barını düşürür; bar bitince bir can gider. Yerdeki can paketlerini topla.</li>
-              <li><b>Eşya</b>{isTouch ? "Envanterden kuşan, ateşin solundaki slot düğmesiyle kullan." : "Q kalkan · R radar · E bariyer · T tuzak. Envanterden kuşan."}</li>
-            </ul>
-            <button className="mm-modal-close" onClick={() => setHelp(false)}>Kapat</button>
+            {openTopic ? (
+              <>
+                <button className="mm-ghost mm-help-back" onClick={() => setTopic(null)}>← Geri</button>
+                <h2 className="mm-modal-title">{openTopic.title}</h2>
+                <ul className="mm-help">
+                  {openTopic.items.map((it, i) => (
+                    <li key={i}>{it.k ? <b>{it.k}</b> : null}{it.t}</li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <>
+                <h2 className="mm-modal-title">Nasıl Oynanır</h2>
+                <p className="mm-help-lead">Merak ettiğin konuya dokun:</p>
+                <div className="mm-help-grid">
+                  {helpTopics.map((h) => (
+                    <button key={h.key} className="mm-help-topic" onClick={() => setTopic(h.key)}>
+                      {h.title}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+            <button className="mm-modal-close" onClick={() => { setHelp(false); setTopic(null); }}>Kapat</button>
           </div>
         </div>
       )}
