@@ -32,20 +32,17 @@ export type StartInfo = {
   arena: boolean; // Arena: açık alan dalga hayatta kalma (çıkış yok)
 };
 
-// Zorluk modifikatörleri (gelin sayısı / hız / zekâ)
+// Zorluk modifikatörleri — değerler TUNING.diff'ten gelir (tek kişilikle ORTAK tek
+// kaynak; eskiden burada AYRI sabitler vardı ve tek kişiliktekinden kayabiliyordu).
+// dmgMul = gelin gücü (temas hasarı) — eskiden online'da hiç yoktu.
 export function diffParams(diff: RaceDiff): {
   countMul: number;
   speedMul: number;
   intelAdd: number;
+  dmgMul: number;
 } {
-  switch (diff) {
-    case "kolay":
-      return { countMul: 0.6, speedMul: 0.82, intelAdd: -0.15 };
-    case "zor":
-      return { countMul: 1.4, speedMul: 1.12, intelAdd: 0.2 };
-    default:
-      return { countMul: 1.0, speedMul: 1.0, intelAdd: 0 };
-  }
+  const d = TUNING.diff[diff] ?? TUNING.diff.orta;
+  return { countMul: d.count, speedMul: d.speed, intelAdd: d.intel, dmgMul: d.dmg };
 }
 
 // Host'un gelin simülasyonu için zorluğa göre ayarlı config
@@ -173,7 +170,14 @@ export function generateRaceLevel(
 
 // ARENA (çok oyunculu): açık alan, ÇIKIŞ YOK — dalga hayatta kalma (host dalga ekler).
 // exit alanı doldurulur ama OnlineGame arena modunda çıkış açmaz/kullanmaz.
-export function generateArenaLevel(themeSeed = 0, playerCount = 2): RaceLevel {
+// ZORLUK: `diff` eskiden bu fonksiyona HİÇ verilmiyordu → online arena zorluğu
+// tamamen yok sayıyor, gelin sayısı yalnız oyuncu sayısına bağlı kalıyordu
+// (Kolay'da da Zor'da da aynı). Artık başlangıç dalgası zorlukla ölçekleniyor.
+export function generateArenaLevel(
+  themeSeed = 0,
+  playerCount = 2,
+  diff: RaceDiff = "orta"
+): RaceLevel {
   const pc = Math.max(1, playerCount);
   const size = 21 + Math.floor((pc - 1) * 2); // kişi sayısıyla biraz büyür
   const maze = generateArena(size, size, 0.05);
@@ -188,7 +192,8 @@ export function generateArenaLevel(themeSeed = 0, playerCount = 2): RaceLevel {
   const farFromPlayers = (c: Vec) => spawns.every((s) => Math.hypot(c.x - s.x, c.y - s.y) >= 4);
   let brideCand = reach.filter(farFromPlayers);
   if (brideCand.length === 0) brideCand = reach.slice();
-  const brideCount = Math.max(3, Math.round(3 + pc * 1.5)); // başlangıç dalgası
+  // Başlangıç dalgası: kişi sayısı × ZORLUK (Kolay ~yarısı, Zor ~2 katı)
+  const brideCount = Math.max(2, Math.round((3 + pc * 1.5) * diffParams(diff).countMul));
   const brideSpawns = shuffle(brideCand).slice(0, brideCount);
   // Bol mermi + can (arena açık ve yoğun)
   const onSpawn = (c: Vec) => spawns.some((s) => s.x === c.x && s.y === c.y);

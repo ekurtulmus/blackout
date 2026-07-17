@@ -23,7 +23,10 @@ export function levelConfig(level: number): LevelConfig {
   // Hız: YUMUŞAK ease-in artış (sıçramalı değil). Tavan = oyuncunun altında,
   // asla geçilmez → kaçış her zaman mümkün. Üst hız DÜŞÜRÜLDÜ (bıktırmasın).
   const sT = Math.pow(t, TUNING.brideSpeedEase); // ease-in (erken bölümler çok daha yumuşak)
-  const rawSpeed = 2.0 + sT * 0.9; // 2.0 -> 2.9 (eskiden 2.2 -> 3.6)
+  // ÜST UÇ 2.9 → 2.55: taban 2.9 iken hem Orta hem Zor brideSpeedCap'e (2.788) takılıp
+  // AYNI hıza düşüyordu → zorluk seçimi hızda hiçbir fark yaratmıyordu.
+  // 2.55 tabanla 10. bölüm: Kolay 1.99 · Orta 2.55 · Zor 3.01→tavan 2.788 → üçü ayrışır.
+  const rawSpeed = 2.0 + sT * 0.55; // 2.0 -> 2.55
   const zombieSpeed = Math.min(TUNING.brideSpeedCap, rawSpeed);
 
   // Görüş bölüm ilerledikçe hafifçe daralır (gerilim artar)

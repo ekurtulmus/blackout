@@ -914,13 +914,16 @@ export default function Page() {
     );
   }
 
+  // Hayatta kalma modları (Bitmeyen Gece / Arena) taban 1 canla başlar; KALICI
+  // "ekstra can hakkı" paketi burada da geçerli (eskiden lives={1} sabitti → paket
+  // bu modlarda hiç işlemiyordu). Birikmez: her oyunda taban + sahip olunan paket.
   if (screen === "endlessplay") {
     return (
       <Game
         key={`endless-${endlessRunId}`}
         level={1}
         score={0}
-        lives={1}
+        lives={1 + getInventory().extraLives}
         themeSeed={endlessRunId}
         mission={endlessMission}
         onEnd={handleEndlessEnd}
@@ -935,7 +938,7 @@ export default function Page() {
         key={`arena-${arenaRunId}`}
         level={1}
         score={0}
-        lives={1}
+        lives={1 + getInventory().extraLives}
         themeSeed={arenaRunId}
         mission={arenaMission}
         onEnd={handleArenaEnd}

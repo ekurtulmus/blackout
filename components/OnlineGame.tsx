@@ -28,6 +28,7 @@ import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { bfsDistances, type Maze } from "@/lib/maze";
 import {
   deserializeLevel,
+  diffParams,
   generateRaceLevel,
   levelMaze,
   raceBrideConfig,
@@ -66,6 +67,12 @@ const KIND_CODE: Record<BKind, number> = {
   normal: 0, dark: 1, mucus: 2, caller: 3, splitter: 4, climber: 5, queen: 6,
 };
 const CODE_KIND: BKind[] = ["normal", "dark", "mucus", "caller", "splitter", "climber", "queen"];
+// Türe göre temas hasarı çarpanı. Host'tan gelen gelin (RBride) yalnız `kind` taşır,
+// dmgMul taşımaz → burada türden türetilir (tek kişilikteki z.dmgMul ile aynı mantık).
+const KIND_DMG: Record<BKind, number> = {
+  normal: 1, dark: 1, mucus: 1, caller: 1, splitter: 1, climber: 1,
+  queen: TUNING.queenDmgMul,
+};
 type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null; dead?: boolean; rk?: number };
 
 export default function OnlineGame({
@@ -285,13 +292,17 @@ export default function OnlineGame({
       }
       let ni = 0;
       const take = () => normals[ni++];
-      if (lvl.level >= 2) { const s = take(); if (s) s.kind = "splitter"; }
-      if (lvl.level >= 3) {
+      // Arena'nın seviyesi HEP 1'dir (yarış bölümü değil) → aşağıdaki >=2/>=3/>=4
+      // eşikleri hiç tutmuyordu, yani arenada özel gelin türü hiç çıkmıyordu.
+      // Arenada tur numarasına göre etkin seviye kullan.
+      const kindLevel = arenaMode ? 3 + roundNum.current : lvl.level;
+      if (kindLevel >= 2) { const s = take(); if (s) s.kind = "splitter"; }
+      if (kindLevel >= 3) {
         const s2 = take(); if (s2) s2.kind = "splitter";
         const c = take(); if (c) { c.kind = "caller"; c.callTimer = TUNING.callerCooldown; }
       }
-      if (lvl.level >= 4) { const cl = take(); if (cl) cl.kind = "climber"; }
-      if (lvl.level % TUNING.queenEveryLevels === 0) {
+      if (kindLevel >= 4) { const cl = take(); if (cl) cl.kind = "climber"; }
+      if (kindLevel % TUNING.queenEveryLevels === 0) {
         const qc = lvl.brideSpawns[Math.floor(Math.random() * lvl.brideSpawns.length)];
         if (qc) {
           hostBrides.current.push({
@@ -836,20 +847,33 @@ export default function OnlineGame({
         if (arenaMode && roundEndsAt.current > 0 && now >= arenaNextWaveAt.current) {
           arenaWave.current += 1;
           arenaNextWaveAt.current = now + ARENA_WAVE_MS;
-          // Üst sınır tur numarasıyla yavaşça büyür (çok hızlı artmasın)
-          const cap = 10 + order.length * 5 + roundNum.current * 3;
-          const add = ARENA_WAVE_ADD + Math.floor(roundNum.current / 2) + Math.floor(order.length / 2);
+          // ZORLUK arenaya da uygulanır (eskiden hiç bakılmıyordu: Kolay da Zor da aynıydı)
+          const dmul = diffParams(info.diff).countMul;
+          // Üst sınır ve dalga başına eklenen, TUR ilerledikçe büyür → her tur bir
+          // öncekinden kalabalık. Zorlukla ölçeklenir.
+          const cap = Math.round((10 + order.length * 5 + roundNum.current * 4) * dmul);
+          const add = Math.max(
+            1,
+            Math.round((ARENA_WAVE_ADD + Math.floor(roundNum.current / 2) + Math.floor(order.length / 2)) * dmul)
+          );
           for (let i = 0; i < add; i++) {
             if (hostBrides.current.length >= cap) break;
             const cell = spawnBrideFarOnline();
             if (!cell) break;
             const total = hostBrides.current.length + 1;
+            // Dalgalarda ÖZEL türler de çıksın (eskiden yalnız normal/dark/mucus'tu)
+            let kind = assignBrideKind(total - 1, total);
+            let callTimer: number | undefined;
+            const r = Math.random();
+            if (r < 0.16) kind = "splitter";
+            else if (r < 0.28) { kind = "caller"; callTimer = TUNING.callerCooldown; }
+            else if (r < 0.36 && roundNum.current >= 2) kind = "climber";
             hostBrides.current.push({
               id: ++brideIdCounter.current,
               pos: { x: cell.x + 0.5, y: cell.y + 0.5 },
               hp: 1, aware: false, lastSeen: null, seenTimer: 4,
               wanderDir: randomDir(), wanderTimer: 0, path: null, repathTimer: 0,
-              kind: assignBrideKind(total - 1, total),
+              kind, callTimer,
             });
           }
           sound.play("warn"); // yeni dalga uyarısı
@@ -1043,14 +1067,18 @@ export default function OnlineGame({
       // hasar (dokunulmazlık bittiyse VE görünmez değilken): gelin teması can barını düşürür
       if (!frozen && now > invulnUntil.current && veilUntil.current <= now) {
         let touched = false;
+        let dmgMul = 1; // değen gelinin türü (kraliçe 1.5x / yavru 0.6x)
         for (const z of brides) {
           if (Math.hypot(z.pos.x - selfPos.current.x, z.pos.y - selfPos.current.y) < PLAYER_RADIUS + BRIDE_RADIUS) {
             touched = true;
+            dmgMul = Math.max(dmgMul, KIND_DMG[z.kind] ?? 1);
             break;
           }
         }
         if (touched) {
-          hp.current -= CONTACT_DPS * dt;
+          // ZORLUK gelin GÜCÜNÜ de belirler (Kolay 0.7 / Zor 1.4) — eskiden online'da
+          // zorluk hasarı hiç etkilemiyordu, yalnız sayı/hız değişiyordu.
+          hp.current -= CONTACT_DPS * dmgMul * diffParams(info.diff).dmgMul * dt;
           hurt.current = 0.25;
           sound.play("hurt");
           if (hp.current <= 0) die(now);

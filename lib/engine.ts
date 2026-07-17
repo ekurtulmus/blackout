@@ -64,13 +64,10 @@ export type Input = {
   ay?: number; // analog joystick dikey (-1..1), mobil
 };
 
-// Tek kişilik zorluk seviyesi (gelin sayısı / hız / görüş çarpanları)
+// Tek kişilik zorluk seviyesi — değerler TUNING.diff'te (online ile ORTAK tek kaynak;
+// eskiden burada ayrı bir tablo vardı ve online'dakiyle kayabiliyordu).
 export type Diff = "kolay" | "orta" | "zor";
-const DIFF_MULT: Record<Diff, { count: number; speed: number; vision: number }> = {
-  kolay: { count: 0.6, speed: 0.82, vision: 1.15 },
-  orta: { count: 1.0, speed: 1.0, vision: 1.0 },
-  zor: { count: 1.4, speed: 1.12, vision: 0.85 },
-};
+const DIFF_MULT = TUNING.diff;
 
 // Ses için ayrık olaylar. Motor bunları biriktirir, Game katmanı her kare boşaltıp çalar.
 export type SoundEvent =
@@ -186,6 +183,7 @@ export class GameEngine {
 
   warnTimer = 0; // "önce bir zombi öldür" uyarısı
   hurtFlash = 0; // hasar alınca kırmızı flaş
+  diffDmgMul = 1; // zorluğa göre gelin GÜCÜ (temas hasarı çarpanı)
   playerMoving = false; // yürüme animasyonu için
   events: SoundEvent[] = []; // bu kare oluşan ses olayları
   tension = 0; // 0..1 en yakın farkında zombiye göre gerilim (kalp atışı/ambiyans)
@@ -235,14 +233,21 @@ export class GameEngine {
         this.exitOpen = true;
         this.escapeTime = (mission.escapeSeconds ?? mission.timeLimit ?? 60) * 1.1;
       }
-    } else if (diff !== "orta") {
-      // Tek kişilik zorluk: gelin sayısı/hız/görüş ölçekle
+    }
+    // ZORLUK: TÜM oyun türlerinde uygulanır (normal, arena, bitmeyen gece...).
+    // Eskiden `else if` idi → görev/arena/endless modları zorluğu HİÇ görmüyordu; ayrıca
+    // zekâ ve gelin GÜCÜ (hasar) hiç ölçeklenmiyordu.
+    {
       const dm = DIFF_MULT[diff];
-      cfg = { ...cfg };
-      cfg.zombies = Math.max(1, Math.round(cfg.zombies * dm.count));
-      // Zor'da bile gelin hızı tavanı (oyuncunun %8 altı) asla aşılmaz
-      cfg.zombieSpeed = Math.min(TUNING.brideSpeedCap, cfg.zombieSpeed * dm.speed);
-      cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * dm.vision));
+      this.diffDmgMul = dm.dmg; // temas hasarı çarpanı (gelin gücü)
+      if (diff !== "orta") {
+        cfg = { ...cfg };
+        cfg.zombies = Math.max(1, Math.round(cfg.zombies * dm.count));
+        // Zor'da bile gelin hızı tavanı (oyuncunun %8 altı) asla aşılmaz
+        cfg.zombieSpeed = Math.min(TUNING.brideSpeedCap, cfg.zombieSpeed * dm.speed);
+        cfg.visionRadius = Math.max(3, Math.round(cfg.visionRadius * dm.vision));
+        cfg.intelligence = Math.max(0, Math.min(1, cfg.intelligence + dm.intel));
+      }
     }
     this.config = cfg;
     // Dinamik fener/görüş (Madde 4,5) — dip anında ses ipucu
@@ -469,7 +474,12 @@ export class GameEngine {
             : (this.level - 1) % JOURNAL.length;
         }
       }
-      // Faz D: yeni gelin türleri (yalnız normal tek kişilik → online/görev etkilenmez)
+    }
+    // Faz D: özel gelin türleri (çağıran/bölünen/tırmanan/kraliçe).
+    // Normal tek kişiliğe EK OLARAK hayatta kalma modlarında da (Arena / Bitmeyen Gece /
+    // Kör Gece / Sürü Gecesi) çıkar — eskiden `if (!mission)` içindeydi, yani o modlarda
+    // hiç görünmüyordu. Hikâye görevleri (Karanlık Görevler) kendi tasarımıyla kalır.
+    if (!mission || mission.arena || mission.endless) {
       this.assignSpecialKinds();
     }
 
@@ -517,14 +527,17 @@ export class GameEngine {
 
   // Faz D: bazı normal gelinleri özel türlere çevir + boss bölümlerinde kraliçe ekle.
   private assignSpecialKinds() {
+    // Hayatta kalma modlarında (arena/endless) this.level HEP 1'dir — tür eşikleri
+    // (>=2, >=3, >=4) bu yüzden hiç tutmazdı. Zorlukta da kullanılan levelBase'e bak.
+    const L = this.mission ? this.mission.levelBase : this.level;
     const normals = this.shuffle(this.zombies.filter((z) => z.kind === "normal"));
     let idx = 0;
     const take = () => normals[idx++];
-    if (this.level >= 2) {
+    if (L >= 2) {
       const s = take();
       if (s) s.kind = "splitter";
     }
-    if (this.level >= 3) {
+    if (L >= 3) {
       const s2 = take();
       if (s2) s2.kind = "splitter";
       const c = take();
@@ -533,12 +546,12 @@ export class GameEngine {
         c.callTimer = TUNING.callerCooldown;
       }
     }
-    if (this.level >= 4) {
+    if (L >= 4) {
       const cl = take();
       if (cl) cl.kind = "climber";
     }
     // Kraliçe (mini-boss): her queenEveryLevels bölümde bir EKSTRA
-    if (this.level % TUNING.queenEveryLevels === 0) this.spawnQueen();
+    if (L % TUNING.queenEveryLevels === 0) this.spawnQueen();
   }
 
   private spawnQueen() {
@@ -932,7 +945,8 @@ export class GameEngine {
     for (const z of this.zombies) {
       if (!this.veiled && !this.invuln && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
         if (this.hurtFlash <= 0) this.events.push("hurt");
-        this.player.hp -= CONTACT_DPS * (z.dmgMul ?? 1) * dt; // kraliçe 1.5x, yavru 0.6x
+        // kraliçe 1.5x, yavru 0.6x · diffDmgMul = zorluk (Kolay 0.7 / Zor 1.4)
+        this.player.hp -= CONTACT_DPS * (z.dmgMul ?? 1) * this.diffDmgMul * dt;
         this.hurtFlash = 0.25;
         const nx = this.player.pos.x - z.pos.x;
         const ny = this.player.pos.y - z.pos.y;

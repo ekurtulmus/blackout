@@ -250,7 +250,7 @@ export default function OnlineLobby({
     const themeSeed = randomThemeSeed();
     const pls = room.players();
     const lvl = arena
-      ? generateArenaLevel(themeSeed, pls.length)
+      ? generateArenaLevel(themeSeed, pls.length, diff) // zorluk arenaya da geçmeli
       : generateRaceLevel(1, diff, themeSeed, pls.length);
     room.startGame({ diff, level: serializeLevel(lvl), themeSeed, pvp, arena });
     handedOff.current = true;

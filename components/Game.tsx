@@ -154,8 +154,13 @@ export default function Game({
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Dükkan askeri: sahipsen (ölene dek) her bölümde yanında bir müttefik doğar
-    const hiredSoldier = !mission && getInventory().hiredSoldier;
+    // Hikâye görevleri (Karanlık Görevler) kendi tasarlanmış kurallarıyla kalır
+    // (ör. "Tek Nefes" = tek can). Hayatta kalma modları — Arena / Bitmeyen Gece /
+    // Kör Gece / Sürü Gecesi — normal oyun gibi davranır: dükkân eşyaları geçerli.
+    const storyMission = !!mission && !mission.arena && !mission.endless;
+    // Dükkan askeri: sahipsen (ölene dek) her bölümde yanında bir müttefik doğar.
+    // Eskiden `!mission` idi → arena/bitmeyen gecede asker HİÇ çıkmıyordu.
+    const hiredSoldier = !storyMission && getInventory().hiredSoldier;
     const engine = new GameEngine(level, score, lives, mission, withPhoto, diff, hiredSoldier);
     engineRef.current = engine;
     // Kiralık asker çizimi için: senin görünüm halka rengin + ismin (çerçeve + üstünde yazı)
@@ -163,12 +168,14 @@ export default function Game({
     let mySoldierName = "SEN";
     try { const n = localStorage.getItem("blackout_name"); if (n && n.trim()) mySoldierName = n.trim().slice(0, 10); } catch { /* geç */ }
     setCoins(getCoins()); // kalıcı parayı yükle
-    // Envanter (Faz B): yalnız normal tek kişilikte başlangıç eşyalarını uygula
-    if (!mission) {
+    // Envanter (Faz B): başlangıç eşyaları. Eskiden `!mission` idi → Arena/Bitmeyen
+    // Gece'de KALICI paketler (sürekli cephane) hiç uygulanmıyordu ("bazı oyunlarda
+    // +3 mermiyle başlamıyor"). Artık hayatta kalma modlarında da geçerli.
+    if (!storyMission) {
       const inv = getInventory();
       let changed = false;
       let ammoBonus = 0;
-      if (inv.permAmmo) ammoBonus += 3; // KALICI: her bölüm +3
+      if (inv.permAmmo) ammoBonus += 3; // KALICI: her bölüm/tur +3 (birikmez, hep +3)
       if (inv.ammoPacks > 0) {
         ammoBonus += 3;
         inv.ammoPacks -= 1;

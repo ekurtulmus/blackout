@@ -163,7 +163,7 @@ export function moveBrides(
       const pcell = cellOf(players[ti]);
       const seeTarget = ti === nIdx && canSee;
       const target = seeTarget || smart > 0.45 ? pcell : z.lastSeen ?? pcell;
-      chase(z, maze, zcell, dt, target, seeTarget, smart, pcell, spd);
+      chase(z, maze, zcell, dt, target, seeTarget, smart, pcell, spd, players[ti]);
     } else {
       wander(z, maze, dt, spd);
     }
@@ -180,8 +180,24 @@ function chase(
   canSee: boolean,
   smart: number,
   pcell: Vec,
-  speed: number
+  speed: number,
+  ppos?: Vec // oyuncunun GERÇEK konumu (hücre değil)
 ) {
+  // YAKIN TAKİP: oyuncuyu görüyorsak ya da aynı hücredeysek, yol hesaplama yerine
+  // doğrudan gerçek konumuna yönel.
+  // Sebep (ciddi hata): yol, hücre MERKEZLERİNDEN geçer — oyuncunun kendisinden değil.
+  // Gelin oyuncunun hücresine varınca yol boşalıyordu; findPath(aynı hücre) de boş
+  // dizi döndürüyordu. Eski kodda "yol yok + canSee" hâli hiçbir dal tarafından
+  // ele alınmıyordu → gelin hücre merkezinde DONUYOR, temas mesafesine hiç girmiyordu.
+  // Oyuncu durduğu sürece hedef hücre değişmediği için bu kilit kalıcıydı: gelin
+  // vurmayı bırakıyordu. Oyuncu kıpırdayınca hedef değişip yol yeniden kuruluyordu.
+  const sameCell = zcell.x === pcell.x && zcell.y === pcell.y;
+  if (ppos && (canSee || sameCell)) {
+    step(z, maze, ppos, speed * dt);
+    z.path = null;
+    z.repathTimer = 0;
+    return;
+  }
   z.repathTimer -= dt;
   if (!z.path || z.path.length === 0 || z.repathTimer <= 0) {
     z.path = findPath(maze, zcell, target);
@@ -192,7 +208,7 @@ function chase(
     const tp = { x: next.x + 0.5, y: next.y + 0.5 };
     step(z, maze, tp, speed * dt);
     if (dist(z.pos, tp) < 0.12) z.path.shift();
-  } else if (!canSee) {
+  } else {
     // hedefe vardı ama göremiyor — asla vazgeçme, güncel konuma yönel
     z.lastSeen = { x: pcell.x, y: pcell.y };
     z.path = null;
