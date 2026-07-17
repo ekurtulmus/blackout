@@ -41,6 +41,11 @@
   --copper: #c86b4a; /* eyebrow/etiket */
   --ok-dot: #2e9e5b;
   --ok-text: #7dffb0;
+  --tier-easy: #7dffb0;
+  --tier-mid: #ffd75a;
+  --tier-hard: #ff8a8a;
+  --warn-text: #ff9a3c; /* uyari/dikkat metni */
+  --danger-text: #ff6b6b; /* tehlike basligi */
   /* yüzeyler */
   --card: linear-gradient(180deg, rgba(22, 16, 14, 0.72), rgba(12, 9, 8, 0.72));
   --box: rgba(14, 10, 9, 0.6);
@@ -83,7 +88,7 @@
   --veil: #2b2620;
   --ash: #8b8272;
   --blood: #b01414;
-  --gold: #a9741f;
+  --gold: #8a5a12; /* metin olarak 3.1:1 kaliyordu */
   --parch-muted: #5f5647;
   --parch-border: rgba(120, 100, 78, 0.28);
 
@@ -98,11 +103,16 @@
   --ink-eyebrow: #5f5647;
   --gold-lite: #7a5214;
   --gold-warm: #6a4f22;
-  --gold-code: #e08a1c;
-  --gold-ico: #9a5a2a;
-  --copper: #b0552f;
-  --ok-dot: #5f8a6b;
-  --ok-text: #6f9a7e;
+  --gold-code: #b3690f;
+  --gold-ico: #8f4f22;
+  --copper: #9c4522; /* #b0552f açık zeminde 3.9:1 kalıyordu → 4.9:1 */
+  --ok-dot: #4a7a5c;
+  --ok-text: #2f6b47; /* #6f9a7e açık kartta 2.5:1 kalıyordu (okunmuyordu) */
+  --tier-easy: #1f6b45;
+  --tier-mid: #8a5a12;
+  --tier-hard: #a8281f;
+  --warn-text: #9a4a05;
+  --danger-text: #a8201a;
 
   --card: linear-gradient(180deg, rgba(255, 251, 245, 0.72), rgba(250, 247, 240, 0.72));
   --box: rgba(255, 251, 245, 0.6);
@@ -156,6 +166,11 @@
   --blood: #d11a1a;
   --ok-text: #7dffb0;
   --ok-dot: #2e9e5b;
+  --tier-easy: #7dffb0;
+  --tier-mid: #ffd75a;
+  --tier-hard: #ff8a8a;
+  --warn-text: #ff9a3c;
+  --danger-text: #ff6b6b;
   --card: linear-gradient(180deg, rgba(22, 16, 14, 0.72), rgba(12, 9, 8, 0.72));
   --box: rgba(14, 10, 9, 0.6);
   --edge: rgba(206, 186, 156, 0.2);
@@ -204,7 +219,9 @@ button {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: #000;
+  /* Sabit #000 DEĞİL: aydınlık temada kabuk, body'nin açık zeminini siyahla örtüyordu
+     → tüm menü metinleri koyu-üstüne-koyu kalıyordu. */
+  background: var(--bg);
   color: var(--ink-body);
 }
 .shell-game {
@@ -244,6 +261,41 @@ button {
   background: radial-gradient(130% 120% at 50% 50%, transparent 42%, rgba(var(--vig1-rgb), 0.5) 82%, rgba(var(--vig2-rgb), 0.85) 100%);
   box-shadow: inset 0 0 260px 120px var(--beat);
   animation: mm-beat 3.4s ease-in-out infinite;
+}
+/* AYDINLIK: ekran kenarındaki karartı YOK — vinyet de nabız gölgesi de kapalı.
+   (Koyu temada ikisi de duruyor: orada karartma korku atmosferinin parçası.) */
+[data-theme="light"] .shell-vignette {
+  background: none;
+  box-shadow: none;
+  animation: none;
+}
+
+/* ---- AYDINLIK TEMA OKUNABİLİRLİK DÜZELTMELERİ ----
+   Bu gölgeler/parıltılar KOYU zemin için tasarlanmış: açık zeminde koyu metnin
+   arkasındaki siyah hâle metni bulandırıp gözü yoruyor. Aydınlıkta kapatılırlar. */
+[data-theme="light"] .mm-title,
+[data-theme="light"] .mm-eyebrow,
+[data-theme="light"] .mm-lore,
+[data-theme="light"] .scr-title,
+[data-theme="light"] .scr-sub,
+[data-theme="light"] .title,
+[data-theme="light"] .subtitle,
+[data-theme="light"] .big {
+  text-shadow: none;
+}
+/* Logo'daki alev "O": koyuda beyaz+turuncu hâle. Açık zeminde beyaz harf kaybolurdu →
+   sıcak koyu turuncuya al, hâleyi kısır tut (okunur ama alev hissi korunur). */
+[data-theme="light"] .mm-title .mm-o {
+  color: #b4471a;
+  text-shadow: 0 0 10px rgba(224, 138, 28, 0.45);
+}
+/* Menü kartlarının/kutuların açık zemindeki kenarları belirgin olsun (silik durmasın) */
+[data-theme="light"] .mm-box,
+[data-theme="light"] .mm-card,
+[data-theme="light"] .card,
+[data-theme="light"] .item-card,
+[data-theme="light"] .panel {
+  border-color: rgba(var(--edge-rgb), 0.32);
 }
 /* İçerik: kaydırılabilir, arka plan sabit kalır */
 .shell-content {
@@ -358,9 +410,11 @@ button {
   81% { opacity: 0.45; }
   82% { opacity: 1; }
 }
+/* Nabız: rengi sabit yazma — animasyon box-shadow'u ezdiği için sabit #000 burada
+   .shell-vignette'in var(--beat)'ini geçersiz kılıyordu. */
 @keyframes mm-beat {
-  0%, 100% { box-shadow: inset 0 0 260px 120px #000; }
-  50% { box-shadow: inset 0 0 300px 140px #000; }
+  0%, 100% { box-shadow: inset 0 0 260px 120px var(--beat); }
+  50% { box-shadow: inset 0 0 300px 140px var(--beat); }
 }
 @keyframes mm-fade {
   from { opacity: 0; transform: translateY(10px); }
@@ -1163,18 +1217,18 @@ button.card:hover {
   border-radius: 9px;
   background: transparent;
   border: 1px solid rgba(255, 90, 90, 0.5);
-  color: #ff9a3c;
+  color: var(--warn-text);
   font-size: 12.5px;
   font-weight: 600;
   letter-spacing: 0.14em;
   text-transform: uppercase;
   transition: all 0.2s;
 }
-.danger-btn:hover { background: rgba(var(--blood-rgb), 0.12); border-color: #ff6b6b; color: #fff; }
+.danger-btn:hover { background: rgba(var(--blood-rgb), 0.12); border-color: var(--danger-text); color: #fff; }
 .danger-btn.is-solid {
   margin-top: 0;
   background: linear-gradient(180deg, rgba(122, 31, 31, 0.95), rgba(60, 14, 14, 0.95));
-  border-color: #ff6b6b;
+  border-color: var(--danger-text);
   color: #fff;
 }
 

@@ -153,7 +153,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
 
         {/* Tehlikeli bölge */}
         <div className="panel" style={{ borderColor: "rgba(255,90,90,0.4)", borderTop: "2px solid var(--blood)" }}>
-          <div className="field-t" style={{ color: "#ff6b6b", display: "inline-flex", alignItems: "center", gap: 7 }}>
+          <div className="field-t" style={{ color: "var(--danger-text)", display: "inline-flex", alignItems: "center", gap: 7 }}>
             <Icon name="warn" size={16} /> Tüm İlerlemeyi Sıfırla
           </div>
           {!confirmReset ? (
@@ -167,7 +167,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             </>
           ) : (
             <>
-              <div style={{ marginTop: 8, fontSize: 14, color: "#ff9a3c", lineHeight: 1.5, fontWeight: 700 }}>
+              <div style={{ marginTop: 8, fontSize: 14, color: "var(--warn-text)", lineHeight: 1.5, fontWeight: 700 }}>
                 Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>

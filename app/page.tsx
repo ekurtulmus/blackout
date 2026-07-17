@@ -86,10 +86,12 @@ const ACH_ICON: Record<string, IconName> = {
   queen5: "crown", rich5000: "coin",
 };
 // Zorluk kademesi → renk/etiket (başarım kartında rozet)
+// Zorluk rozeti renkleri TEMAYA duyarlı: sabit parlak renkler (mint/sarı/pembe) açık
+// zeminde okunmuyordu (1:1'e kadar düşüyordu). Değerler globals.css'te tanımlı.
 const TIER_STYLE: Record<string, { label: string; color: string }> = {
-  kolay: { label: "Kolay", color: "#7dffb0" },
-  orta: { label: "Orta", color: "#ffd75a" },
-  zor: { label: "Zor", color: "#ff8a8a" },
+  kolay: { label: "Kolay", color: "var(--tier-easy)" },
+  orta: { label: "Orta", color: "var(--tier-mid)" },
+  zor: { label: "Zor", color: "var(--tier-hard)" },
 };
 
 type Screen =
