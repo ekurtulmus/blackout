@@ -35,11 +35,14 @@ export function getMyCode(): string {
   }
 }
 
+// Görünen ad: kullanıcı isim yazdıysa o, yazmadıysa arkadaş kodu.
+// Yedek OKUMA anında uygulanır — kod localStorage'a İSİM olarak YAZILMAZ; yazılırsa
+// seçilmiş isimden ayırt edilemez ve kullanıcının ismini kalıcı olarak ezer.
 export function getMyName(): string {
   try {
-    return localStorage.getItem(NAME_KEY) || "Oyuncu";
+    return (localStorage.getItem(NAME_KEY) || "").trim() || getMyCode();
   } catch {
-    return "Oyuncu";
+    return getMyCode();
   }
 }
 

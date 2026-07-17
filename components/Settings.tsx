@@ -30,14 +30,19 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   const [name, setName] = useState("");
   const [nameMsg, setNameMsg] = useState("");
 
+  // Yalnız KULLANICININ YAZDIĞI isim saklanır. Alan boşsa anahtar SİLİNİR (boş string
+  // yazılmaz): boş kayıt, okuyan tarafta "isim yok" ile aynı anlama gelir ve yedek
+  // (arkadaş kodu) devreye girer. Kodu isim olarak kaydetmek ismi kalıcı ezmişti.
   function saveName(v: string) {
     setName(v);
     try {
-      localStorage.setItem(NAME_KEY, v.trim());
+      const t = v.trim();
+      if (t) localStorage.setItem(NAME_KEY, t);
+      else localStorage.removeItem(NAME_KEY);
     } catch {
       /* geç */
     }
-    setNameMsg("✓ Kaydedildi");
+    setNameMsg(v.trim() ? "✓ Kaydedildi" : "");
     window.setTimeout(() => setNameMsg(""), 1500);
   }
 
@@ -62,11 +67,11 @@ export default function Settings({ onBack }: { onBack: () => void }) {
     setMusic(sound.isMusicOn());
     setMuted(sound.muted);
     try {
-      const saved = localStorage.getItem(NAME_KEY);
-      // Başta oyuncu kodu görünür; "Ev sahibi"/"Oyuncu" gibi otomatik varsayılanlar da kodla değiştirilir.
-      const initial = !saved || saved === "Ev sahibi" || saved === "Oyuncu" ? getMyCode() : saved;
-      setName(initial);
-      if (initial !== saved) localStorage.setItem(NAME_KEY, initial);
+      // SADECE kayıtlı ismi göster. Kod artık kaydedilmez, yalnız yer tutucu olarak
+      // görünür (aşağıdaki input'un placeholder'ı) — eskiden buraya yazılan kod,
+      // seçilmiş isimden ayırt edilemediği için ismi kalıcı olarak eziyordu.
+      const saved = (localStorage.getItem(NAME_KEY) || "").trim();
+      setName(saved === "Ev sahibi" || saved === "Oyuncu" ? "" : saved);
     } catch {
       /* geç */
     }
@@ -107,12 +112,12 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             className="field-input"
             value={name}
             onChange={(e) => saveName(e.target.value.slice(0, 8))}
-            placeholder="Adını yaz…"
+            placeholder={getMyCode()}
             maxLength={8}
           />
           <div className="field-d">
-            Başta arkadaş kodun yazılı — <b style={{ color: "var(--gold)" }}>istediğin gibi değiştirebilirsin</b>.
-            Bu isim online oyunlarda, çok oyunculuda ve arkadaş listende görünür.
+            Boş bırakırsan <b style={{ color: "var(--gold)" }}>arkadaş kodun</b> ({getMyCode()}) görünür.
+            Yazdığın isim kalıcıdır. Bu isim online oyunlarda, çok oyunculuda ve arkadaş listende görünür.
           </div>
         </div>
 

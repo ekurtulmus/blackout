@@ -69,8 +69,10 @@ export default function OnlineLobby({
   // İsmi hatırla
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(NAME_KEY);
-      setName(saved && saved !== "Ev sahibi" && saved !== "Oyuncu" ? saved : getMyCode());
+      // Alanı KODLA doldurma: doldurulunca oda kurarken kod isim olarak kaydedilip
+      // gerçek ismi eziyordu. Kod artık yalnız placeholder'da görünür.
+      const saved = (localStorage.getItem(NAME_KEY) || "").trim();
+      setName(saved === "Ev sahibi" || saved === "Oyuncu" ? "" : saved);
     } catch {
       /* geç */
     }
@@ -164,9 +166,11 @@ export default function OnlineLobby({
     };
   }, []);
 
+  // Yalnız gerçekten yazılmış ismi sakla — kod ASLA isim olarak kaydedilmez.
   function saveName(n: string) {
     try {
-      localStorage.setItem(NAME_KEY, n);
+      const t = n.trim();
+      if (t) localStorage.setItem(NAME_KEY, t);
     } catch {
       /* geç */
     }
@@ -174,8 +178,8 @@ export default function OnlineLobby({
 
   function startRoom(c: string, role: NetRole) {
     roomRef.current?.leave();
-    const nm = name.trim() || getMyCode();
-    saveName(nm);
+    saveName(name); // boşsa hiçbir şey yazmaz
+    const nm = name.trim() || getMyCode(); // odada görünecek ad (yedek: kod)
     const room = new NetRoom(c, role, nm);
     room.onStatus = (s) => setStatus(s);
     room.onRoster = (pl) => setPlayers(pl);
@@ -280,7 +284,7 @@ export default function OnlineLobby({
       style={{ letterSpacing: "normal", fontSize: "clamp(18px,4vw,26px)", textTransform: "none" }}
       value={name}
       onChange={(e) => setName(e.target.value.slice(0, 8))}
-      placeholder="Adın (max 8)"
+      placeholder={getMyCode()}
       maxLength={8}
     />
   );
