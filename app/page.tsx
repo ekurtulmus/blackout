@@ -795,15 +795,17 @@ export default function Page() {
           <div className="grid grid-184">
             {SECRETS.map((s, i) => {
               const got = unlockedSecrets.includes(i);
+              // Dolgu/yazı boyutu .secret-card sınıfında (satır içi stil, mobil
+              // kuralını ezip kartların küçülmesini engelliyordu).
               return got ? (
-                <button key={s.id} className="card" onClick={() => setOpenSecret(i)} style={{ padding: 10, gap: 9 }}>
+                <button key={s.id} className="card secret-card" onClick={() => setOpenSecret(i)}>
                   <div className="secret-img" dangerouslySetInnerHTML={{ __html: s.svg }} />
-                  <div className="card-t" style={{ fontSize: 13.5, color: "var(--gold-lite)" }}>{s.title}</div>
+                  <div className="card-t" style={{ color: "var(--gold-lite)" }}>{s.title}</div>
                 </button>
               ) : (
-                <div key={s.id} className="card is-locked" style={{ padding: 10, gap: 9 }}>
+                <div key={s.id} className="card secret-card is-locked">
                   <div className="secret-img"><Icon name="lock" size={30} /></div>
-                  <div className="card-t" style={{ fontSize: 13.5, color: "var(--ink-dimmer)" }}>Sır {i + 1}</div>
+                  <div className="card-t" style={{ color: "var(--ink-dimmer)" }}>Sır {i + 1}</div>
                 </div>
               );
             })}

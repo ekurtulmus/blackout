@@ -1079,10 +1079,13 @@ button {
    Burada iki kolona indiriliyor; yalnız en geniş ızgara (Günlük, uzun metin) tek kalır. */
 @media (max-width: 640px) {
   .grid { gap: 9px; }
-  .grid-184,
+  /* Sırlar (grid-184): satıra 3 kart → 12 sır = 4 satır, tek ekrana sığar */
+  .grid-184 { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; }
   .grid-232,
   .grid-268 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-340 { grid-template-columns: 1fr; }
+  /* (Sır kartı kompaktlığı .secret-card tanımının ALTINDAKİ media query'de —
+      buraya yazılırsa sonra gelen temel kural onu ezer.) */
   .card { padding: 12px; gap: 7px; border-radius: 11px; }
   .card-t { font-size: 14px; }
   .card-d { font-size: 12.5px; line-height: 1.4; }
@@ -1205,9 +1208,16 @@ button.card:hover {
   color: var(--ink-dimmer);
 }
 .secret-img svg { width: 100%; height: 100%; display: block; }
-/* Mobil: sır görseli 4/3'te dev kalıyordu (321×241) → kareye yakın ve küçük */
+/* Sır kartı ortak dolgusu (eskiden JSX'te satır içi stildi → breakpoint'e göre
+   değiştirilemiyor, CSS'i eziyordu). */
+.secret-card { padding: 10px; gap: 9px; }
+.secret-card .card-t { font-size: 13.5px; }
+/* Mobil: sır görseli 4/3'te dev kalıyordu → kare; kart da kompaktlaşır ki
+   satıra 3, ekrana 4 satır sığsın. (Bu blok .secret-card tanımından SONRA olmalı.) */
 @media (max-width: 640px) {
   .secret-img { aspect-ratio: 1 / 1; border-radius: 7px; }
+  .secret-card { padding: 6px; gap: 5px; border-radius: 9px; }
+  .secret-card .card-t { font-size: 10.5px; line-height: 1.25; letter-spacing: 0; }
 }
 
 /* ==========================================================================

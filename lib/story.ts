@@ -3,10 +3,12 @@
 
 export const INTRO_TITLE = "Neden buradasın?";
 
+// KISA tutulur: brifing mobilde tek ekrana sığmalı — uzun metin sayfayı taşırıyordu.
+// Atmosfer + tek kritik kural (çıkış nasıl açılır) korunur. ~390 → ~190 karakter.
 export const INTRO_LINES: string[] = [
-  "Ayıldığında etrafın kapkaranlıktı. Ne bir kapı, ne bir pencere — sadece nemli taş ve senin titrek el fenerin.",
-  "Uzaklardan boğuk bir düğün marşı geliyor. Ama burada kutlama yok; bir zamanlar sevilen, sonra terk edilen gelinler var — yüzleri kanla örtülü, gözleri seni arıyor.",
-  "Seni fark ettikleri an durmuyorlar. Çıkışı bulmalısın. Ama çıkış, ancak onlardan birini sonsuza dek susturursan açılıyor.",
+  "Ayıldığında etraf kapkaranlıktı. Ne kapı, ne pencere — yalnız nemli taş ve fenerin.",
+  "Uzaktan boğuk bir düğün marşı geliyor. Kanlı yüzler seni arıyor.",
+  "Çıkış, ancak birini sonsuza dek susturursan açılır.",
 ];
 
 // Bölüm arası kısa notlar (levelclear ekranında gösterilir)
