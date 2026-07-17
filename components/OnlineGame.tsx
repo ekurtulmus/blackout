@@ -690,6 +690,7 @@ export default function OnlineGame({
         case "ArrowRight": case "d": case "D": input.current.right = d; break;
         case " ": case "Spacebar": input.current.fire = d; break;
         case "e": case "E": input.current.place = d; break;
+        case "f": case "F": if (d) toggleWeapon(); break; // silah değiştir (sağ tık da yapar)
         case "t": case "T": if (d) placeTrapOnline(); break;
         case "q": case "Q": if (d) activateShieldOnline(); break; // envanter: kalkan
         case "r": case "R": if (d) activateRadarOnline(); break; // envanter: radar
@@ -701,6 +702,14 @@ export default function OnlineGame({
     const ku = (e: KeyboardEvent) => onKey(e, false);
     window.addEventListener("keydown", kd);
     window.addEventListener("keyup", ku);
+
+    // PC: SAĞ TIK = silah değiştir (tekli oyunla aynı). Bağlam menüsü açılmaz.
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      toggleWeapon();
+    };
+    const cvEl = canvasRef.current;
+    cvEl?.addEventListener("contextmenu", onCtx);
 
     let dpr = 1, cssW = 0, cssH = 0, TS = 36;
     function resize() {
@@ -1787,6 +1796,7 @@ export default function OnlineGame({
     return () => {
       cancelAnimationFrame(raf);
       window.clearTimeout(toastTimer);
+      cvEl?.removeEventListener("contextmenu", onCtx);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       window.removeEventListener("resize", resize);
@@ -2291,15 +2301,18 @@ export default function OnlineGame({
         >
           {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
         </button>
-        {/* Silah değiştir — ateşin yanında (mermi ↔ kılıç). PC'de F tuşu. */}
-        <button
-          className={"weaponbtn" + (weapon === "sword" ? " is-sword" : "")}
-          onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
-          title={weapon === "sword" ? "Silaha geç (F)" : "Kılıca geç (F)"}
-          aria-label="Silah değiştir"
-        >
-          {weapon === "sword" ? <Icon name="ammo" size={20} /> : <Icon name="sword" size={22} />}
-        </button>
+        {/* Ateşin ÜSTÜNDEKİ eylem satırı (tekli oyunla aynı düzen) — sabit sağ-alt
+            konum yerine satır: tuzak/bariyer butonlarıyla çakışmaz. */}
+        <div className="actionrow actionrow-mp">
+          <button
+            className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
+            onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
+            title={weapon === "sword" ? "Silaha geç (F / sağ tık)" : "Kılıca geç (F / sağ tık)"}
+            aria-label="Silah değiştir"
+          >
+            {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
+          </button>
+        </div>
       </div>
 
       {/* Envanteri aç — slotun hemen üstünde */}

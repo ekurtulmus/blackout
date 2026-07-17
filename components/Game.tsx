@@ -342,6 +342,15 @@ export default function Game({
     window.addEventListener("keydown", kd);
     window.addEventListener("keyup", ku);
 
+    // PC: SAĞ TIK = silah değiştir (mermi ↔ kılıç). Tarayıcının bağlam menüsü
+    // açılmasın diye canvas üzerinde varsayılan davranış engellenir.
+    const onCtx = (e: MouseEvent) => {
+      e.preventDefault();
+      toggleWeapon();
+    };
+    const cvEl = canvasRef.current;
+    cvEl?.addEventListener("contextmenu", onCtx);
+
     // Ses tarayıcı kuralı gereği ilk kullanıcı hareketinde başlar
     sound.init();
     let audioStarted = false;
@@ -1287,6 +1296,7 @@ export default function Game({
       cancelAnimationFrame(raf);
       window.clearInterval(hudTimer);
       window.removeEventListener("resize", resize);
+      cvEl?.removeEventListener("contextmenu", onCtx);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       window.removeEventListener("keydown", startAudio);
@@ -1697,26 +1707,28 @@ export default function Game({
             {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
           </button>
         )}
-        {/* Silah değiştir — ateşin hemen yanında (mermi ↔ kılıç). PC'de F tuşu. */}
-        <button
-          className={"weaponbtn" + (weapon === "sword" ? " is-sword" : "")}
-          onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
-          title={weapon === "sword" ? "Silaha geç (F)" : "Kılıca geç (F)"}
-          aria-label="Silah değiştir"
-        >
-          {weapon === "sword" ? <Icon name="ammo" size={20} /> : <Icon name="sword" size={22} />}
-        </button>
-        {/* Koşma (basılı tut) — mobil */}
-        <button
-          className="barrierbtn"
-          style={{ right: 26, bottom: 148, background: "radial-gradient(circle at 40% 35%, #3a7ea8, #1c3a52)", borderColor: "rgba(150,210,255,0.5)" }}
-          onPointerDown={(e) => { e.preventDefault(); const i = inputExternal.current; if (i) i.sprint = true; }}
-          onPointerUp={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
-          onPointerLeave={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
-          onPointerCancel={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
-        >
-          KOŞ
-        </button>
+        {/* Ateşin ÜSTÜNDEKİ eylem satırı: silah değiştir + koş YAN YANA.
+            İkisi de ayrı ayrı sağ-alta konumlanıyordu (bottom 146 / 148) → üst üste
+            biniyorlardı. Tek satırda tutulunca çakışma yapısal olarak imkânsız. */}
+        <div className="actionrow">
+          <button
+            className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
+            onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
+            title={weapon === "sword" ? "Silaha geç (F / sağ tık)" : "Kılıca geç (F / sağ tık)"}
+            aria-label="Silah değiştir"
+          >
+            {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
+          </button>
+          <button
+            className="actbtn is-sprint"
+            onPointerDown={(e) => { e.preventDefault(); const i = inputExternal.current; if (i) i.sprint = true; }}
+            onPointerUp={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+            onPointerLeave={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+            onPointerCancel={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
+          >
+            KOŞ
+          </button>
+        </div>
       </div>
 
       {/* Envanteri aç — slotun hemen üstünde */}

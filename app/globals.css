@@ -2049,31 +2049,56 @@ button.card:hover {
   box-shadow: 0 0 24px rgba(160, 200, 255, 0.3);
 }
 
-/* Silah değiştir — ateş butonunun hemen ÜSTÜNDE (mermi ↔ kılıç) */
-.weaponbtn {
+/* Ateşin ÜSTÜNDEKİ eylem satırı — silah değiştir + koş YAN YANA.
+   Tek satırda tutulur: eskiden ikisi de ayrı ayrı sağ-alta konumlanıp (bottom 146/148)
+   üst üste biniyordu. Flex satır → çakışma yapısal olarak imkânsız. */
+.actionrow {
   position: absolute;
-  right: 44px;
+  right: 26px;
   bottom: 146px;
-  width: 60px;
-  height: 60px;
-  border-radius: 14px;
+  display: flex;
+  gap: 8px;
+  pointer-events: none;
+}
+.actionrow .actbtn {
   pointer-events: auto;
+  width: 52px;
+  height: 52px;
+  border-radius: 13px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
   color: #d7e4ff;
   background: radial-gradient(circle at 40% 35%, #39424e, #1b2027);
   border: 1px solid rgba(200, 220, 255, 0.4);
-  box-shadow: 0 0 14px rgba(140, 180, 255, 0.18);
+  box-shadow: 0 0 12px rgba(140, 180, 255, 0.16);
 }
-.weaponbtn.is-sword {
+.actionrow .actbtn.is-sword {
   color: #ffd9a8;
   border-color: rgba(var(--gold-rgb), 0.5);
-  box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.22);
+  box-shadow: 0 0 12px rgba(var(--gold-rgb), 0.22);
+}
+.actionrow .actbtn.is-sprint {
+  background: radial-gradient(circle at 40% 35%, #3a7ea8, #1c3a52);
+  border-color: rgba(150, 210, 255, 0.5);
+  color: #e6f4ff;
 }
 @media (max-width: 640px) {
-  .weaponbtn { right: 40px; bottom: 140px; width: 54px; height: 54px; }
+  .actionrow { right: 22px; bottom: 138px; gap: 7px; }
+  .actionrow .actbtn { width: 46px; height: 46px; border-radius: 11px; font-size: 10.5px; }
+}
+/* ONLINE mobil yığın: ateş(40) → slot(150) → envanter(218) → silah(258).
+   Tek kişilikteki bottom:138 burada slot butonuna biniyordu (slotbtn-mp right:30
+   bottom:150) → online'a kendi konumu verildi. */
+@media (pointer: coarse) {
+  .actionrow.actionrow-mp {
+    right: 30px;
+    bottom: 258px;
+  }
 }
 
 .fire:active {
