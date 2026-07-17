@@ -105,16 +105,6 @@ export default function OnlineLobby({
     const iv = window.setInterval(() => setTick((t) => t + 1), 2500);
     return () => window.clearInterval(iv);
   }, []);
-  const [reqCode, setReqCode] = useState(""); // izleyici: arkadaş isteği kodu
-  const [reqMsg, setReqMsg] = useState("");
-  function sendFriendReq() {
-    const c = reqCode.trim().toUpperCase();
-    if (c.length < 4) return;
-    presence?.sendRequest(c);
-    setReqCode("");
-    setReqMsg("✓ İstek gönderildi (arkadaşın çevrimiçiyse kabul edebilir)");
-    window.setTimeout(() => setReqMsg(""), 3000);
-  }
   // Odadaki oyuncu listesi + her birine "+ Arkadaş" (kendisi/zaten arkadaş hariç; istek kalıcı)
   const rosterList = () => {
     const friendCodes = new Set(getFriends().map((f) => f.code));
@@ -364,15 +354,21 @@ export default function OnlineLobby({
           </div>
           {rosterList()}
 
-          {/* Çevrimiçi arkadaşları odaya davet et */}
+          {/* Çevrimiçi arkadaşları odaya davet et — ZATEN ODADA OLANLAR listelenmez
+              (onlara "Davet Et" göstermek anlamsızdı). */}
           {(() => {
-            const onlineFriends = getFriends().filter((f) => presence?.isOnline(f.code));
+            const inRoom = new Set(players.map((p) => p.code).filter(Boolean) as string[]);
+            const onlineFriends = getFriends().filter(
+              (f) => presence?.isOnline(f.code) && !inRoom.has(f.code)
+            );
             return (
               <div className="how" style={{ maxWidth: 420, width: "100%", padding: 14 }}>
-                <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8 }}>👥 Arkadaşını çağır</div>
+                <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="people" size={15} /> Arkadaşını çağır
+                </div>
                 {onlineFriends.length === 0 ? (
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    Çevrimiçi arkadaşın yok. (Menüdeki 👥 ile arkadaş ekleyebilirsin.)
+                    Davet edilebilecek çevrimiçi arkadaşın yok.
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -548,22 +544,8 @@ export default function OnlineLobby({
             ▶ Ev sahibi başlatır…
           </button>
 
-          {/* İzleyici de arkadaş ekleyebilir */}
-          <div className="how" style={{ maxWidth: 420, width: "100%", padding: 14 }}>
-            <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8 }}>👥 Arkadaş ekle</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 8 }}>{reqMsg || "Kod gir, istek gönder."}</div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                value={reqCode}
-                onChange={(e) => setReqCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 6))}
-                placeholder="Arkadaş kodu"
-                maxLength={6}
-                style={{ flex: 1, background: "rgba(0,0,0,0.35)", border: "1px solid rgba(150,140,120,0.35)", borderRadius: 8, padding: "9px 12px", color: "#e8e0cc", fontSize: 15, letterSpacing: "0.08em", outline: "none" }}
-              />
-              <button className="btn btn-primary" onClick={sendFriendReq} disabled={reqCode.trim().length < 4}>İstek</button>
-            </div>
-          </div>
-
+          {/* Odada kod girme alanı KALDIRILDI: roster'daki her oyuncunun yanında zaten
+              "+" ile istek gönderiliyor; kodu elle yazdırmak gereksizdi. */}
           <button className="btn" onClick={back}>← Ayrıl</button>
         </>
       )}

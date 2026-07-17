@@ -48,9 +48,12 @@ const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
 const ARENA_WAVE_MS = 18000; // arena: her ~18 sn'de bir yeni dalga (host gelin ekler; yavaş)
 const ARENA_WAVE_ADD = 2; // her dalgada eklenen gelin (tur numarasıyla yavaşça artar)
 const ARENA_ROUND_MS = 50000; // arena turu 50 saniye
-// Zaman aşımıyla oda boşalırsa maçı HEMEN bitirme: oyuncu geri dönebilir (telefon
-// kilidi / sekme arka planı / ağ takılması). Bu süre boyunca kimse dönmezse biter.
+// Oda 2 kişinin altına düştü kararı hemen verilmez (oyuncu geri dönebilir).
 const ALONE_GRACE_MS = 15000;
+// Sekmesini kapatıp {t:left} yollayamayan oyuncu için EMNİYET süresi. Bu kadar süre
+// hiç pos gelmezse yok sayılır. Uzun tutulur: kısa kesintiler (telefon kilidi, sekme
+// arka planı, ağ takılması) odayı kapatmasın — yanlış "oda kapandı" alarmının sebebiydi.
+const DEAD_MS = 45000;
 const ARENA_WIN_POINTS = 5; // 5 tur kazanan maçı alır
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
@@ -116,6 +119,8 @@ export default function OnlineGame({
   const diff = info.diff;
   const order = info.order; // oyuncu id sırası (seat = index)
   const myColor = SEAT_COLORS[mySeat % SEAT_COLORS.length];
+  // Görünen ad — TEK etiket: isim varsa İSİM, yoksa arkadaş KODU (lobi kodu isim
+  // alanında taşır), o da yoksa "Oyuncu N". İsim ve kod ASLA birlikte yazılmaz.
   const nameOf = (seat: number) =>
     (info.names[seat] || "").trim() || `Oyuncu ${seat + 1}`;
 
@@ -154,6 +159,7 @@ export default function OnlineGame({
   const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular (pos zaman aşımı veya elle)
   const explicitLeftIds = useRef<Set<string>>(new Set()); // yalnız {t:left} yollayanlar — kalıcı çıkar
   const aloneSince = useRef(0); // oda ne zamandan beri boş (0 = boş değil) — ALONE_GRACE_MS için
+  const lastSeenById = useRef<Map<string, number>>(new Map()); // id → son pos zamanı (ASLA silinmez)
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
   const flashlight = useRef<Flashlight | null>(null); // dinamik görüş + kararma (Madde 4,5)
@@ -195,9 +201,14 @@ export default function OnlineGame({
   const roundKills = useRef(0); // bu turda öldürdüğün gelin (tur sonu tally)
   const roundNum = useRef(1); // kaçıncı tur
   const [arenaOver, setArenaOver] = useState<{ scores: number[]; winner: number } | null>(null);
+  const [confirmQuit, setConfirmQuit] = useState(false); // çıkış onayı (yanlış tık koruması)
   const [rulesOpen, setRulesOpen] = useState(false); // arena kuralları (başta 4sn + "?" ile)
   // Tur arası: kazananı HERKES görsün (yeni tur başlamadan önce ~4 sn)
-  const [roundInfo, setRoundInfo] = useState<{ winner: number; kills: number; scores: number[] } | null>(null);
+  // standings: turun TAM sıralaması (koltuk + öldürme) — sonuç ekranında herkes görünür
+  const [roundInfo, setRoundInfo] = useState<{
+    winner: number; kills: number; scores: number[];
+    standings?: { seat: number; k: number }[];
+  } | null>(null);
   const invulnUntil = useRef(0);
   const deadUntil = useRef(0); // öldüysen bu ana kadar ölü yerinde donarsın (sonra doğarsın)
   const hurt = useRef(0);
@@ -556,6 +567,9 @@ export default function OnlineGame({
         o.dir = { x: m.dx as number, y: m.dy as number };
         o.seenAt = performance.now();
         o.everSeen = true;
+        // "Tek kaldın" kararı için: bu kayıt zaman aşımında SİLİNMEZ (others siliniyor),
+        // böylece kimin ne zamandır sessiz olduğunu doğru ölçebiliriz.
+        lastSeenById.current.set(fromId, o.seenAt);
         // Dükkan askeri pozisyonu (varsa) — diğer oyuncunun müttefikini çizmek için
         o.sPos = m.sx != null && m.sy != null ? { x: m.sx as number, y: m.sy as number } : null;
         o.dead = !!m.dead; // ölü/donmuş mu (soluk çiz)
@@ -610,7 +624,12 @@ export default function OnlineGame({
         scores.current = m.scores as number[];
         roundEndsAt.current = 0;
         setShopOpen(false);
-        setRoundInfo({ winner: m.winner as number, kills: (m.kills as number) ?? 0, scores: m.scores as number[] });
+        setRoundInfo({
+          winner: m.winner as number,
+          kills: (m.kills as number) ?? 0,
+          scores: m.scores as number[],
+          standings: m.standings as { seat: number; k: number }[] | undefined,
+        });
       } else if (m.t === "round") {
         // Arena: host yeni tur başlattı (puanlar + kalan süre)
         scores.current = m.scores as number[];
@@ -898,17 +917,23 @@ export default function OnlineGame({
           sound.play("warn"); // yeni dalga uyarısı
         }
 
-        // Arena TUR SONU (host): 2 dk dolunca en çok gelin öldüreni belirle → +1 puan.
+        // Arena TUR SONU (host): süre dolunca öldürmeye göre SIRALA →
+        // 1. olana 2 puan, 2. olana 1 puan (eskiden yalnız kazanana +1 idi).
         if (arenaMode && !resultPending.current && roundEndsAt.current > 0 && now >= roundEndsAt.current) {
           const rk: Record<number, number> = { [mySeat]: roundKills.current };
           for (const o of others.current.values()) rk[o.seat] = o.rk ?? 0;
-          let winner = mySeat, best = -1;
-          for (const seat of Object.keys(rk).map(Number)) {
-            if (rk[seat] > best) { best = rk[seat]; winner = seat; }
-          }
+          // Sıralama (öldürme çok → az). Beraberlikte küçük koltuk önde.
+          const rank = Object.keys(rk)
+            .map(Number)
+            .sort((a, b) => rk[b] - rk[a] || a - b);
+          const winner = rank[0] ?? mySeat;
+          const best = rk[winner] ?? 0;
           const sc = scores.current.slice();
-          sc[winner] = (sc[winner] ?? 0) + 1;
+          if (rank[0] !== undefined && (rk[rank[0]] ?? 0) > 0) sc[rank[0]] = (sc[rank[0]] ?? 0) + 2;
+          if (rank[1] !== undefined && (rk[rank[1]] ?? 0) > 0) sc[rank[1]] = (sc[rank[1]] ?? 0) + 1;
           scores.current = sc;
+          // Tur sıralaması herkese: sonuç ekranında tam liste gösterilir
+          const standings = rank.map((seat) => ({ seat, k: rk[seat] ?? 0 }));
           if (sc[winner] >= ARENA_WIN_POINTS) {
             room.send({ t: "arenaover", scores: sc, winner });
             resultPending.current = true;
@@ -919,8 +944,8 @@ export default function OnlineGame({
             hostBrides.current = []; // ara boyunca kimse saldırmasın
             brideRespawnQueue.current = [];
             setShopOpen(false); // dükkândaysan oyuna at (#37)
-            room.send({ t: "roundend", winner, kills: best, scores: sc });
-            setRoundInfo({ winner, kills: best, scores: sc });
+            room.send({ t: "roundend", winner, kills: best, scores: sc, standings });
+            setRoundInfo({ winner, kills: best, scores: sc, standings });
             window.setTimeout(() => {
               const t2 = performance.now();
               roundNum.current += 1;
@@ -1153,13 +1178,24 @@ export default function OnlineGame({
         for (const [id, o] of others.current) {
           if (now - o.seenAt > LEAVE_MS) onPlayerLeft(id, false); // yalnız zaman aşımı (geri gelebilir)
         }
-        // TEK KALDIN kararı: zaman aşımıyla boşalan odada hemen bitirme — oyuncu geri
-        // dönebilir. Ancak ALONE_GRACE_MS boyunca kimse pos göndermezse maçı bitir.
-        if (others.current.size === 0) {
+        // TEK KALDIN kararı — KAYNAK: kim GERÇEKTEN çıktı ({t:left}), pos kalp atışı DEĞİL.
+        // pos'a bakmak yanlış alarm üretiyordu: telefon kilitlenince/sekme arka plana
+        // geçince rAF durur, pos kesilir, oyuncu odada olmasına rağmen "ayrıldı" sayılırdı.
+        // Kural (kullanıcı): odada 2+ kişi varsa oda KAPANMAZ.
+        // Sekmesini kapatıp {t:left} yollayamayanlar için uzun bir emniyet süresi var.
+        const stillIn = order.filter((id) => {
+          if (id === room.id) return true; // sen
+          if (explicitLeftIds.current.has(id)) return false; // gerçekten çıktı
+          // Sekmeyi kapatıp {t:left} yollayamayanlar için emniyet: DEAD_MS boyunca hiç
+          // pos gelmediyse yok say. Kısa kesintiler (kilit/arka plan) odayı KAPATMAZ.
+          const seen = lastSeenById.current.get(id);
+          return seen === undefined || now - seen <= DEAD_MS;
+        }).length;
+        if (stillIn < 2) {
           if (aloneSince.current === 0) aloneSince.current = now;
           else if (now - aloneSince.current > ALONE_GRACE_MS) setAlone(true);
         } else {
-          aloneSince.current = 0; // biri geri geldi → sayaç sıfırlanır
+          aloneSince.current = 0; // 2+ kişi var → oda açık kalır
         }
       }
 
@@ -1940,11 +1976,28 @@ export default function OnlineGame({
           <button className="chip mutebtn" onClick={openShop} title="Dükkân — altınla eşya al">
             <Icon name="cart" size={17} />
           </button>
-          <button className="chip mutebtn" onClick={quit} title="Menüye dön">
+          {/* Yanlışlıkla basınca oyun gitmesin → önce onay sor */}
+          <button className="chip mutebtn" onClick={() => setConfirmQuit(true)} title="Menüye dön">
             <Icon name="exit" size={17} />
           </button>
         </div>
       </div>
+
+      {/* Çıkış onayı — tek tıkla maçtan düşmeyi engeller */}
+      {confirmQuit && (
+        <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setConfirmQuit(false); }}>
+          <div className="invcard" style={{ maxWidth: 360, textAlign: "center" }}>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink-title)" }}>Oyundan çıkılsın mı?</div>
+            <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
+              Menüye dönersen bu maçtan ayrılırsın.
+            </div>
+            <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "center", flexWrap: "wrap" }}>
+              <button className="btn btn-primary" onClick={() => setConfirmQuit(false)}>Oyuna Devam Et</button>
+              <button className="danger-btn" onClick={quit}>Menüye Dön</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ARENA — SÜRE + GELİN: üst şeritte kaybolmasın diye ortada, üstten biraz aşağıda,
           büyük ve belirgin renkte (kolay takip). Son 10 sn'de süre kırmızı yanar. */}
@@ -2107,12 +2160,22 @@ export default function OnlineGame({
               : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={24} /> {nameOf(roundInfo.winner)} turu kazandı</span>}
           </div>
           <div className="subtitle" style={{ fontSize: "clamp(15px,3.6vw,20px)" }}>
-            {roundInfo.kills} gelin öldürdü · +1 puan
+            {roundInfo.kills} gelin öldürdü · +2 puan
           </div>
-          <div className="subtitle" style={{ fontSize: "clamp(14px,3.4vw,18px)", lineHeight: 1.8 }}>
-            {roundInfo.scores.map((s, seat) => (
-              <div key={seat}>
-                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>{nameOf(seat)}</b>: {s}/{ARENA_WIN_POINTS}
+          {/* TURUN TAM SIRALAMASI — herkes nerede bitirdiğini görür.
+              Puanlama: 1. +2 · 2. +1 · diğerleri 0 */}
+          <div className="subtitle" style={{ fontSize: "clamp(13px,3.2vw,17px)", lineHeight: 1.7 }}>
+            {(roundInfo.standings ?? []).map((p, i) => (
+              <div key={p.seat} style={{ display: "flex", gap: 10, justifyContent: "center", alignItems: "baseline" }}>
+                <span style={{ color: "#8f8776", minWidth: 18 }}>{i + 1}.</span>
+                <b style={{ color: SEAT_COLORS[p.seat % SEAT_COLORS.length], minWidth: 90, textAlign: "left" }}>{nameOf(p.seat)}</b>
+                <span style={{ color: "#ff9a9a" }}>{p.k} gelin</span>
+                <span style={{ color: i === 0 ? "#7dffb0" : i === 1 ? "#ffd75a" : "#8f8776" }}>
+                  {i === 0 ? "+2" : i === 1 ? "+1" : "+0"} puan
+                </span>
+                <span style={{ color: "var(--muted)" }}>
+                  (toplam {roundInfo.scores[p.seat] ?? 0})
+                </span>
               </div>
             ))}
           </div>
