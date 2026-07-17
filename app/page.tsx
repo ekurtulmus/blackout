@@ -9,7 +9,7 @@ import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import Friends from "@/components/Friends";
 import Online from "@/components/Online";
-import { FriendPresence, getFriends } from "@/lib/friends";
+import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
 import { getInventory } from "@/lib/inventory";
 import { getCoins, initStarterCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed, bumpStat, setStatMax, evaluateAll, type AchCtx } from "@/lib/achievements";
@@ -162,6 +162,13 @@ export default function Page() {
   const [lobbyAutoHost, setLobbyAutoHost] = useState(false); // lobiye girer girmez oda kur (Online → Oda Kur)
   const [lobbyReturn, setLobbyReturn] = useState<Screen>("menu"); // lobiden "Geri" nereye döner
   const [friendReq, setFriendReq] = useState<{ fromCode: string; fromName: string } | null>(null);
+  // İstek popup'ı ekranı kapatmasın: 5 sn sonra kendiliğinden kapanır. İstek silinmez —
+  // Arkadaşlar ekranında beklemeye devam eder (kalıcı kayıt: friends.addIncomingRequest).
+  useEffect(() => {
+    if (!friendReq) return;
+    const t = window.setTimeout(() => setFriendReq(null), 5000);
+    return () => window.clearTimeout(t);
+  }, [friendReq]);
   const [friendToast, setFriendToast] = useState("");
   // Görev modu
   const [missionIndex, setMissionIndex] = useState<number | null>(null);
@@ -325,7 +332,12 @@ export default function Page() {
     };
     p.onPresence = refresh;
     p.onInvite = (inv) => setInvite({ fromName: inv.fromName, room: inv.room });
-    p.onFriendRequest = (req) => setFriendReq(req);
+    // Gelen istek: hem 5 sn'lik popup, hem KALICI kayıt (popup'ı kaçırırsan istek
+    // Arkadaşlar ekranında bekler — eskiden yalnız bellekteydi, kayboluyordu).
+    p.onFriendRequest = (req) => {
+      addIncomingRequest(req.fromCode, req.fromName, Date.now());
+      setFriendReq(req);
+    };
     p.onRequestAccepted = (name) => {
       setFriendToast(`${name} arkadaşlık isteğini kabul etti 🤝`);
       setFriendsOnline(getFriends().filter((f) => p.isOnline(f.code)).length);
@@ -637,15 +649,22 @@ export default function Page() {
             style={{ padding: "6px 14px" }}
             onClick={() => {
               presenceRef.current?.acceptRequest(friendReq.fromCode, friendReq.fromName);
+              removeIncomingRequest(friendReq.fromCode); // kabul edildi → bekleyen listeden çık
               setFriendsOnline(getFriends().filter((f) => presenceRef.current?.isOnline(f.code)).length);
-              setFriendToast(`${friendReq.fromName} arkadaşın oldu 🤝`);
+              setFriendToast(`${friendReq.fromName} arkadaşın oldu`);
               window.setTimeout(() => setFriendToast(""), 3000);
               setFriendReq(null);
             }}
           >
             Kabul
           </button>
-          <button className="btn" style={{ padding: "6px 10px", opacity: 0.7 }} onClick={() => setFriendReq(null)}>Reddet</button>
+          <button
+            className="btn"
+            style={{ padding: "6px 10px", opacity: 0.7 }}
+            onClick={() => { removeIncomingRequest(friendReq.fromCode); setFriendReq(null); }}
+          >
+            Reddet
+          </button>
         </div>
       )}
       {friendToast && (

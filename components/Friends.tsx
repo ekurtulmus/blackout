@@ -6,10 +6,13 @@ import {
   getMyCode,
   getFriends,
   getSentRequests,
+  getIncomingRequests,
+  removeIncomingRequest,
   clearSent,
   isSent,
   type Friend,
   type FriendPresence,
+  type IncomingReq,
 } from "@/lib/friends";
 
 // Arkadaşlar ekranı — kendi kodunu paylaş, arkadaş ekle, çevrimiçi olanları gör.
@@ -23,12 +26,14 @@ export default function Friends({
 }) {
   const myCode = getMyCode();
   const [friends, setFriends] = useState<Friend[]>([]);
+  const [incoming, setIncoming] = useState<IncomingReq[]>([]); // bekleyen gelen istekler
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [, setTick] = useState(0); // çevrimiçi durumu tazelemek için
 
   useEffect(() => {
     setFriends(getFriends());
+    setIncoming(getIncomingRequests());
     if (!presence) return;
     const prev = presence.onPresence;
     presence.onPresence = () => setTick((t) => t + 1);
@@ -79,6 +84,41 @@ export default function Friends({
 
       <div className="scr-body" style={{ maxWidth: 780, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ minHeight: 18, color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5, textAlign: "center" }}>{msg}</div>
+
+        {/* BEKLEYEN İSTEKLER — popup 5 sn sonra kapanır, istek burada bekler */}
+        {incoming.length > 0 && (
+          <div className="panel" style={{ borderColor: "rgba(125,255,176,0.45)", borderTop: "2px solid var(--ok-dot)" }}>
+            <span className="field-t">Sana gelen istekler ({incoming.length})</span>
+            <div className="field-d">Kabul edersen arkadaş olursunuz.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {incoming.map((r) => (
+                <div key={r.code} style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                  <b style={{ flex: 1, minWidth: 90, textAlign: "left", color: "var(--ok-text)" }}>{r.name}</b>
+                  <span style={{ fontSize: 12, color: "var(--ink-dimmer)", letterSpacing: "0.1em" }}>{r.code}</span>
+                  <button
+                    className="buy-btn"
+                    onClick={() => {
+                      presence?.acceptRequest(r.code, r.name);
+                      removeIncomingRequest(r.code);
+                      setIncoming(getIncomingRequests());
+                      setFriends(getFriends());
+                      flash(`${r.name} arkadaşın oldu`);
+                    }}
+                  >
+                    Kabul
+                  </button>
+                  <button
+                    className="mm-ghost"
+                    style={{ padding: "7px 12px" }}
+                    onClick={() => { removeIncomingRequest(r.code); setIncoming(getIncomingRequests()); }}
+                  >
+                    Reddet
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Senin kodun */}
         <div className="panel">

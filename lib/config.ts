@@ -13,13 +13,16 @@ export const TUNING = {
   // dmg: temas hasarı = GELİN GÜCÜ (eskiden zorluk gücü hiç etkilemiyordu).
   // NOT: speed yine brideSpeedCap ile sınırlıdır (gelin oyuncuyu ASLA geçemez), bu yüzden
   // Zor'un asıl farkı SAYI ve GÜÇ üzerinden gelir.
+  // hunters: bir oyuncuyu AYNI ANDA kaç gelin kovalayabilir (online).
+  //   Sabit 4 iken, Zor'da gelin sayısı artsa bile baskı Orta'yla aynı hissediliyordu:
+  //   fazladan doğan gelinler avcı sınırına takılıp aylak dolaşıyordu.
   diff: {
-    kolay: { count: 0.5, speed: 0.78, vision: 1.15, dmg: 0.7, intel: -0.15 },
-    orta: { count: 1.0, speed: 1.0, vision: 1.0, dmg: 1.0, intel: 0 },
-    zor: { count: 1.85, speed: 1.18, vision: 0.85, dmg: 1.4, intel: 0.2 },
+    kolay: { count: 0.5, speed: 0.78, vision: 1.15, dmg: 0.7, intel: -0.15, hunters: 2 },
+    orta: { count: 1.0, speed: 1.0, vision: 1.0, dmg: 1.0, intel: 0, hunters: 4 },
+    zor: { count: 1.85, speed: 1.18, vision: 0.85, dmg: 1.4, intel: 0.2, hunters: 7 },
   } as Record<
     "kolay" | "orta" | "zor",
-    { count: number; speed: number; vision: number; dmg: number; intel: number }
+    { count: number; speed: number; vision: number; dmg: number; intel: number; hunters: number }
   >,
 
   // --- Madde 3: gelin hızı tavanı = oyuncu hızının %8 altı; ASLA geçilmez ---

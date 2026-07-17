@@ -47,7 +47,10 @@ const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
 const ARENA_WAVE_MS = 18000; // arena: her ~18 sn'de bir yeni dalga (host gelin ekler; yavaş)
 const ARENA_WAVE_ADD = 2; // her dalgada eklenen gelin (tur numarasıyla yavaşça artar)
-const ARENA_ROUND_MS = 120000; // arena turu 2 dakika
+const ARENA_ROUND_MS = 50000; // arena turu 50 saniye
+// Zaman aşımıyla oda boşalırsa maçı HEMEN bitirme: oyuncu geri dönebilir (telefon
+// kilidi / sekme arka planı / ağ takılması). Bu süre boyunca kimse dönmezse biter.
+const ALONE_GRACE_MS = 15000;
 const ARENA_WIN_POINTS = 5; // 5 tur kazanan maçı alır
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
@@ -87,7 +90,12 @@ export default function OnlineGame({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false, trap: false });
   const [phase, setPhase] = useState<Phase>("playing");
-  const [hud, setHud] = useState({ level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP, scores: [] as number[], themeName: "", veil: 0, wave: 1, surv: 0, rk: 0 });
+  // brides: sahadaki gelin sayısı · board: arena öldürme sıralaması (seat, ad, kill)
+  const [hud, setHud] = useState({
+    level: 1, ammo: 0, exitOpen: false, kills: 0, barriers: 3, hp: PLAYER_MAX_HP,
+    scores: [] as number[], themeName: "", veil: 0, wave: 1, surv: 0, rk: 0,
+    brides: 0, board: [] as { seat: number; name: string; k: number }[],
+  });
   const [toast, setToast] = useState<string | null>(null); // "X ayrıldı" vb.
   const [mqHud, setMqHud] = useState(""); // aktif mini-görev etiketi (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev ödül bildirimi
@@ -145,6 +153,7 @@ export default function OnlineGame({
   const others = useRef<Map<string, Other>>(new Map()); // diğer oyuncular (id -> durum)
   const goneIds = useRef<Set<string>>(new Set()); // ayrılmış oyuncular (pos zaman aşımı veya elle)
   const explicitLeftIds = useRef<Set<string>>(new Set()); // yalnız {t:left} yollayanlar — kalıcı çıkar
+  const aloneSince = useRef(0); // oda ne zamandan beri boş (0 = boş değil) — ALONE_GRACE_MS için
   const seen = useRef<boolean[][]>([]);
   const ready = useRef(false);
   const flashlight = useRef<Flashlight | null>(null); // dinamik görüş + kararma (Madde 4,5)
@@ -398,13 +407,19 @@ export default function OnlineGame({
       others.current.delete(id);
       flash(`${o ? o.name : "Bir oyuncu"} oyundan ayrıldı`);
       updateHost();
-      if (others.current.size === 0) setAlone(true); // tek kaldın → menü
+      // Maçı YALNIZ gerçekten çıkıldıysa ({t:left}) anında bitir.
+      // Zaman aşımı (explicit=false) geçici olabilir — telefon kilitlenir, sekme arka
+      // plana geçer, ağ takılır; oyuncu pos gönderince reviveIfTimedOut geri getirir.
+      // Eskiden burada koşulsuz setAlone(true) vardı → hâlâ 2+ kişi varken "oda kapandı"
+      // ekranı basılıyordu. Zaman aşımı için aşağıdaki ALONE_GRACE_MS beklemesi var.
+      if (explicit && others.current.size === 0) setAlone(true);
     }
 
     // pos yeniden gelince yanlışlıkla "ayrıldı" sayılan oyuncuyu geri getir
     function reviveIfTimedOut(id: string) {
       if (!goneIds.current.has(id) || explicitLeftIds.current.has(id)) return;
       goneIds.current.delete(id);
+      aloneSince.current = 0; // geri döndü → "tek kaldın" sayacı iptal
       setAlone(false);
       const s = order.indexOf(id);
       flash(`${nameOf(s)} yeniden bağlandı`);
@@ -803,7 +818,11 @@ export default function OnlineGame({
         const slowCells = onlineTraps.current.size > 0
           ? new Set(Array.from(onlineTraps.current.values()).filter((t) => t.until > now).map((t) => t.y * maze.cols + t.x))
           : undefined;
-        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt, TUNING.maxHuntersPerPlayer, veiledArr, slowCells);
+        // Avcı sınırı ZORLUĞA bağlı (Kolay 2 / Orta 4 / Zor 7). Sabit 4 iken Zor'da
+        // fazladan doğan gelinler sınıra takılıp aylak dolaşıyordu → zorluk artsa da
+        // oyuncunun üstündeki baskı değişmiyordu.
+        const maxHunters = (TUNING.diff[diff] ?? TUNING.diff.orta).hunters;
+        moveBrides(hostBrides.current, maze, raceBrideConfig(lvl.level, diff), targets, dt, maxHunters, veiledArr, slowCells);
         // Faz D online: "caller" gelin — farkındayken cooldown'la yakındaki uyuyanları uyandırır
         for (const z of hostBrides.current) {
           if (z.kind !== "caller") continue;
@@ -1127,12 +1146,20 @@ export default function OnlineGame({
         }
       }
 
-      // ayrılma tespiti (pos akışı = kalp atışı): 4 sn pos gelmezse ayrıldı
+      // ayrılma tespiti (pos akışı = kalp atışı): LEAVE_MS pos gelmezse ayrıldı
       leaveAcc += dt;
       if (leaveAcc >= 0.5) {
         leaveAcc = 0;
         for (const [id, o] of others.current) {
           if (now - o.seenAt > LEAVE_MS) onPlayerLeft(id, false); // yalnız zaman aşımı (geri gelebilir)
+        }
+        // TEK KALDIN kararı: zaman aşımıyla boşalan odada hemen bitirme — oyuncu geri
+        // dönebilir. Ancak ALONE_GRACE_MS boyunca kimse pos göndermezse maçı bitir.
+        if (others.current.size === 0) {
+          if (aloneSince.current === 0) aloneSince.current = now;
+          else if (now - aloneSince.current > ALONE_GRACE_MS) setAlone(true);
+        } else {
+          aloneSince.current = 0; // biri geri geldi → sayaç sıfırlanır
         }
       }
 
@@ -1646,7 +1673,25 @@ export default function OnlineGame({
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
-          setHud({ level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current, kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current), scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "", veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0, wave: roundNum.current, surv: arenaMode && roundEndsAt.current ? Math.max(0, Math.ceil((roundEndsAt.current - performance.now()) / 1000)) : 0, rk: roundKills.current });
+          // Arena öldürme sıralaması: herkes görebilsin diye kendi turumuz + diğerlerinin
+          // pos'ta yayınladığı rk (tur öldürme) birleştirilir.
+          const board = arenaMode
+            ? [
+                { seat: mySeat, name: nameOf(mySeat), k: roundKills.current },
+                ...Array.from(others.current.values()).map((o) => ({ seat: o.seat, name: o.name || nameOf(o.seat), k: o.rk ?? 0 })),
+              ].sort((a, b) => b.k - a.k)
+            : [];
+          setHud({
+            level: levelRef.current.level, ammo: ammoCount.current, exitOpen: exitOpen.current,
+            kills: kills.current, barriers: barrierStock.current, hp: Math.max(0, hp.current),
+            scores: scores.current.slice(), themeName: THEMES[levelRef.current.theme]?.name ?? "",
+            veil: veilUntil.current > performance.now() ? Math.max(0, Math.ceil((veilUntil.current - performance.now()) / 1000)) : 0,
+            wave: roundNum.current,
+            surv: arenaMode && roundEndsAt.current ? Math.max(0, Math.ceil((roundEndsAt.current - performance.now()) / 1000)) : 0,
+            rk: roundKills.current,
+            brides: amHost.current ? hostBrides.current.length : guestBrides.current.size,
+            board,
+          });
           setMqHud(miniQuest.current && !mqDone.current ? MQ_DEFS[miniQuest.current.kind].hud : "");
         }
         render();
@@ -1824,22 +1869,12 @@ export default function OnlineGame({
             </div>
           )}
           {arenaMode ? (
+            // Arena'da Süre + Gelin ÜST ŞERİTTE DEĞİL — ortadaki belirgin banner'da
+            // (aşağıda .arena-banner). Burada yalnız tur ve puan kalır.
             <>
               <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
                 <span className="lbl"><Icon name="swords" size={12} /> Tur</span>
                 <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
-              </div>
-              <div className="chip" style={{ borderColor: hud.surv <= 15 ? "rgba(255,90,90,0.7)" : undefined }}>
-                <span className="lbl">Süre</span>
-                <span className="val" style={{ color: hud.surv <= 15 ? "#ff7a7a" : undefined }}>{Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}</span>
-              </div>
-              <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
-                <span className="lbl">Bu tur</span>
-                <span className="val" style={{ color: "#ff9a9a" }}>{hud.rk}</span>
-              </div>
-              <div className="chip">
-                <span className="lbl">Toplam</span>
-                <span className="val">{hud.kills}</span>
               </div>
               <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
                 <span className="lbl">Puanın</span>
@@ -1910,6 +1945,39 @@ export default function OnlineGame({
           </button>
         </div>
       </div>
+
+      {/* ARENA — SÜRE + GELİN: üst şeritte kaybolmasın diye ortada, üstten biraz aşağıda,
+          büyük ve belirgin renkte (kolay takip). Son 10 sn'de süre kırmızı yanar. */}
+      {arenaMode && (
+        <div className="arena-banner">
+          <div className={"ab-item" + (hud.surv <= 10 ? " is-urgent" : "")}>
+            <span className="ab-lbl">SÜRE</span>
+            <span className="ab-val">
+              {Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}
+            </span>
+          </div>
+          <span className="ab-sep" />
+          <div className="ab-item is-brides">
+            <span className="ab-lbl">GELİN</span>
+            <span className="ab-val">{hud.brides}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ARENA — öldürme sıralaması: solda, küçük, YALNIZ ilk 3; herkes görür */}
+      {arenaMode && hud.board.length > 0 && (
+        <div className="arena-board">
+          {hud.board.slice(0, 3).map((p, i) => (
+            <div key={p.seat} className={"ab-row" + (p.seat === mySeat ? " is-me" : "")}>
+              <span className="ab-rank">{i + 1}</span>
+              <span className="ab-name" style={{ color: SEAT_COLORS[p.seat % SEAT_COLORS.length] }}>
+                {p.name}
+              </span>
+              <span className="ab-k">{p.k}</span>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Oyun-içi envanter (online) — ortalanmış modal, mobil dostu */}
       {invOpen && (

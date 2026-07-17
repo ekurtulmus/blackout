@@ -1865,6 +1865,90 @@ button.card:hover {
   }
 }
 
+/* --- ARENA: süre + gelin sayısı (ortada, üstten aşağıda, belirgin) ---
+   Üst şeritte çip olarak kayboluyordu; oyun sırasında takip edilemiyordu. */
+.arena-banner {
+  position: fixed;
+  top: 84px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 11;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 8px 22px;
+  border-radius: 12px;
+  background: rgba(8, 6, 6, 0.62);
+  border: 1px solid rgba(255, 170, 90, 0.35);
+  backdrop-filter: blur(3px);
+  white-space: nowrap;
+}
+.arena-banner .ab-item { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.arena-banner .ab-lbl {
+  font-size: 9.5px;
+  letter-spacing: 0.22em;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 700;
+}
+.arena-banner .ab-val {
+  font-size: 30px;
+  font-weight: 900;
+  line-height: 1;
+  color: #ffc14d; /* süre: sıcak altın */
+  text-shadow: 0 0 14px rgba(255, 170, 60, 0.55);
+  font-variant-numeric: tabular-nums;
+}
+.arena-banner .is-brides .ab-val {
+  color: #ff5f6d; /* gelin: kan kırmızısı — süreden ayrışsın */
+  text-shadow: 0 0 14px rgba(255, 60, 80, 0.6);
+}
+.arena-banner .is-urgent .ab-val {
+  color: #ff3b3b;
+  animation: ab-pulse 0.6s ease-in-out infinite;
+}
+@keyframes ab-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
+}
+.arena-banner .ab-sep {
+  width: 1px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.14);
+}
+@media (max-width: 640px) {
+  .arena-banner { top: 62px; gap: 12px; padding: 5px 14px; }
+  .arena-banner .ab-val { font-size: 22px; }
+  .arena-banner .ab-lbl { font-size: 8px; letter-spacing: 0.16em; }
+}
+
+/* --- ARENA: öldürme sıralaması (sol, küçük, ilk 3, göz yormasın) --- */
+.arena-board {
+  position: fixed;
+  left: 10px;
+  top: 46%;
+  z-index: 11;
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 7px 9px;
+  border-radius: 9px;
+  background: rgba(8, 6, 6, 0.42);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 11px;
+  opacity: 0.72; /* bilerek silik: takip için var, dikkat çekmesin */
+}
+.arena-board .ab-row { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.arena-board .ab-row.is-me { opacity: 1; font-weight: 800; }
+.arena-board .ab-rank { color: rgba(255, 255, 255, 0.35); width: 9px; }
+.arena-board .ab-name { max-width: 66px; overflow: hidden; text-overflow: ellipsis; }
+.arena-board .ab-k { margin-left: auto; color: #ff9a9a; font-weight: 700; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) {
+  .arena-board { top: 40%; font-size: 10px; padding: 5px 7px; }
+  .arena-board .ab-name { max-width: 52px; }
+}
+
 .lives {
   display: flex;
   align-items: center;

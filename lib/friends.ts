@@ -64,6 +64,42 @@ function saveFriends(list: Friend[]) {
   }
 }
 
+// --- GELEN ARKADAŞLIK İSTEKLERİ (kalıcı) ---
+// Popup yalnız 5 sn görünür; kaçırılan istek KAYBOLMASIN diye burada saklanır ve
+// Arkadaşlar ekranında beklemeye devam eder.
+export type IncomingReq = { code: string; name: string; at: number };
+const REQ_IN_KEY = "blackout_freq_in";
+
+export function getIncomingRequests(): IncomingReq[] {
+  try {
+    const v = localStorage.getItem(REQ_IN_KEY);
+    if (v) return JSON.parse(v);
+  } catch {
+    /* geç */
+  }
+  return [];
+}
+function saveIncoming(list: IncomingReq[]) {
+  try {
+    localStorage.setItem(REQ_IN_KEY, JSON.stringify(list));
+  } catch {
+    /* geç */
+  }
+}
+// İsteği kaydet (zaten arkadaşsa ya da tekrar geldiyse yoksay)
+export function addIncomingRequest(code: string, name: string, at: number) {
+  const c = code.trim().toUpperCase();
+  if (!c || c === getMyCode()) return;
+  if (getFriends().some((f) => f.code === c)) return;
+  const list = getIncomingRequests();
+  if (list.some((r) => r.code === c)) return;
+  list.push({ code: c, name: (name || "").trim() || c, at });
+  saveIncoming(list);
+}
+export function removeIncomingRequest(code: string) {
+  saveIncoming(getIncomingRequests().filter((r) => r.code !== code.trim().toUpperCase()));
+}
+
 // Arkadaş ekle. { ok, reason } döner.
 export function addFriend(code: string, name?: string): { ok: boolean; reason?: string } {
   const c = code.trim().toUpperCase();
