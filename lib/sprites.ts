@@ -124,6 +124,71 @@ export function drawPlayer(
   }
 }
 
+// KILIÇ — oyuncunun elinde. Kuşanılıysa hep görünür (elinde olduğu belli olsun):
+// uzunca ve kalınca, ama oyuncuyu bastırmayacak kadar.
+// swing: 0..1 (1 = darbenin başı) → savururken yay çizer + iz bırakır.
+export function drawSword(
+  ctx: CanvasRenderingContext2D,
+  TS: number,
+  cx: number,
+  cy: number,
+  dir: Vec,
+  blade: string,
+  glow: string,
+  swing = 0
+) {
+  const ang = Math.atan2(dir.y, dir.x);
+  const R = TS * 0.42;
+  const L = TS * 0.95; // namlu uzunluğu (~1 kare menzile yakın)
+  const W = TS * 0.1; // kalınlık
+  ctx.save();
+  ctx.translate(cx, cy);
+  // Savururken -0.95 → +0.6 rad arası döner; boştayken elde hafif yana durur
+  const sweep = swing > 0 ? -0.95 + (1 - swing) * 1.55 : 0.55;
+  ctx.rotate(ang + sweep);
+
+  // Savurma izi (yay)
+  if (swing > 0) {
+    ctx.save();
+    ctx.globalAlpha = swing * 0.5;
+    ctx.strokeStyle = glow;
+    ctx.lineWidth = TS * 0.16;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(0, 0, R + L * 0.6, -0.5, 0.9);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.translate(R * 0.5, 0);
+  ctx.fillStyle = "#2a2018"; // sap
+  ctx.fillRect(-TS * 0.14, -W * 0.32, TS * 0.17, W * 0.64);
+  ctx.fillStyle = "#6b5a44"; // balçak
+  ctx.fillRect(0, -W * 1.05, TS * 0.05, W * 2.1);
+  // Namlu — uca doğru sivrilir
+  ctx.shadowColor = glow;
+  ctx.shadowBlur = 10;
+  ctx.fillStyle = blade;
+  ctx.beginPath();
+  ctx.moveTo(TS * 0.05, -W * 0.5);
+  ctx.lineTo(TS * 0.05 + L * 0.82, -W * 0.34);
+  ctx.lineTo(TS * 0.05 + L, 0); // uç
+  ctx.lineTo(TS * 0.05 + L * 0.82, W * 0.34);
+  ctx.lineTo(TS * 0.05, W * 0.5);
+  ctx.closePath();
+  ctx.fill();
+  // Orta sırt çizgisi (parlaklık)
+  ctx.shadowBlur = 0;
+  ctx.globalAlpha = 0.5;
+  ctx.strokeStyle = "rgba(255,255,255,0.7)";
+  ctx.lineWidth = Math.max(1, TS * 0.012);
+  ctx.beginPath();
+  ctx.moveTo(TS * 0.07, 0);
+  ctx.lineTo(TS * 0.05 + L * 0.9, 0);
+  ctx.stroke();
+  ctx.restore();
+}
+
 // Kanlı Gelin — 4 çeşit (id % 4), dik duruş = oyuncuya (kameraya) dönük.
 export function drawBride(
   ctx: CanvasRenderingContext2D,

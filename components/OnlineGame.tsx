@@ -15,14 +15,14 @@ import {
   COIN_PER_KILL,
 } from "@/lib/engine";
 import { getCoins, addCoins } from "@/lib/coins";
-import { getInventory, saveInventory } from "@/lib/inventory";
-import { BRIDE_RADIUS, assignBrideKind, moveBrides, randomDir } from "@/lib/brides";
+import { getInventory, saveInventory, SWORD_COLORS } from "@/lib/inventory";
+import { BRIDE_RADIUS, assignBrideKind, moveBrides, randomDir, swordHits } from "@/lib/brides";
 import { TUNING } from "@/lib/config";
 import { Flashlight } from "@/lib/flashlight";
 import { cellOf, tryMove } from "@/lib/physics";
 import { computeVisible } from "@/lib/vision";
 import { sound } from "@/lib/audio";
-import { drawBride, drawPlayer, grime } from "@/lib/sprites";
+import { drawBride, drawPlayer, drawSword, grime } from "@/lib/sprites";
 import { THEMES } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { bfsDistances, type Maze } from "@/lib/maze";
@@ -202,6 +202,17 @@ export default function OnlineGame({
   const roundNum = useRef(1); // kaçıncı tur
   const [arenaOver, setArenaOver] = useState<{ scores: number[]; winner: number } | null>(null);
   const [confirmQuit, setConfirmQuit] = useState(false); // çıkış onayı (yanlış tık koruması)
+  // Kuşanılan silah: mermi ↔ kılıç (ref = döngü okur, state = buton görünümü)
+  const [weapon, setWeapon] = useState<"gun" | "sword">("gun");
+  const weaponRef = useRef<"gun" | "sword">("gun");
+  const swordCd = useRef(0);
+  const swordSwing = useRef(0);
+  const swordColorRef = useRef(SWORD_COLORS.default);
+  const toggleWeapon = () => {
+    const w = weaponRef.current === "gun" ? "sword" : "gun";
+    weaponRef.current = w;
+    setWeapon(w);
+  };
   const [rulesOpen, setRulesOpen] = useState(false); // arena kuralları (başta 4sn + "?" ile)
   // Tur arası: kazananı HERKES görsün (yeni tur başlamadan önce ~4 sn)
   // standings: turun TAM sıralaması (koltuk + öldürme) — sonuç ekranında herkes görünür
@@ -361,6 +372,7 @@ export default function OnlineGame({
     // Dükkan askeri: sahipsen her bölümde yanında doğar (ölene dek)
     soldierPos.current = getInventory().hiredSoldier ? { ...mySpawn.current } : null;
     soldierFireCd.current = 1;
+    swordColorRef.current = SWORD_COLORS[getInventory().sword] ?? SWORD_COLORS.default;
     setPhase("playing");
     setHud((h) => ({ ...h, level: lvl.level, ammo: 0, exitOpen: false, kills: 0 }));
   }
@@ -651,7 +663,8 @@ export default function OnlineGame({
         if (info.pvp && (m.to as number) === mySeat) {
           const now = performance.now();
           if (now > invulnUntil.current && veilUntil.current <= now && !resultPending.current && deadUntil.current === 0) {
-            hp.current -= PVP_DMG;
+            // dmg yoksa mermi isabeti (eski mesaj biçimi) → PVP_DMG
+            hp.current -= (m.dmg as number) ?? PVP_DMG;
             hurt.current = Math.max(hurt.current, 0.5);
             sound.play("hurt");
             // vurulan da kan görsün (kendi konumunda sıçrama)
@@ -755,6 +768,8 @@ export default function OnlineGame({
       const lvl = levelRef.current!;
       const i = input.current;
       if (fireCd.current > 0) fireCd.current -= dt;
+      if (swordCd.current > 0) swordCd.current -= dt;
+      if (swordSwing.current > 0) swordSwing.current -= dt;
       if (hurt.current > 0) hurt.current -= dt;
 
       // Ölüm cezası: öldüysen 3 sn ölü yerinde donarsın (hareket/ateş/temas yok), sonra doğarsın.
@@ -806,8 +821,36 @@ export default function OnlineGame({
         } else breakTimer.current = 0;
       } else breakTimer.current = 0;
 
-      // ateş (donmuşken yok)
-      if (!frozen && i.fire && fireCd.current <= 0 && ammoCount.current > 0) {
+      // KILIÇ (donmuşken yok) — mermi harcamaz, kısa menzil, tek darbede max 2 gelin.
+      // Gelin ölümü mermiyle AYNI yolu kullanır (applyKill → herkese yayınlanır).
+      // PvP hasarı da mermiyle aynı model: vuran tespit eder, hedef uygular.
+      if (!frozen && i.fire && weaponRef.current === "sword" && swordCd.current <= 0) {
+        swordCd.current = TUNING.swordCd;
+        swordSwing.current = TUNING.swordSwingSec;
+        if (veilUntil.current > now) {
+          veilUntil.current = 0;
+          veiledUntil.current[mySeat] = 0;
+          room.send({ t: "veil", seat: mySeat, on: false });
+        }
+        sound.play("sword");
+        const bs = renderBrides();
+        for (const z of swordHits(bs, selfPos.current, selfDir.current)) {
+          applyKill(z.id, z.pos.x, z.pos.y, z.kind, true);
+        }
+        if (info.pvp) {
+          // Oyunculara: her vuruş swordPvpDmg (50) → 100 can 2 vuruşta biter
+          const alive = Array.from(others.current.entries()).filter(([oid]) => !goneIds.current.has(oid));
+          const hitP = swordHits(alive.map(([, o]) => o), selfPos.current, selfDir.current);
+          for (const o of hitP) {
+            room.send({ t: "pvphit", to: o.seat, dmg: TUNING.swordPvpDmg });
+            bloodStains.current.push({ x: o.pos.x, y: o.pos.y, r: 0.35 + Math.random() * 0.2, seed: Math.floor(Math.random() * 1000) });
+            sound.play("hurt");
+          }
+        }
+      }
+
+      // ateş (donmuşken yok) — yalnız MERMİ kuşanılıyken
+      if (!frozen && i.fire && weaponRef.current === "gun" && fireCd.current <= 0 && ammoCount.current > 0) {
         ammoCount.current--;
         fireCd.current = FIRE_COOLDOWN;
         // Madde 8: ateş edersen görünmezlik bozulur
@@ -1574,6 +1617,11 @@ export default function OnlineGame({
       const selfDead = deadUntil.current > nowSelf;
       if (selfDead) ctx!.save(), (ctx!.globalAlpha = 0.4);
       drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfDead ? false : selfMoving.current, flicker, vEff, selfDead ? { ring: "#888" } : invuln ? { ring: "#6ee7ff" } : undefined);
+      // KILIÇ: kuşanılıysa elinde görünür
+      if (weaponRef.current === "sword" && !selfDead) {
+        const sw = swordColorRef.current;
+        drawSword(ctx!, TS, cx, cy, selfDir.current, sw.blade, sw.glow, Math.max(0, swordSwing.current / TUNING.swordSwingSec));
+      }
       if (selfDead) ctx!.restore();
       drawNameTag(cx, cy, nameOf(mySeat), selfDead ? "#999" : myColor); // kendi ismin de kafanın üstünde
       if (selfDead) {
@@ -2235,13 +2283,22 @@ export default function OnlineGame({
           <Icon name="trap" size={20} />{trapCount}
         </button>
         <button
-          className="fire"
+          className={"fire" + (weapon === "sword" ? " is-sword" : "")}
           onPointerDown={(e) => { e.preventDefault(); input.current.fire = true; }}
           onPointerUp={() => (input.current.fire = false)}
           onPointerLeave={() => (input.current.fire = false)}
           onPointerCancel={() => (input.current.fire = false)}
         >
-          ATEŞ
+          {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
+        </button>
+        {/* Silah değiştir — ateşin yanında (mermi ↔ kılıç). PC'de F tuşu. */}
+        <button
+          className={"weaponbtn" + (weapon === "sword" ? " is-sword" : "")}
+          onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
+          title={weapon === "sword" ? "Silaha geç (F)" : "Kılıca geç (F)"}
+          aria-label="Silah değiştir"
+        >
+          {weapon === "sword" ? <Icon name="ammo" size={20} /> : <Icon name="sword" size={22} />}
         </button>
       </div>
 

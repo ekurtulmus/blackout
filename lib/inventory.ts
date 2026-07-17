@@ -16,8 +16,10 @@ export type Inventory = {
   hiredSoldier: boolean; // asker müttefiki: yanında savaşır; ölene dek durur, ölünce sıfırlanır
   flashColor: string; // kişiselleştirme: SEÇİLİ fener rengi
   skin: string; // kişiselleştirme: SEÇİLİ oyuncu görünümü
+  sword: string; // kişiselleştirme: SEÇİLİ kılıç rengi
   ownedFlash: string[]; // sahip olunan fener renkleri (tekrar para verilmez)
   ownedSkin: string[]; // sahip olunan görünümler
+  ownedSword: string[]; // sahip olunan kılıç renkleri
 };
 
 const DEFAULT_INV: Inventory = {
@@ -32,8 +34,10 @@ const DEFAULT_INV: Inventory = {
   hiredSoldier: false,
   flashColor: "default",
   skin: "default",
+  sword: "default",
   ownedFlash: ["default"],
   ownedSkin: ["default"],
+  ownedSword: ["default"],
 };
 
 const KEY = "blackout_inventory";
@@ -52,14 +56,17 @@ export function getInventory(): Inventory {
   // kayıtlarda kişiselleştirmeler bir daha ASLA yeniden satın aldırılmaz (kalıcı sahiplik).
   const flashColor = stored.flashColor ?? DEFAULT_INV.flashColor;
   const skin = stored.skin ?? DEFAULT_INV.skin;
+  const sword = stored.sword ?? DEFAULT_INV.sword;
   const uniq = (arr: string[]) => Array.from(new Set(arr));
   return {
     ...DEFAULT_INV,
     ...stored,
     flashColor,
     skin,
+    sword,
     ownedFlash: uniq([...(stored.ownedFlash ?? []), "default", flashColor]),
     ownedSkin: uniq([...(stored.ownedSkin ?? []), "default", skin]),
+    ownedSword: uniq([...(stored.ownedSword ?? []), "default", sword]),
   };
 }
 
@@ -83,6 +90,13 @@ export const FLASH_COLORS: Record<string, [number, number, number]> = {
   rose: [255, 160, 200], // gül pembe
   gold: [255, 225, 150], // altın
 };
+// Kılıç palet: [namlu/keskin yüz, parıltı/aura]. "default" = paslı çelik (ücretsiz).
+export const SWORD_COLORS: Record<string, { blade: string; glow: string }> = {
+  default: { blade: "#c9d2dc", glow: "rgba(200,220,255,0.35)" }, // paslı çelik
+  ember: { blade: "#ff7a3c", glow: "rgba(255,110,40,0.75)" }, // Köz (turuncu-kızıl)
+  void: { blade: "#b46bff", glow: "rgba(160,80,255,0.8)" }, // Boşluk (mor)
+  frost: { blade: "#7fe4ff", glow: "rgba(90,210,255,0.8)" }, // Ayaz (buz mavisi)
+};
 export const SKIN_RINGS: Record<string, string | undefined> = {
   default: undefined,
   cyan: "#6ee7ff",
@@ -103,7 +117,7 @@ export type ShopItem = {
   price: number;
   kind: "consumable" | "perm" | "cosmetic";
   // kozmetikler için: hangi slot + değer (sahiplik takibi buyItem'da)
-  cosmetic?: { slot: "flash" | "skin"; value: string };
+  cosmetic?: { slot: CosmeticSlot; value: string };
   // satın alınabilir mi? (kalıcı olanlar bir kez; kozmetik özel ele alınır)
   canBuy: (inv: Inventory) => boolean;
   apply: (inv: Inventory) => void;
@@ -200,6 +214,40 @@ export const SHOP_ITEMS: ShopItem[] = [
     canBuy: (inv) => !inv.hiredSoldier,
     apply: (inv) => (inv.hiredSoldier = true),
   },
+  // --- Kılıç renkleri (kılıç TEMEL silahtır; renk yalnız görünüm) ---
+  {
+    id: "sword_ember",
+    title: "Kılıç: Köz",
+    desc: "Kişiselleştirme — köz gibi yanan turuncu kılıç.",
+    icon: "⚔",
+    price: 40,
+    kind: "cosmetic",
+    cosmetic: { slot: "sword", value: "ember" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "sword_void",
+    title: "Kılıç: Boşluk",
+    desc: "Kişiselleştirme — mor boşluk ışığı saçan kılıç.",
+    icon: "⚔",
+    price: 40,
+    kind: "cosmetic",
+    cosmetic: { slot: "sword", value: "void" },
+    canBuy: () => true,
+    apply: () => {},
+  },
+  {
+    id: "sword_frost",
+    title: "Kılıç: Ayaz",
+    desc: "Kişiselleştirme — buz mavisi, soğuk parıltılı kılıç.",
+    icon: "⚔",
+    price: 40,
+    kind: "cosmetic",
+    cosmetic: { slot: "sword", value: "frost" },
+    canBuy: () => true,
+    apply: () => {},
+  },
   {
     id: "flash_crimson",
     title: "Fener: Kızıl",
@@ -293,11 +341,20 @@ export const SHOP_ITEMS: ShopItem[] = [
 ];
 
 // Bir kozmetik değeri sahip mi / seçili mi (Shop UI kullanır)
-export function ownsCosmetic(inv: Inventory, slot: "flash" | "skin", value: string): boolean {
-  return (slot === "flash" ? inv.ownedFlash : inv.ownedSkin).includes(value);
+export type CosmeticSlot = "flash" | "skin" | "sword";
+const OWNED_OF: Record<CosmeticSlot, (i: Inventory) => string[]> = {
+  flash: (i) => i.ownedFlash, skin: (i) => i.ownedSkin, sword: (i) => i.ownedSword,
+};
+export function ownsCosmetic(inv: Inventory, slot: CosmeticSlot, value: string): boolean {
+  return OWNED_OF[slot](inv).includes(value);
 }
-export function equippedCosmetic(inv: Inventory, slot: "flash" | "skin"): string {
-  return slot === "flash" ? inv.flashColor : inv.skin;
+export function equippedCosmetic(inv: Inventory, slot: CosmeticSlot): string {
+  return slot === "flash" ? inv.flashColor : slot === "skin" ? inv.skin : inv.sword;
+}
+function equipCosmetic(inv: Inventory, slot: CosmeticSlot, value: string) {
+  if (slot === "flash") inv.flashColor = value;
+  else if (slot === "skin") inv.skin = value;
+  else inv.sword = value;
 }
 
 // Satın al / kuşan. Kozmetiklerde: sahipsen ÜCRETSİZ kuşanılır, değilsen satın alınıp
@@ -310,16 +367,15 @@ export function buyItem(item: ShopItem): { ok: boolean; coins: number; reason?: 
     if (equippedCosmetic(inv, slot) === value) return { ok: false, coins: getCoins(), reason: "zaten seçili" };
     if (ownsCosmetic(inv, slot, value)) {
       // Sahipsin → ücretsiz kuşan
-      if (slot === "flash") inv.flashColor = value;
-      else inv.skin = value;
+      equipCosmetic(inv, slot, value);
       saveInventory(inv);
       return { ok: true, coins: getCoins() };
     }
     // Sahip değilsin → satın al + kuşan
     if (getCoins() < item.price) return { ok: false, coins: getCoins(), reason: "yetersiz para" };
     const coins = addCoins(-item.price);
-    if (slot === "flash") { inv.ownedFlash.push(value); inv.flashColor = value; }
-    else { inv.ownedSkin.push(value); inv.skin = value; }
+    OWNED_OF[slot](inv).push(value);
+    equipCosmetic(inv, slot, value);
     saveInventory(inv);
     return { ok: true, coins };
   }

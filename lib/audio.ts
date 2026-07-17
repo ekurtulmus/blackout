@@ -556,6 +556,12 @@ class SoundEngine {
         this.noise(t, 0.04, 0.12, 3500, "highpass", 0.12);
         break;
       }
+      case "sword": {
+        // Kılıç savurma: kısa metalik "şınk" + havayı yaran hışırtı
+        this.noise(t, 0.09, 0.16, 5200, "highpass", 0.22);
+        this.tone(t, 1750, 900, 0.1, 0.09, "triangle", 0.16);
+        break;
+      }
       case "kill": {
         // Ölen gelinin çok kısa, gerçekçi ağlaması/feryadı
         this.cry(t);

@@ -40,6 +40,7 @@ export type IconName =
   | "help"
   | "play"
   | "pause"
+  | "sword"
   | "exit"
   | "ammo";
 
@@ -202,6 +203,13 @@ const PATHS: Record<IconName, React.ReactNode> = {
     </>
   ),
   play: <path d="M8.5 5.5l10 6.5-10 6.5z" />,
+  // Tek kılıç: namlu (sağ üstten sol alta) + balçak + sap
+  sword: (
+    <>
+      <path d="M20.5 3.5l-9.5 9.5-2 4 4-2 9.5-9.5-2-2z" />
+      <path d="M7.5 15.5l-3 3M5 14l5 5M4.2 17.2l2.6 2.6" />
+    </>
+  ),
   exit: (
     <>
       <path d="M14 4H6a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8" />

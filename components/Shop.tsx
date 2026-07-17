@@ -12,6 +12,7 @@ import {
   equippedCosmetic,
   FLASH_COLORS,
   SKIN_RINGS,
+  SWORD_COLORS,
   type Inventory,
   type ShopItem,
 } from "@/lib/inventory";
@@ -31,6 +32,9 @@ const FLASH_NAME: Record<string, string> = {
 const SKIN_NAME: Record<string, string> = {
   default: "Halkasız", gold: "Altın", violet: "Mor", emerald: "Zümrüt", crimson: "Kızıl",
 };
+const SWORD_NAME: Record<string, string> = {
+  default: "Paslı Çelik", ember: "Köz", void: "Boşluk", frost: "Ayaz",
+};
 
 // Oyun parası (altın) paketleri — GERÇEK ÖDEME YOK (deneme).
 const GOLD_PACKS: { gold: number; price: string; tag?: string }[] = [
@@ -46,9 +50,30 @@ const featureItems = SHOP_ITEMS.filter((i) => !i.cosmetic).sort(
 );
 const flashItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "flash");
 const skinItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "skin");
+const swordItems = SHOP_ITEMS.filter((i) => i.cosmetic?.slot === "sword");
 
 // Küçük altın ikonu (fiyat/cüzdan) — ortak sikke ikonu
 const Coin = ({ size = 13 }: { size?: number }) => <Icon name="coin" size={size} stroke={1.5} />;
+
+// Kılıç önizleme: seçilecek rengin gerçek namlu rengi + parıltısı
+const SwordSwatch = ({ v }: { v: string }) => {
+  const c = SWORD_COLORS[v] ?? SWORD_COLORS.default;
+  return (
+    <span
+      style={{
+        color: c.blade,
+        filter: `drop-shadow(0 0 7px ${c.glow})`,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: 32,
+        height: 32,
+      }}
+    >
+      <Icon name="sword" size={26} stroke={1.8} />
+    </span>
+  );
+};
 
 // DÜKKÂN (tasarım handoff).
 // standalone=false → MenuShell içinde (kabuk zemini + geri butonu sağlar)
@@ -87,9 +112,11 @@ export default function Shop({
     }
   }
   // Ücretsiz varsayılan kozmetiğe dön (dükkân eşyası yok)
-  function selectDefault(slot: "flash" | "skin") {
+  function selectDefault(slot: "flash" | "skin" | "sword") {
     const i = getInventory();
-    if (slot === "flash") i.flashColor = "default"; else i.skin = "default";
+    if (slot === "flash") i.flashColor = "default";
+    else if (slot === "skin") i.skin = "default";
+    else i.sword = "default";
     saveInventory(i);
     setInv(getInventory());
     flash("Seçildi");
@@ -260,6 +287,33 @@ export default function Shop({
                   <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
                     <span className="swatch-ring" style={{ borderColor: col, boxShadow: `0 0 12px ${col}` }} />
                     <span className="swatch-name">{SKIN_NAME[v] ?? it.title}</span>
+                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                      : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Kılıç rengi — kılıç TEMEL silah, renk yalnız görünüm */}
+            <div className="cos-label" style={{ margin: "24px 0 12px" }}>Kılıç Rengi</div>
+            <div className="swatch-grid">
+              <button
+                className={"swatch" + (inv.sword === "default" ? " is-on" : "")}
+                onClick={() => selectDefault("sword")}
+              >
+                <SwordSwatch v="default" />
+                <span className="swatch-name">{SWORD_NAME.default}</span>
+                {inv.sword === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+              </button>
+              {swordItems.map((it) => {
+                const v = it.cosmetic!.value;
+                const eq = equippedCosmetic(inv, "sword") === v;
+                const own = ownsCosmetic(inv, "sword", v);
+                return (
+                  <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
+                    <SwordSwatch v={v} />
+                    <span className="swatch-name">{SWORD_NAME[v] ?? it.title}</span>
                     {eq ? <span className="swatch-sel">SEÇİLİ</span>
                       : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
                       : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}

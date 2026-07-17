@@ -2042,6 +2042,39 @@ button.card:hover {
   letter-spacing: 0.05em;
   box-shadow: 0 0 24px rgba(255, 60, 60, 0.35);
 }
+/* Kılıç kuşanılıyken saldırı butonu çelik tonuna geçer (hangi silahtasın belli olsun) */
+.fire.is-sword {
+  background: radial-gradient(circle at 40% 35%, #7f8b99, #2b323a);
+  border-color: rgba(200, 220, 255, 0.55);
+  box-shadow: 0 0 24px rgba(160, 200, 255, 0.3);
+}
+
+/* Silah değiştir — ateş butonunun hemen ÜSTÜNDE (mermi ↔ kılıç) */
+.weaponbtn {
+  position: absolute;
+  right: 44px;
+  bottom: 146px;
+  width: 60px;
+  height: 60px;
+  border-radius: 14px;
+  pointer-events: auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #d7e4ff;
+  background: radial-gradient(circle at 40% 35%, #39424e, #1b2027);
+  border: 1px solid rgba(200, 220, 255, 0.4);
+  box-shadow: 0 0 14px rgba(140, 180, 255, 0.18);
+}
+.weaponbtn.is-sword {
+  color: #ffd9a8;
+  border-color: rgba(var(--gold-rgb), 0.5);
+  box-shadow: 0 0 14px rgba(var(--gold-rgb), 0.22);
+}
+@media (max-width: 640px) {
+  .weaponbtn { right: 40px; bottom: 140px; width: 54px; height: 54px; }
+}
 
 .fire:active {
   transform: scale(0.96);

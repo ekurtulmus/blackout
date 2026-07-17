@@ -13,11 +13,11 @@ import {
   type Diff,
 } from "@/lib/engine";
 import { sound } from "@/lib/audio";
-import { drawBride, drawPlayer, grime } from "@/lib/sprites";
+import { drawBride, drawPlayer, drawSword, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
 import { drawDecor, drawWallDecor } from "@/lib/decor";
 import { getCoins, addCoins } from "@/lib/coins";
-import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS } from "@/lib/inventory";
+import { getInventory, saveInventory, FLASH_COLORS, SKIN_RINGS, SWORD_COLORS } from "@/lib/inventory";
 import { bumpStat } from "@/lib/achievements";
 import { TUNING } from "@/lib/config";
 import type { Mission } from "@/lib/missions";
@@ -84,6 +84,14 @@ export default function Game({
   const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
+  // Kuşanılan silah: mermi ↔ kılıç. Ref = oyun döngüsü okur, state = buton görünümü.
+  const [weapon, setWeapon] = useState<"gun" | "sword">("gun");
+  const weaponRef = useRef<"gun" | "sword">("gun");
+  const toggleWeapon = () => {
+    const w = weaponRef.current === "gun" ? "sword" : "gun";
+    weaponRef.current = w;
+    setWeapon(w);
+  };
   const [muted, setMuted] = useState(sound.muted);
   const [mq, setMq] = useState(""); // aktif mini-görev HUD metni (Faz 4)
   const [mqToast, setMqToast] = useState(""); // mini-görev tamamlanınca ödül bildirimi
@@ -114,6 +122,7 @@ export default function Game({
   const [stamina, setStamina] = useState(100); // koşma barı (HUD)
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
+  const swordColorRef = useRef(SWORD_COLORS.default); // kuşanılan kılıç rengi
   const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
@@ -192,6 +201,7 @@ export default function Game({
       // Kişiselleştirme: fener rengi + görünüm halkası
       flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
       skinRingRef.current = SKIN_RINGS[inv.skin];
+      swordColorRef.current = SWORD_COLORS[inv.sword] ?? SWORD_COLORS.default;
       setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
     }
     // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
@@ -217,6 +227,7 @@ export default function Game({
       left: false,
       right: false,
       fire: false,
+      sword: false,
       sprint: false,
       ax: 0,
       ay: 0,
@@ -299,6 +310,10 @@ export default function Game({
           break;
         case "Shift":
           input.sprint = down; // Faz C: koşma
+          break;
+        case "f":
+        case "F":
+          if (down) toggleWeapon(); // silah değiştir: mermi ↔ kılıç
           break;
         case "e":
         case "E":
@@ -925,6 +940,14 @@ export default function Game({
         coneColor: flashColorRef.current,
         ring: engine.invuln ? "#6ee7ff" : skinRingRef.current,
       });
+      // KILIÇ: kuşanılıysa elde HEP görünür (savururken yay çizer)
+      if (weaponRef.current === "sword") {
+        const sw = swordColorRef.current;
+        drawSword(
+          ctx!, TS, cssW / 2, cssH / 2, p.dir, sw.blade, sw.glow,
+          Math.max(0, engine.swordSwing / TUNING.swordSwingSec)
+        );
+      }
       // Kalkan (dokunulmazlık) halkası
       if (engine.invuln) {
         ctx!.save();
@@ -1145,7 +1168,14 @@ export default function Game({
       }
       const dt = (now - last) / 1000;
       last = now;
+      // SİLAH SEÇİMİ: tek bir saldırı girdisi (Boşluk / ATEŞ butonu) var; kuşanılan
+      // silaha göre ya mermi ya kılıç tetiklenir. Kılıç mermi harcamaz.
+      const atk = input.fire;
+      const useSword = weaponRef.current === "sword";
+      input.sword = useSword && atk;
+      input.fire = !useSword && atk;
       engine.update(dt, input);
+      input.fire = atk; // basılı tutmayı bozma (mobil buton)
       // gerilimi sese aktar (kalp atışı hızı/şiddeti)
       sound.setTension(engine.tension);
       // bu karede oluşan ses olaylarını çal ve boşalt
@@ -1650,9 +1680,12 @@ export default function Game({
             }
           }}
         />
-        {!mission?.noFire && (
+        {/* Saldırı butonu — kuşanılan silaha göre ateş eder ya da kılıç savurur.
+            KILIÇ mermi harcamaz → "Sessizlik" (noFire) görevinde bile kullanılabilir,
+            o yüzden buton kılıçtayken gizlenmez. */}
+        {(!mission?.noFire || weapon === "sword") && (
           <button
-            className="fire"
+            className={"fire" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => {
               e.preventDefault();
               setFlag("fire", true);
@@ -1661,9 +1694,18 @@ export default function Game({
             onPointerLeave={() => setFlag("fire", false)}
             onPointerCancel={() => setFlag("fire", false)}
           >
-            ATEŞ
+            {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
           </button>
         )}
+        {/* Silah değiştir — ateşin hemen yanında (mermi ↔ kılıç). PC'de F tuşu. */}
+        <button
+          className={"weaponbtn" + (weapon === "sword" ? " is-sword" : "")}
+          onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
+          title={weapon === "sword" ? "Silaha geç (F)" : "Kılıca geç (F)"}
+          aria-label="Silah değiştir"
+        >
+          {weapon === "sword" ? <Icon name="ammo" size={20} /> : <Icon name="sword" size={22} />}
+        </button>
         {/* Koşma (basılı tut) — mobil */}
         <button
           className="barrierbtn"

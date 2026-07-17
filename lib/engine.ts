@@ -19,7 +19,7 @@ import {
 import { computeVisible, hasLineOfSight, type VisibleCell } from "./vision";
 import { cellOf, dist, tryMove } from "./physics";
 import { findPath } from "./pathfind";
-import { BRIDE_RADIUS, assignBrideKind, moveBrides } from "./brides";
+import { BRIDE_RADIUS, assignBrideKind, moveBrides, swordHits } from "./brides";
 import { TUNING } from "./config";
 import { Flashlight } from "./flashlight";
 import type { Mission } from "./missions";
@@ -59,6 +59,7 @@ export type Input = {
   left: boolean;
   right: boolean;
   fire: boolean;
+  sword?: boolean; // KILIÇ savurma (mermi tüketmez, kısa menzil)
   sprint?: boolean; // Faz C: koşma (stamina tükenir)
   ax?: number; // analog joystick yatay (-1..1), mobil
   ay?: number; // analog joystick dikey (-1..1), mobil
@@ -72,6 +73,7 @@ const DIFF_MULT = TUNING.diff;
 // Ses için ayrık olaylar. Motor bunları biriktirir, Game katmanı her kare boşaltıp çalar.
 export type SoundEvent =
   | "shot"
+  | "sword" // kılıç savurma
   | "kill"
   | "pickup"
   | "heal"
@@ -184,6 +186,8 @@ export class GameEngine {
   warnTimer = 0; // "önce bir zombi öldür" uyarısı
   hurtFlash = 0; // hasar alınca kırmızı flaş
   diffDmgMul = 1; // zorluğa göre gelin GÜCÜ (temas hasarı çarpanı)
+  swordCd = 0; // kılıç bekleme
+  swordSwing = 0; // >0 → savurma animasyonu sürüyor (çizim okur)
   playerMoving = false; // yürüme animasyonu için
   events: SoundEvent[] = []; // bu kare oluşan ses olayları
   tension = 0; // 0..1 en yakın farkında zombiye göre gerilim (kalp atışı/ambiyans)
@@ -611,6 +615,8 @@ export class GameEngine {
     dt = Math.min(dt, 0.05);
     this.time += dt;
     if (this.fireCd > 0) this.fireCd -= dt;
+    if (this.swordCd > 0) this.swordCd -= dt;
+    if (this.swordSwing > 0) this.swordSwing -= dt;
     if (this.warnTimer > 0) this.warnTimer -= dt;
     if (this.hurtFlash > 0) this.hurtFlash -= dt;
 
@@ -748,6 +754,21 @@ export class GameEngine {
       );
     }
 
+    // KILIÇ: mermi tüketmez, menzil kısa. Baktığın yöndeki koni içinde EN YAKIN
+    // gelinleri biçer — tek darbede en fazla TUNING.swordMaxTargets (2).
+    if (input.sword && this.swordCd <= 0) {
+      this.swordCd = TUNING.swordCd;
+      this.swordSwing = TUNING.swordSwingSec;
+      if (this.veilUntil > this.time) this.veilUntil = 0; // saldırı = duvak bozulur
+      this.events.push("sword");
+      const hits = this.swordTargets();
+      for (const z of hits) {
+        // Kraliçe çok canlı: kılıç ona swordQueenDmg kadar hasar verir, diğerleri tek darbe.
+        z.hp -= z.kind === "queen" ? TUNING.swordQueenDmg : 1;
+        if (z.hp <= 0) this.killZombie(z);
+      }
+    }
+
     if (input.fire && !this.noFire && this.fireCd <= 0 && this.ammoCount > 0) {
       this.ammoCount--;
       this.fireCd = FIRE_COOLDOWN;
@@ -763,6 +784,12 @@ export class GameEngine {
         life: BULLET_LIFE,
       });
     }
+  }
+
+  // Kılıç menzilindeki (baktığın yöndeki koni) gelinler — en yakından başlayarak,
+  // en fazla swordMaxTargets tane. Online host da AYNI mantığı kullanır (swordHits).
+  swordTargets(): Zombie[] {
+    return swordHits(this.zombies, this.player.pos, this.player.dir);
   }
 
   private updateBullets(dt: number) {

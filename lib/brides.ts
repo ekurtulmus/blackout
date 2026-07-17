@@ -255,6 +255,32 @@ function separate(brides: Zombie[], maze: Maze) {
   }
 }
 
+// KILIÇ vuruşu — ORTAK mantık (tek kişilik motoru + online host aynısını kullanır;
+// iki yerde ayrı yazılırsa denge kayar).
+// Kural: baktığın yöndeki koni (swordArc) içinde, swordRange menzilindeki gelinler;
+// EN YAKINDAN başlayarak en fazla swordMaxTargets (2) tanesi.
+export function swordHits<T extends { pos: Vec }>(brides: T[], from: Vec, dir: Vec): T[] {
+  const ang = Math.atan2(dir.y, dir.x);
+  const half = TUNING.swordArc / 2;
+  const inArc: { z: T; d: number }[] = [];
+  for (const z of brides) {
+    const dx = z.pos.x - from.x;
+    const dy = z.pos.y - from.y;
+    const d = Math.hypot(dx, dy);
+    if (d > TUNING.swordRange + BRIDE_RADIUS) continue;
+    // Dibimizdeyse yön aramaya gerek yok (her açıdan biçilir)
+    if (d > 0.2) {
+      let diff = Math.atan2(dy, dx) - ang;
+      while (diff > Math.PI) diff -= Math.PI * 2;
+      while (diff < -Math.PI) diff += Math.PI * 2;
+      if (Math.abs(diff) > half) continue;
+    }
+    inArc.push({ z, d });
+  }
+  inArc.sort((a, b) => a.d - b.d);
+  return inArc.slice(0, TUNING.swordMaxTargets).map((h) => h.z);
+}
+
 // Bir gelin, verilen noktaya (oyuncuya) değiyor mu? İlk değeni döndürür.
 export function brideTouching(
   brides: Zombie[],

@@ -99,6 +99,15 @@ export const TUNING = {
   splitChildScale: 0.62, // bölünen yavru görsel boyutu
   splitChildDmgMul: 0.6, // bölünen yavru normalden %40 az hasar
 
+  // --- KILIÇ (temel silah; mermiyle ARASINDA geçiş yapılır, mermiyi tüketmez) ---
+  swordRange: 1.35, // baktığın yönde bu mesafedeki gelinler biçilir (~1 kare)
+  swordArc: Math.PI * 0.62, // vuruş konisi (baktığın yön ± ~56°)
+  swordMaxTargets: 2, // TEK darbede en fazla 2 gelin
+  swordCd: 0.45, // vuruşlar arası bekleme (saniye)
+  swordPvpDmg: 50, // oyuncuya vuruş hasarı → 100 can = 2 vuruş (55 can da 2 vuruş)
+  swordSwingSec: 0.18, // savurma animasyonu süresi (çizim)
+  swordQueenDmg: 2, // kraliçe (çok canlı) kılıçla 2 hasar alır
+
   // --- Asker (kurtarılabilir müttefik, eski "rehin") ---
   soldierFireCd: 3, // asker kaç saniyede bir ateş eder
   soldierRange: 8, // asker bu menzildeki gelinlere ateş eder (hücre)
