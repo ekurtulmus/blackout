@@ -176,10 +176,26 @@ export default function OnlineLobby({
     }
   }
 
+  // Odada görünecek ad: alana yazılan > KAYITLI isim > arkadaş kodu.
+  // ÖNEMLİ: startRoom, mount effect'inden de çağrılıyor (otomatik oda kur / davetle
+  // katıl). Orada `name` state'i HENÜZ boş — setName asenkron. State'e güvenilirse
+  // isim yerine hep kod gönderilir. Bu yüzden kaynak localStorage.
+  function resolveName(typed: string): string {
+    const t = typed.trim();
+    if (t) return t;
+    try {
+      const s = (localStorage.getItem(NAME_KEY) || "").trim();
+      if (s && s !== "Ev sahibi" && s !== "Oyuncu") return s;
+    } catch {
+      /* geç */
+    }
+    return getMyCode();
+  }
+
   function startRoom(c: string, role: NetRole) {
     roomRef.current?.leave();
     saveName(name); // boşsa hiçbir şey yazmaz
-    const nm = name.trim() || getMyCode(); // odada görünecek ad (yedek: kod)
+    const nm = resolveName(name); // odada görünecek ad (yedek: kayıtlı isim → kod)
     const room = new NetRoom(c, role, nm);
     room.onStatus = (s) => setStatus(s);
     room.onRoster = (pl) => setPlayers(pl);
