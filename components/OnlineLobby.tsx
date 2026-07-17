@@ -385,20 +385,19 @@ export default function OnlineLobby({
             );
           })()}
 
-          <div style={{ margin: "6px 0" }}>
-            <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk</div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+          {/* Zorluk: Tek Kişilik brifingiyle AYNI 3'lü segment → daima yan yana
+              (eski hâli flex-wrap'liydi, dar ekranda alt alta yığılıyordu) */}
+          <div style={{ margin: "6px 0", width: "100%", maxWidth: 420 }}>
+            <div className="seg-label" style={{ marginTop: 0 }}>Zorluk</div>
+            <div className="seg seg-3">
               {DIFFS.map((d) => (
                 <button
                   key={d.key}
-                  className={"btn" + (diff === d.key ? " btn-primary" : "")}
+                  className={"seg-item" + (diff === d.key ? " is-on" : "")}
                   onClick={() => setDiff(d.key)}
-                  style={{ opacity: diff === d.key ? 1 : 0.7 }}
                 >
-                  {d.label}
-                  <span style={{ display: "block", fontSize: 12, opacity: 0.7 }}>
-                    {d.desc}
-                  </span>
+                  <span className="seg-item-t">{d.label}</span>
+                  <span className="seg-item-d">{d.desc}</span>
                 </button>
               ))}
             </div>
@@ -517,12 +516,13 @@ export default function OnlineLobby({
           </div>
           {rosterList()}
 
-          <div style={{ margin: "4px 0", opacity: 0.55 }}>
-            <div className="subtitle" style={{ marginBottom: 8 }}>Zorluk <span style={{ fontSize: 12 }}>(ev sahibi seçer)</span></div>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center" }}>
+          {/* Katılan: zorluğu göremez ama aynı düzende görsün (ev sahibi seçer) */}
+          <div style={{ margin: "4px 0", opacity: 0.55, width: "100%", maxWidth: 420 }}>
+            <div className="seg-label" style={{ marginTop: 0 }}>Zorluk <span style={{ letterSpacing: 0 }}>(ev sahibi seçer)</span></div>
+            <div className="seg seg-3">
               {DIFFS.map((d) => (
-                <button key={d.key} className="btn" disabled style={{ cursor: "not-allowed" }}>
-                  {d.label}
+                <button key={d.key} className="seg-item" disabled style={{ cursor: "not-allowed" }}>
+                  <span className="seg-item-t">{d.label}</span>
                 </button>
               ))}
             </div>
