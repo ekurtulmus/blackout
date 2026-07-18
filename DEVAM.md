@@ -2,12 +2,27 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-17**
+> Son güncelleme: **2026-07-18** · Canlı sürüm: commit `2b719a9`
 >
-> **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main, her push→Vercel).
-> Deploy: `git push origin main`. Kullanıcı tercihi: **küçük düzeltmeleri sormadan canlıya al** (commit+push).
+> **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
+> ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
+> ETMİYOR. Deploy **Vercel CLI ile** yapılıyor: `npx vercel --prod --yes` (bu makinede oturum açık:
+> `kurtulmusznc-3311`; `.vercel/project.json` bağlı). Push'u yine yap (GitHub yedeği), ama canlıya almak
+> için CLI şart. Her deploy sonrası **canlı URL'den curl ile teyit et** ("canlıya alındı" demeden önce).
+> Kalıcı çözüm: Vercel paneli → Settings → Git → Disconnect + tekrar Connect (kullanıcı yapmalı).
+> Kullanıcı tercihi: **düzeltmeleri sormadan canlıya al** (commit+push+CLI deploy).
 >
-> **NEREDE KALDIK (özet — GÜNCEL):** Ön yüz **tamamen yenilendi** (design handoff), oyun mantığı **değişmedi**.
+> **NEREDE KALDIK (özet — GÜNCEL):** Ön yüz yenilendi + son turlarda **bir sürü oynanış hatası/özellik**.
+> - **KILIÇ (YENİ — temel silah):** mermiyle ARASINDA geçiş (ateş butonu üstünde buton / PC'de **F** ya da
+>   **sağ tık**). Baktığın yönde ~1 kare, TEK darbede max 2 gelin, oyuncuya 50 hasar (2 vuruş = ölüm), mermi
+>   harcamaz. Ortak vuruş mantığı `lib/brides.ts` `swordHits()` (tekli + online host AYNI). Dükkânda 3 renk
+>   (Köz/Boşluk/Ayaz). Kozmetik slotu artık `"flash"|"skin"|"sword"`. `inventory.SWORD_COLORS`.
+> - **ZORLUK (ÖNEMLİ):** TEK KAYNAK `lib/config.ts` `TUNING.diff` (kolay/orta/zor: count·speed·vision·dmg·
+>   intel·hunters). Motor + online ORTAK bunu kullanır. Gelin GÜCÜ (dmg) + avcı sınırı (hunters) da zorluğa
+>   bağlı. TÜM türlerde uygulanır (arena/endless dahil). Hız tabanı 2.55 (Orta≠Zor eşitlenmesin diye).
+> - **ARENA (tekli+online):** özel gelin türleri + asker + kalıcı paketler artık VAR (`if (!mission)` kapısı
+>   `arena/endless` için açıldı). Online arena turu **50 sn**, puan: 1.→+2, 2.→+1, ilk 5 puan kazanır.
+>   HUD: süre+gelin ORTADA banner (`.arena-banner`), sol ilk-3 sıralama (`.arena-board`).
 > - **TEMA (YENİ):** Koyu ↔ Aydınlık, `<html data-theme>` + `blackout_theme`. Aydınlık **YALNIZ menü/alt ekranlar**;
 >   `.stage` (oyun) karanlığa sabit. Menü yüzeylerinde **sabit renk yazma** — `globals.css` tokenlarını kullan
 >   (alfa için `rgba(var(--edge-rgb), .2)`). Tema `layout.tsx` head'inde, ilk boyamadan önce uygulanır.
@@ -33,6 +48,38 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-18 #11 — Oynanış hataları + KILIÇ + arena/online paketi (CANLI)
+Uzun tur; hepsi Vercel CLI ile canlıya alındı + curl ile teyit edildi. Denge/mantık için **headless
+test** (scratchpad `test-*.js`; `npx tsc lib/*.ts --outDir ...` ile derle, Node'da çalıştır).
+- ✅ **CİDDİ HATA — gelin duran oyuncuyu vurmayı bırakıyordu** (commit `6b518a0`): `brides.chase()` yol
+  oyuncunun HÜCRE MERKEZİNE gidiyor, oyuncuya değil. Gelin varınca yol boşalıyor, `findPath(aynı hücre)`
+  boş dönüyor, "yol yok + görüyor" hâli hiçbir dalda yoktu → gelin merkezde DONUYOR. Üstüne temas GERİ İTMESİ
+  oyuncuyu dışarı itiyor, hücre değişmediği için kilit kalıcı. **Çözüm:** görüyorsa/aynı hücredeyse gerçek
+  konuma dogrudan yönel. Test: 12sn'de hasar 6→171.
+- ✅ **Zorluk orantısı** (`6b518a0`): `TUNING.diff` tek kaynak; gelin GÜCÜ (dmg) + hız tabanı 2.9→2.55
+  (Orta/Zor tavanla eşitleniyordu) + sayı Zor 1.4→1.85. Zorluk TÜM türlerde (eskiden `else if` → arena/endless
+  görmezden geliyordu). Sonra avcı sınırı da zorluğa bağlandı (`6857978`, hunters 2/4/7): sabit 4 iken Zor'da
+  fazla gelin aylak dolaşıyordu.
+- ✅ **Arena eksikleri** (`6b518a0`): özel gelin türleri/asker/kalıcı paketler `if (!mission)` içindeydi →
+  arena/endless'te yoktu. Açıldı (hikâye görevleri hariç). `assignSpecialKinds` level yerine `levelBase`'e bakar.
+  Online arena `generateArenaLevel`'a diff eklendi (Kolay=Zor değil artık).
+- ✅ **İsim yerine kod** (`a1b2ded`): OnlineLobby mount effect'i `startRoom`'u `name` state boşken çağırıyordu →
+  odaya hep kod gidiyordu. `resolveName` localStorage'dan okur. Arkadaşlık isteği popup'ı her ekrana taşındı.
+- ✅ **"2 kişiden az kaldı" yanlış alarmı** (`6857978`, kökten `13793f8`): pos kalp atışına bakıyordu; telefon
+  kilidi/sekme arka planı rAF'ı durdurunca "ayrıldı" sayılıyordu. Artık kaynak GERÇEK çıkış (`{t:left}`);
+  `DEAD_MS=45sn` emniyeti; `lastSeenById` (silinmeyen kayıt). 2+ kişi varsa oda kapanmaz.
+- ✅ **Arena puan sistemi** (`13793f8`): tur 120→50sn. Sıralama: 1.→+2, 2.→+1. Tur sonu ekranında herkesin
+  sırası/öldürmesi/puanı. HUD: süre+gelin ORTADA banner, sol ilk-3 sıralama. İsim/kod TEK etiket. Çıkış onayı
+  (Oyuna Devam Et / Menüye Dön). Lobide odadaki arkadaşa "Davet Et" gösterilmiyor; oda içi kod girme kaldırıldı.
+- ✅ **KILIÇ** (`96e13fd`): yukarıdaki özet + headless test (`test-kilinc.js`, 7 kural). Online PvP mevcut
+  `{t:pvphit, dmg}` modeliyle (vuran tespit, hedef uygular). `swordHits` ORTAK.
+- ✅ **Mobil buton çakışması** (`2b719a9`): koş+kılıç ayrı ayrı sağ-alta konumlanıp biniyordu → tek flex satır
+  (`.actionrow`, online `.actionrow-mp`). PC'de **sağ tık** = silah değiştir (canvas contextmenu engelli).
+  Doğrulama: panel `pointer:fine` bildirdiği için coarse kuralları uygulanmıyor → o kuralları stylesheet'ten
+  çıkarıp düz CSS enjekte edip GERÇEK mobil yerleşim ölçüldü (CSS-ayrıştırıcı denetim güvenilmezdi).
+- ⚠️ **DOĞRULANAMAYAN** (2 cihaz / gerçek oyun döngüsü ister): kılıcın elde görünümü, online PvP 2-vuruş ölüm,
+  arena banner/sıralama görünümü, "oda kapandı" düzeltmesi, isim/davet akışı. Kod + headless test doğru.
 
 ## OTURUM 2026-07-17 #10 — AYDINLIK TEMA + ekran müzikleri (CANLI, commit `6053dec`)
 Kullanıcı `Blackout t.zip` (design_handoff_blackout_theme) verdi — **eski sürüme** dayanıyordu; harfiyen değil
@@ -629,6 +676,16 @@ ses (ateş/toplama/hasar/kapı/ağlama).
   Çözüm işe yaradı: sunucu durdur + `.next` & `node_modules/.cache` sil + dosyayı zorla yeniden yaz + restart.
 
 ## 10) Son commitler (git log)
+- `2b719a9` Mobil koş+kılıç yan yana + PC sağ tık = silah değiştir
+- `96e13fd` KILIÇ: temel silah (tekli+çoklu) + 3 renk + silah değiştirme
+- `13793f8` Online: davet/oda-kapandı + arena puan sistemi + çıkış onayı
+- `6857978` Online: "oda kapandı" yanlış alarmı + zorluk baskısı + arena HUD + istek popup'ı
+- `6b518a0` Gelin duran oyuncuyu vurmayı bırakıyordu + zorluk orantısı + arena eksikleri
+- `a1b2ded` Online: isim yerine kod + arkadaşlık isteği lobide/oyunda görünmüyordu
+- `c2bc546` Mobil: Sırlar 3x4 tek ekrana + brifing metni %50 kısaldı
+- `fcfbbf8` Mobil: menü/brifing/sırlar kompakt + lobide zorluk yan yana
+- `6fbada7` İsim kaydedilmiyordu: arkadaş kodu isim olarak yazılıyordu
+- `69c4d7a` Aydınlık tema okunabilirlik + ekran kenarı karartısı kaldırıldı
 - `6053dec` Aydınlık tema + ekran müzikleri + görev/mod kart düzeni
 - `066a422` HUD düzeni (bilgi/aksiyon ayrımı) + oyun-içi line-icon + altın ikonu + kart başlıkları + endless sonucu
 - `d0e2ebc` Oyun-içi brifing/duraklat/hazırlık → tasarım dili (geri = sol üst 46px ikon)
