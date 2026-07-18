@@ -55,6 +55,7 @@ const ALONE_GRACE_MS = 15000;
 // arka planı, ağ takılması) odayı kapatmasın — yanlış "oda kapandı" alarmının sebebiydi.
 const DEAD_MS = 45000;
 const ARENA_WIN_POINTS = 5; // 5 tur kazanan maçı alır
+const LEVEL_WAIT_MS = 5000; // bölümler arası bekleme (dükkâna uğrama fırsatı) — sonra OTOMATİK başlar
 const HEALTH_RESPAWN_MS = 30000; // toplanan can paketi bu sürede geri doğar
 const BRIDE_RESPAWN_MS = 20000; // ölen gelin bu sürede yeniden doğar
 const BARRIER_ARM_MS = 500; // bariyer koyduktan sonra aktifleşme süresi
@@ -241,7 +242,16 @@ export default function OnlineGame({
   const scores = useRef<number[]>(order.map(() => 0));
   const resultPending = useRef(false);
   const sentReach = useRef(false);
+  const lastReachSendAt = useRef(0); // reachexit yeniden-gönderme throttle'ı (kayıp mesaja karşı)
   const [overlay, setOverlay] = useState<{ winnerSeat: number; scores: number[] } | null>(null);
+  // #1 self-healing bölüm geçişi: broadcast KAYIPSIZ DEĞİL — tek "result" mesajı düşen
+  // oyuncu eski bölümde takılı kalıyordu. Çözüm: host güncel bölüm no'sunu heartbeat'te
+  // yayınlar, geride kalan otomatik "needlevel" ister → host "levelsync" ile mevcut bölümü
+  // yollar → geride kalan anında yetişir. pendingLevelNum: hâlihazırda geçiş yaptığımız
+  // hedef bölüm (idempotent scheduleLoad + çift geçişi önler).
+  const pendingLevelNum = useRef(0);
+  const lastNeedLevelAt = useRef(0);
+  const lastResult = useRef<{ winnerSeat: number; scores: number[]; lvl: SerializedLevel; lvlNum: number } | null>(null);
 
   function buildWorld(lvl: RaceLevel) {
     levelRef.current = lvl;
@@ -402,11 +412,12 @@ export default function OnlineGame({
       for (const o of others.current.values()) if (o.seat < minSeat) minSeat = o.seat;
       const nowHost = mySeat === minSeat;
       if (nowHost && !amHost.current) {
-        // devral: mevcut gelin görüntüsünü tam simülasyona çevir
+        // devral: mevcut gelin görüntüsünü tam simülasyona çevir. TÜRÜ koru (splitter/caller/
+        // climber/queen "normal"e düşmesin) + kraliçe canını geri ver.
         hostBrides.current = Array.from(guestBrides.current.values()).map((z) => ({
           id: z.id,
           pos: { ...z.pos },
-          hp: 1,
+          hp: z.kind === "queen" ? TUNING.queenHp : 1,
           aware: z.aware,
           lastSeen: null,
           seenTimer: 4,
@@ -414,7 +425,15 @@ export default function OnlineGame({
           wanderTimer: 0,
           path: null,
           repathTimer: 0,
+          kind: z.kind ?? "normal",
+          speedMul: z.kind === "queen" ? TUNING.queenSpeedMul : undefined,
+          callTimer: z.kind === "caller" ? TUNING.callerCooldown : undefined,
         }));
+        // Yeni gelin id'leri (respawn/split/dalga) mevcutlarla ÇAKIŞMASIN diye sayaç
+        // devralınan en yüksek id'ye çekilir.
+        let maxId = brideIdCounter.current;
+        for (const z of hostBrides.current) if (z.id > maxId) maxId = z.id;
+        brideIdCounter.current = maxId;
         flash("Ev sahibi ayrıldı — kontrolü sen devraldın");
       }
       amHost.current = nowHost;
@@ -457,28 +476,56 @@ export default function OnlineGame({
       scores.current = scores.current.slice();
       scores.current[seat] = (scores.current[seat] ?? 0) + 1;
       const next = generateRaceLevel(levelRef.current.level + 1, diff, info.themeSeed, order.length);
-      room.send({
-        t: "result",
-        winnerSeat: seat,
-        scores: scores.current,
-        lvl: serializeLevel(next) as never,
-      });
+      const ser = serializeLevel(next);
+      // Sonucu sakla → overlay boyunca periyodik olarak YENİDEN yayınlanır (kayıp mesaj
+      // sigortası). Ayrıca host heartbeat'i yeni bölüm no'sunu duyurur (self-healing).
+      lastResult.current = { winnerSeat: seat, scores: scores.current.slice(), lvl: ser, lvlNum: next.level };
+      room.send({ t: "result", winnerSeat: seat, scores: scores.current, lvl: ser as never });
       showResult(seat);
       scheduleLoad(next);
     }
     function showResult(winnerSeat: number) {
       resultPending.current = true;
-      if (winnerSeat === mySeat) setCoins(addCoins(RACE_WIN_COINS)); // turu kazandın → bonus para
+      if (winnerSeat === mySeat && pendingLevelNum.current === 0) setCoins(addCoins(RACE_WIN_COINS)); // turu kazandın → bonus para (yalnız İLK kez)
       setOverlay({ winnerSeat, scores: scores.current.slice() });
     }
     function scheduleLoad(next: RaceLevel) {
-      // 12 sn bekleme: turlar arası dükkândan alışverişe zaman tanır. Süre bitince
-      // dükkândaysan bile kapanıp oyuna dönersin (#37).
+      // Geç gelen bir yeniden-yayın, zaten geçtiğim (veya bulunduğum) bölümü TEKRAR kurmasın.
+      if (levelRef.current && next.level <= levelRef.current.level) return;
+      // İDEMPOTENT: aynı hedef bölüm için birden çok kez çağrılırsa (result yeniden
+      // yayınlandığında) tek zamanlayıcı kurulur — yoksa üst üste buildWorld çalışırdı.
+      if (pendingLevelNum.current === next.level) return;
+      pendingLevelNum.current = next.level;
+      // LEVEL_WAIT_MS bekleme: turlar arası dükkândan alışverişe zaman tanır. Süre bitince
+      // oyuncu HİÇBİR ŞEY yapmadan (dükkândaysan bile kapanır) otomatik yeni bölüme geçilir.
       window.setTimeout(() => {
+        if (pendingLevelNum.current !== next.level) return; // araya levelsync girdiyse iptal
+        pendingLevelNum.current = 0;
         setOverlay(null);
         setShopOpen(false);
         buildWorld(next);
-      }, 12000);
+      }, LEVEL_WAIT_MS);
+    }
+    // #1: geride kalan oyuncu host'un mevcut bölümünü ISTER (throttle'lı).
+    function requestLevelSync() {
+      const nowMs = performance.now();
+      if (nowMs - lastNeedLevelAt.current < 900) return;
+      lastNeedLevelAt.current = nowMs;
+      room.send({ t: "needlevel", have: levelRef.current?.level ?? 0 });
+    }
+    // #1: host, güncel bölümü serileştirip yollar (geride kalanı ANINDA yetiştirir).
+    function sendLevelSync() {
+      if (!levelRef.current) return;
+      room.send({ t: "levelsync", lvl: serializeLevel(levelRef.current) as never, lvlNum: levelRef.current.level, scores: scores.current.slice() });
+    }
+    // #1: mevcut bölümden İLERİ bir bölüme anında atla (overlay/bekleme yok — kurtarma yolu).
+    function applyLevelSync(lvl: RaceLevel, scoresIn: number[]) {
+      if (levelRef.current && lvl.level <= levelRef.current.level) return; // zaten güncel/ileri
+      scores.current = scoresIn.slice();
+      pendingLevelNum.current = 0;
+      setOverlay(null);
+      setShopOpen(false);
+      buildWorld(lvl);
     }
 
     // Bariyer koy (0.5 sn sonra aktif olur)
@@ -586,6 +633,19 @@ export default function OnlineGame({
         o.sPos = m.sx != null && m.sy != null ? { x: m.sx as number, y: m.sy as number } : null;
         o.dead = !!m.dead; // ölü/donmuş mu (soluk çiz)
         o.rk = (m.rk as number) ?? 0; // arena: bu oyuncunun tur öldürmesi (host tally için)
+        // #1 self-healing: host heartbeat'ine güncel bölüm no'sunu ekler (yalnız host).
+        // Ben geride kaldıysam (bölümüm host'unkinden küçük VE bir geçiş beklemiyorsam)
+        // → host'tan mevcut bölümü iste. "result" mesajım düşmüş olsa bile böyle yetişirim.
+        if (m.lvl != null && !arenaMode) {
+          const hostLvl = m.lvl as number;
+          const myLvl = levelRef.current?.level ?? 0;
+          if (hostLvl > myLvl && hostLvl > pendingLevelNum.current) requestLevelSync();
+        }
+      } else if (m.t === "needlevel") {
+        // Bir oyuncu geride kalmış → host isem güncel bölümü ona (herkese) yolla.
+        if (amHost.current && levelRef.current && (m.have as number) < levelRef.current.level) sendLevelSync();
+      } else if (m.t === "levelsync") {
+        applyLevelSync(deserializeLevel(m.lvl as SerializedLevel), (m.scores as number[]) ?? scores.current);
       } else if (m.t === "brides" && !amHost.current) {
         const arr = m.b as [number, number, number, number, number][];
         const map = guestBrides.current;
@@ -744,7 +804,7 @@ export default function OnlineGame({
     }
     const grainPattern = ctx.createPattern(noiseTile, "repeat");
 
-    let raf = 0, last = performance.now(), posAcc = 0, brideAcc = 0, hudAcc = 0, tensAcc = 0, leaveAcc = 0;
+    let raf = 0, last = performance.now(), posAcc = 0, brideAcc = 0, hudAcc = 0, tensAcc = 0, leaveAcc = 0, resultReAcc = 0;
     const shade = (b: number[], f: number) =>
       `rgb(${(b[0] * f) | 0},${(b[1] * f) | 0},${(b[2] * f) | 0})`;
 
@@ -941,10 +1001,11 @@ export default function OnlineGame({
           const dmul = diffParams(info.diff).countMul;
           // Üst sınır ve dalga başına eklenen, TUR ilerledikçe büyür → her tur bir
           // öncekinden kalabalık. Zorlukla ölçeklenir.
-          const cap = Math.round((10 + order.length * 5 + roundNum.current * 4) * dmul);
+          // Arena yoğunluğu (kullanıcı: gelin çok azdı → 1.7×): hem üst sınır hem dalga eklemesi.
+          const cap = Math.round((10 + order.length * 5 + roundNum.current * 4) * dmul * TUNING.arenaBrideMul);
           const add = Math.max(
             1,
-            Math.round((ARENA_WAVE_ADD + Math.floor(roundNum.current / 2) + Math.floor(order.length / 2)) * dmul)
+            Math.round((ARENA_WAVE_ADD + Math.floor(roundNum.current / 2) + Math.floor(order.length / 2)) * dmul * TUNING.arenaBrideMul)
           );
           for (let i = 0; i < add; i++) {
             if (hostBrides.current.length >= cap) break;
@@ -1198,14 +1259,22 @@ export default function OnlineGame({
       }
 
       // çıkışa ulaşma (kendi çıkışın açıksa) → kazanma
-      if (!resultPending.current && !sentReach.current && exitOpen.current) {
+      if (!resultPending.current && exitOpen.current) {
         const scc = cellOf(selfPos.current);
         if (scc.x === lvl.exit.x && scc.y === lvl.exit.y) {
           if (amHost.current) {
             handleReach(room.id);
           } else {
-            sentReach.current = true;
-            room.send({ t: "reachexit" });
+            // reachexit KAYBOLABİLİR (broadcast garantisiz). Eskiden tek sefer yollanıyordu →
+            // düşerse host kazananı belirlemez, guest çıkışta KALICI takılırdı (softlock).
+            // Çözüm: çıkışta durdukça ~1 sn'de bir yeniden yolla. Host resultPending ile
+            // idempotenttir (ilk reachexit'i işler, sonrakileri yok sayar).
+            const nowMs = performance.now();
+            if (nowMs - lastReachSendAt.current > 900) {
+              lastReachSendAt.current = nowMs;
+              sentReach.current = true;
+              room.send({ t: "reachexit" });
+            }
           }
         }
       }
@@ -1758,11 +1827,22 @@ export default function OnlineGame({
         }
         // pos = kalp atışı: bölüm-sonu ekranında (resultPending) BİLE gönder ki
         // diğer oyuncular seni yanlışlıkla "ayrıldı" saymasın.
+        // #1: host, güncel bölüm no'sunu (lvl) heartbeat'e ekler → geride kalan yetişir.
         posAcc += dt;
         if (posAcc >= 0.05) {
           posAcc = 0;
-          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current });
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current, lvl: amHost.current ? levelRef.current.level : undefined });
         }
+        // #1: host, overlay boyunca "result"ı periyodik yeniden yayınlar (kayıp mesaj
+        // sigortası — tek yayında düşerse ~1 sn içinde tekrar ulaşır).
+        if (amHost.current && resultPending.current && lastResult.current) {
+          resultReAcc += dt;
+          if (resultReAcc >= 1) {
+            resultReAcc = 0;
+            const lr = lastResult.current;
+            room.send({ t: "result", winnerSeat: lr.winnerSeat, scores: lr.scores, lvl: lr.lvl as never });
+          }
+        } else resultReAcc = 0;
         hudAcc += dt;
         if (hudAcc >= 0.15) {
           hudAcc = 0;
@@ -2183,7 +2263,7 @@ export default function OnlineGame({
               </span>
             ))}
           </div>
-          <div className="subtitle">Sonraki bölüm ~12 sn içinde — dükkâna uğrayabilirsin.</div>
+          <div className="subtitle">Sonraki bölüm ~5 sn içinde — dükkâna uğrayabilirsin.</div>
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
             <Icon name="cart" size={16} /> Dükkâna Uğra ({coins} <Icon name="coin" size={13} />)
           </button>

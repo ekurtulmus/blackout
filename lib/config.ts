@@ -35,6 +35,10 @@ export const TUNING = {
   // --- Madde 0: online'da bir oyuncunun peşinde AYNI ANDA max gelin ---
   maxHuntersPerPlayer: 4,
 
+  // --- Arena: gelin yoğunluğu çarpanı (kullanıcı: arenada gelin çok azdı → 1.7×) ---
+  // Hem başlangıç dalgasına hem de tur-içi dalga eklemelerine + üst sınıra uygulanır.
+  arenaBrideMul: 1.7,
+
   // --- Madde 1: kişi sayısına oranlı harita/yoğunluk (online) ---
   mapSizePerPlayer: 4, // her ekstra oyuncu için labirente +hücre (base + (n-1)*k)
   // yoğunluk çarpanı = densityBase + densityPer * playerCount

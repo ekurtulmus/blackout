@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-18** · Canlı sürüm: commit `2b719a9`
+> Son güncelleme: **2026-07-18** · Canlı sürüm: commit `<oturum#12 deploy sonrası güncellenecek>`
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -48,6 +48,26 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-18 #12 — Online desync/softlock düzeltmeleri + presence + arena yoğunluğu
+Kullanıcının 5 maddesi. Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Online 2 gerçek cihaz ister.
+- ✅ **#1 CİDDİ — bölüm geçişinde SADECE kazanan geçiyordu, diğerleri eski bölümde kalıyordu**
+  (kazanan hem eski hem yeni bölümde görünüyordu). KÖK NEDEN: `net.ts` broadcast **kayıpsız değil**
+  (`ack:false`); host'un tek seferlik `{t:"result",lvl}` mesajı bir oyuncuya ulaşmazsa o oyuncu eski
+  bölümde **kalıcı takılıyordu**. ÇÖZÜM = **self-healing** (`OnlineGame.tsx`): (a) host `pos` heartbeat'ine
+  güncel bölüm no'sunu (`lvl`) ekler; geride kalan `{t:"needlevel"}` ister → host `{t:"levelsync"}` ile
+  mevcut bölümü serileştirip yollar → geride kalan **anında yetişir** (`applyLevelSync`). (b) host overlay
+  boyunca `result`ı ~1 sn'de bir **yeniden yayınlar** (kayıp sigortası). (c) `scheduleLoad` **idempotent**
+  (`pendingLevelNum`; aynı/geçmiş bölümü tekrar kurmaz).
+- ✅ **#1b softlock — `reachexit` tek sefer yollanıyordu**: kaybolursa host kazananı hiç belirlemez, guest
+  çıkışta kalıcı takılırdı. Artık çıkışta durdukça ~1 sn'de bir yeniden yollanır (host `resultPending` ile idempotent).
+- ✅ **#2 arkadaş oyundayken çevrimdışı görünüyordu**: presence (`friends.ts`) beat 3s / pencere 7s **dardı** +
+  oyun trafiği altında "here" düşünce yanıp sönüyordu. beat **2s**, pencere `ONLINE_MS` **12s** (~5 kayıp beat'e dayanır).
+- ✅ **#4 dükkân beklemesi 12s→5s** (`LEVEL_WAIT_MS`), süre bitince **otomatik** başlar (buton yok; overlay metni güncellendi).
+- ✅ **#5 arena gelin sayısı ×1.7** — `config.TUNING.arenaBrideMul=1.7`: başlangıç dalgası (`online.ts`) +
+  tur-içi dalga eklemesi & üst sınır (`OnlineGame.tsx`) hepsine uygulanır.
+- ✅ **#3 host göçü bug'ı** (guest→host devralma): `brideIdCounter` en yüksek id'ye çekilir (yeni gelin id çakışması
+  önlenir) + gelin **türü** korunur (splitter/caller/climber/queen "normal"e düşmez; kraliçe canı/hızı geri verilir).
 
 ## OTURUM 2026-07-18 #11 — Oynanış hataları + KILIÇ + arena/online paketi (CANLI)
 Uzun tur; hepsi Vercel CLI ile canlıya alındı + curl ile teyit edildi. Denge/mantık için **headless

@@ -11,7 +11,12 @@ const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const UID_KEY = "blackout_uid";
 const FRIENDS_KEY = "blackout_friends";
 const NAME_KEY = "blackout_name";
-const ONLINE_MS = 7000; // bu süre içinde "here" gelen arkadaş çevrimiçi sayılır
+// Bu süre içinde "here" gelen arkadaş çevrimiçi sayılır. GENİŞ tutulur: broadcast
+// KAYIPSIZ DEĞİL (ack:false) ve oyun içindeyken kanal trafiği yoğun → tek tük "here"
+// düşünce arkadaş yanlışlıkla çevrimdışı görünüyordu (oyundaki arkadaş offline sanılıyordu).
+// beat 2 sn'de bir → bu pencere ~5 kayıp beat'e dayanır.
+const ONLINE_MS = 12000;
+const BEAT_MS = 2000; // kalp atışı sıklığı (eskiden 3 sn)
 
 export type Friend = { code: string; name: string };
 
@@ -252,7 +257,7 @@ export class FriendPresence {
           for (const [c, v] of this.players) if (now - v.t > ONLINE_MS) { this.players.delete(c); changed = true; }
           for (const [c, v] of this.rooms) if (now - v.t > ONLINE_MS) { this.rooms.delete(c); changed = true; }
           if (changed) this.onPresence();
-        }, 3000);
+        }, BEAT_MS);
       }
     });
   }

@@ -192,8 +192,8 @@ export function generateArenaLevel(
   const farFromPlayers = (c: Vec) => spawns.every((s) => Math.hypot(c.x - s.x, c.y - s.y) >= 4);
   let brideCand = reach.filter(farFromPlayers);
   if (brideCand.length === 0) brideCand = reach.slice();
-  // Başlangıç dalgası: kişi sayısı × ZORLUK (Kolay ~yarısı, Zor ~2 katı)
-  const brideCount = Math.max(2, Math.round((3 + pc * 1.5) * diffParams(diff).countMul));
+  // Başlangıç dalgası: kişi sayısı × ZORLUK (Kolay ~yarısı, Zor ~2 katı) × arena yoğunluğu (1.7)
+  const brideCount = Math.max(2, Math.round((3 + pc * 1.5) * diffParams(diff).countMul * TUNING.arenaBrideMul));
   const brideSpawns = shuffle(brideCand).slice(0, brideCount);
   // Bol mermi + can (arena açık ve yoğun)
   const onSpawn = (c: Vec) => spawns.some((s) => s.x === c.x && s.y === c.y);
