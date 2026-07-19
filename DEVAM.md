@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-18** · Canlı sürüm: commit `df1df1b` (oturum #12, CLI deploy + curl teyit)
+> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `<oturum#13 deploy sonrası güncellenecek>`
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -48,6 +48,26 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-19 #13 — Sadeleştirme/UX düzeltmeleri (tema, HUD, ses, ikon, kaçış görevi)
+Kullanıcı istek listesi. Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Mobil/oynanış gerçek cihazda görülür.
+- ✅ **Beyaz (Aydınlık) tema KOMPLE kaldırıldı** — oyun hep KARANLIK. `layout.tsx` + `page.tsx` data-theme='dark'e
+  sabit; `blackout_theme` kaydı yok sayılır; `MenuShell` tema toggle butonu tamamen silindi. (`[data-theme="light"]`
+  CSS blokları artık ULAŞILMAZ = inert; silinmedi.)
+- ✅ **Tam ekran butonu MOBİLDE gizli** (`globals.css` `@media (pointer: coarse) .shell-bottom-right{display:none}`).
+  Masaüstünde durur.
+- ✅ **Altın ikonu gerçek altın sikke** — `Icon.tsx` `coin` artık line-icon değil, sabit altın renkli DOLU sikke
+  (currentColor'dan bağımsız). Menü cüzdanı da bu ikonu kullanır. **Cüzdan çipi** artık ?/ayar butonlarıyla AYNI
+  çerçeve: 46px yükseklik + 11px köşe (`.shell-wallet`).
+- ✅ **Çıkış durumu = TEK kilit ikonu (yazı YOK)** — HUD'da "AÇIK/KİLİTLİ" yazısı kalktı; kilitliyken kapalı kilit,
+  açıkken açık kilit (`Icon` yeni `lockOpen`). Hem `Game.tsx` hem `OnlineGame.tsx`. `.chip.is-icononly` (kare/ortalı).
+- ✅ **Duraklatınca TÜM ses durur** — `audio.ts` yeni `setPaused()` (müzik pause + AudioContext suspend, sekme-gizleme
+  mantığının aynısı); `Game.togglePause` çağırır; oyundan çıkışta `setPaused(false)` (askıda kalmasın).
+- ✅ **Nasıl Oynanır mobil kontrol** — `MainMenu` dokunmatik tespiti güçlendirildi (pointer:coarse **+** maxTouchPoints
+  **+** ontouchstart); telefonda artık WASD yerine joystick/dokunma kontrolleri gösterilir.
+- ✅ **Kaçış/dayan görevinde kapı GİZLİ + süre GERİYE sayar** — `Game.tsx`: çıkışsız modlarda (`surviveTime`/`endless`/
+  `arena`) `drawExit` erken döner (kapı çizilmez, amacı yoktu) + "Çıkış" çipi gizli; "X sn dayan" görevinde süre
+  `surviveTime - geçen` olarak GERİYE sayar ("Kalan").
 
 ## OTURUM 2026-07-18 #12 — Online desync/softlock düzeltmeleri + presence + arena yoğunluğu
 Kullanıcının 5 maddesi. Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Online 2 gerçek cihaz ister.

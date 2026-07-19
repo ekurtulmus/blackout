@@ -12,6 +12,7 @@ export type IconName =
   | "trophy"
   | "book"
   | "lock"
+  | "lockOpen"
   | "crown"
   | "photo"
   | "cart"
@@ -83,6 +84,12 @@ const PATHS: Record<IconName, React.ReactNode> = {
     <>
       <rect x="5" y="11" width="14" height="9" rx="2" />
       <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </>
+  ),
+  lockOpen: (
+    <>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V7.6a4 4 0 0 1 7.6-1.6" />
     </>
   ),
   crown: <path d="M4 8l3 8h10l3-8-4 3-4-5-4 5-4-3zM6 19h12" />,
@@ -239,6 +246,18 @@ export default function Icon({
   style?: CSSProperties;
   fill?: boolean;
 }) {
+  // Altın sikke: line-icon değil, GERÇEK altın renkli dolu sikke (her yerde altına benzesin).
+  // currentColor'dan bağımsız sabit altın tonları (düz renk, gradyan yok).
+  if (name === "coin") {
+    return (
+      <svg viewBox="0 0 24 24" width={size} height={size} className={className}
+        style={{ flex: "none", verticalAlign: "middle", ...style }} aria-hidden="true">
+        <circle cx="12" cy="12" r="9" fill="#e7b53f" stroke="#9c6d18" strokeWidth="1.3" />
+        <circle cx="12" cy="12" r="5.7" fill="none" stroke="#f7dc8a" strokeWidth="1.4" />
+        <path d="M8.6 8.4a4.9 4.9 0 0 1 2.1-1.6" fill="none" stroke="#fceeba" strokeWidth="1.3" strokeLinecap="round" />
+      </svg>
+    );
+  }
   return (
     <svg
       viewBox="0 0 24 24"

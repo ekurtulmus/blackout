@@ -357,7 +357,14 @@ button {
     right: 14px;
   }
 }
-/* Cüzdan çipi (yalnız menüde, sol üst) */
+/* Tam ekran butonu MOBİLDE (dokunmatik) gizli — kullanıcı isteği. Masaüstünde durur. */
+@media (pointer: coarse) {
+  .shell-bottom-right {
+    display: none;
+  }
+}
+/* Cüzdan çipi (yalnız menüde, sol üst). Sağ üstteki ? / ayar butonlarıyla AYNI çerçeve:
+   46px yükseklik + 11px köşe → üst şerit hizalı görünür. */
 .shell-wallet {
   position: absolute;
   top: 20px;
@@ -366,14 +373,15 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 9px 15px;
-  border-radius: 10px;
+  height: 46px;
+  padding: 0 16px;
+  border-radius: 11px;
   background: rgba(var(--chip-rgb), 0.66);
-  border: 1px solid rgba(var(--edge-rgb), 0.24);
+  border: 1px solid rgba(var(--edge-rgb), 0.28);
   backdrop-filter: blur(3px);
   color: var(--gold-warm);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   letter-spacing: 0.06em;
 }
 .shell-badge {
@@ -1758,6 +1766,12 @@ button.card:hover {
   pointer-events: auto;
   cursor: pointer;
   font: inherit;
+}
+
+/* Sadece ikon çip (ör. çıkış kilit durumu) — yazı yok, kare ve ortalı. */
+.chip.is-icononly {
+  padding: 7px;
+  justify-content: center;
 }
 
 .chip .lbl {

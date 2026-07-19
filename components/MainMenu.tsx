@@ -44,9 +44,14 @@ export default function MainMenu({
     introShown = true;
   }, []);
   useEffect(() => {
-    if (typeof window !== "undefined" && window.matchMedia) {
-      setIsTouch(window.matchMedia("(pointer: coarse)").matches);
-    }
+    if (typeof window === "undefined") return;
+    // Sağlam dokunmatik tespiti: bazı mobil tarayıcılarda yalnız `pointer: coarse`
+    // güvenilmez → touch noktaları ve ontouchstart de kontrol edilir. Yoksa telefonda
+    // "Nasıl Oynanır" yanlışlıkla WASD/klavye kontrollerini gösteriyordu.
+    const coarse = !!window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
+    const touchPts = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
+    const hasTouch = "ontouchstart" in window;
+    setIsTouch(coarse || touchPts || hasTouch);
   }, []);
   // Modal kapanınca açık konu da sıfırlanır (bir dahaki açılış konu listesinden başlasın)
   const closeHelp = useCallback(() => {

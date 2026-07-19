@@ -198,31 +198,16 @@ export default function Page() {
   // Nasıl Oynanır: düğme kabuğun sağ üstünde (MenuShell), modal MainMenu'de → durum burada
   const [helpOpen, setHelpOpen] = useState(false);
 
-  // TEMA (Koyu ↔ Aydınlık) — yalnız menü/alt ekranları etkiler; oyun ekranları (.stage)
-  // globals.css'te karanlığa sabitli (fener/sis oynanışı aydınlıkta bozulurdu).
-  // `data-theme` html köküne konur: bileşen sarmalayıcıları kök div'e konanı düşürebiliyor.
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  // TEMA: Aydınlık (beyaz) tema KALDIRILDI (kullanıcı isteği) — oyun hep KARANLIK.
+  // data-theme her zaman "dark"; eski blackout_theme kaydı yok sayılır, toggle gösterilmez.
   useEffect(() => {
-    let saved: "dark" | "light" = "dark";
+    document.documentElement.setAttribute("data-theme", "dark");
     try {
-      saved = (localStorage.getItem("blackout_theme") as "dark" | "light") || "dark";
+      localStorage.removeItem("blackout_theme");
     } catch {
       /* geç */
     }
-    setTheme(saved);
-    document.documentElement.setAttribute("data-theme", saved);
   }, []);
-  const toggleTheme = () =>
-    setTheme((t) => {
-      const n = t === "dark" ? "light" : "dark";
-      document.documentElement.setAttribute("data-theme", n);
-      try {
-        localStorage.setItem("blackout_theme", n);
-      } catch {
-        /* geç */
-      }
-      return n;
-    });
 
   // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
@@ -694,8 +679,6 @@ export default function Page() {
         onSettings={() => { setSettingsReturn(screen); setScreen("ayarlar"); }}
         onFriends={() => setScreen("friends")}
         onHelp={() => setHelpOpen(true)}
-        theme={theme}
-        onToggleTheme={toggleTheme}
         coins={menuCoins}
         friendsOnline={friendsOnline}
       >

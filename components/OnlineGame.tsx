@@ -2056,11 +2056,8 @@ export default function OnlineGame({
               </div>
             </>
           ) : (
-            <div className="chip" style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)" }}>
-              <span className="lbl"><Icon name={hud.exitOpen ? "key" : "lock"} size={12} /> Çıkışın</span>
-              <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
-                {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
-              </span>
+            <div className="chip is-icononly" title={hud.exitOpen ? "Çıkışın açık" : "Çıkışın kilitli"} style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)", color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
+              <Icon name={hud.exitOpen ? "lockOpen" : "lock"} size={17} />
             </div>
           )}
           {hud.veil > 0 && (

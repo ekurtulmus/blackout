@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Icon from "@/components/Icon";
 
 // BLACKOUT — ORTAK EKRAN KABUĞU (tasarım handoff).
 // Sabit arka plan (z sırası): labirent canvas → radyal scrim → film taneciği → vinyet (nabız).
@@ -17,7 +18,6 @@ export default function MenuShell({
   onFriends,
   onHelp,
   theme = "dark",
-  onToggleTheme,
   coins = 0,
   friendsOnline = 0,
   children,
@@ -27,8 +27,7 @@ export default function MenuShell({
   onSettings?: () => void;
   onFriends?: () => void;
   onHelp?: () => void; // Nasıl Oynanır — menüde sağ üstte
-  theme?: "dark" | "light"; // labirent canvas'ı renklerini dallandırmak için
-  onToggleTheme?: () => void;
+  theme?: "dark" | "light"; // her zaman "dark" (aydınlık tema kaldırıldı); canvas için tutulur
   coins?: number;
   friendsOnline?: number;
   children: React.ReactNode;
@@ -372,11 +371,7 @@ export default function MenuShell({
       {/* Sol üst: menüde cüzdan çipi, diğer ekranlarda TEK geri butonu */}
       {menu ? (
         <div className="shell-wallet">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="#e0a24a" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="8.5" />
-            <circle cx="12" cy="12" r="5.2" />
-            <path d="M9.2 8.6a4.6 4.6 0 0 0-1.4 1.7" />
-          </svg>
+          <Icon name="coin" size={20} />
           {coins}
         </div>
       ) : (
@@ -392,20 +387,6 @@ export default function MenuShell({
       {/* Sağ üst (yalnız menüde): Nasıl Oynanır + Ayarlar + Arkadaşlar */}
       {menu && (
         <div className="shell-top-right">
-          {onToggleTheme && (
-            <button
-              className="shell-icon"
-              onClick={onToggleTheme}
-              title={theme === "light" ? "Koyu temaya geç" : "Aydınlık temaya geç"}
-              aria-label={theme === "light" ? "Koyu temaya geç" : "Aydınlık temaya geç"}
-            >
-              {/* içi yarı dolu daire — kontrast/tema simgesi */}
-              <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" aria-hidden="true">
-                <circle cx="12" cy="12" r="8.5" />
-                <path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none" />
-              </svg>
-            </button>
-          )}
           {onHelp && (
             <button className="shell-icon" onClick={onHelp} title="Nasıl Oynanır" aria-label="Nasıl Oynanır">
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

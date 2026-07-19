@@ -137,6 +137,7 @@ export default function Game({
     const v = !pausedRef.current;
     pausedRef.current = v;
     setPaused(v);
+    sound.setPaused(v); // duraklatınca TÜM ses dursun, devam edince geri gelsin
   };
   const [hud, setHud] = useState<Hud>({
     level,
@@ -1140,6 +1141,8 @@ export default function Game({
       vis: Map<number, number>,
       cols: number
     ) {
+      // Çıkışı olmayan modlarda (dayan/endless/arena) kapı çizilmez — amacı yok, yanıltıcı.
+      if (mission && (mission.surviveTime || mission.endless || mission.arena)) return;
       const e = engine.exit;
       if (!engine.seen[e.y][e.x]) return;
       const visible = vis.get(e.y * cols + e.x) !== undefined;
@@ -1303,6 +1306,7 @@ export default function Game({
       window.removeEventListener("pointerdown", startAudio);
       sound.stopAmbient();
       sound.stopGameMusic();
+      sound.setPaused(false); // oyundan çıkarken ses motoru askıda kalmasın (menüde sus kalmaz)
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1392,10 +1396,15 @@ export default function Game({
 
   const hpPct = (hud.hp / PLAYER_MAX_HP) * 100;
   const hpColor = hpPct > 35 ? "var(--hp)" : "var(--hp-low)";
-  const mm = Math.floor(hud.time / 60)
+  // Çıkışı OLMAYAN modlar (dayan / Bitmeyen Gece / Kör Gece / Sürü / Arena): kapı ve
+  // "Çıkış" çipi anlamsız → gizlenir. "X sn dayan" görevinde süre GERİYE sayar.
+  const noExitMode = !!(mission && (mission.surviveTime || mission.endless || mission.arena));
+  const surviveCountdown = !!mission?.surviveTime;
+  const shownTime = surviveCountdown ? Math.max(0, Math.ceil(mission!.surviveTime! - hud.time)) : hud.time;
+  const mm = Math.floor(shownTime / 60)
     .toString()
     .padStart(2, "0");
-  const ss = Math.floor(hud.time % 60)
+  const ss = Math.floor(shownTime % 60)
     .toString()
     .padStart(2, "0");
 
@@ -1440,9 +1449,9 @@ export default function Game({
           )}
           {mission && (
             // Bitmeyen Gece/Kör Gece'de süre = SKORUN (uzun dayanmak iyidir) → ayrıca vurgula
-            <div className="chip" style={mission.endless ? { borderColor: "rgba(125,255,176,0.6)" } : undefined}>
-              <span className="lbl">{mission.endless ? "Dayandığın süre" : "Süre"}</span>
-              <span className="val" style={mission.endless ? { color: "#7dffb0" } : undefined}>
+            <div className="chip" style={mission.endless ? { borderColor: "rgba(125,255,176,0.6)" } : surviveCountdown ? { borderColor: "rgba(255,150,150,0.6)" } : undefined}>
+              <span className="lbl">{mission.endless ? "Dayandığın süre" : surviveCountdown ? "Kalan" : "Süre"}</span>
+              <span className="val" style={mission.endless ? { color: "#7dffb0" } : surviveCountdown ? { color: "#ff9a9a" } : undefined}>
                 {mm}:{ss}
               </span>
             </div>
@@ -1453,11 +1462,12 @@ export default function Game({
               <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
             </div>
           )}
-          {/* Bitmeyen Gece'de çıkış YOK → "KİLİTLİ" çipi yanıltıcı olurdu, gösterme */}
-          {!mission?.endless && (
+          {/* Çıkış durumu = TEK kilit ikonu (yazı yok): kilitliyken kapalı, açıkken açık
+              kilit. Çıkışsız modlarda (dayan/endless/arena) hiç gösterilmez. */}
+          {!noExitMode && (
           <button
-            className="chip is-btn"
-            style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)" }}
+            className="chip is-btn is-icononly"
+            style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)", color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}
             onClick={() => {
               const r = engineRef.current?.exitLockReason() ?? "";
               if (r) {
@@ -1465,12 +1475,10 @@ export default function Game({
                 window.setTimeout(() => setExitMsg(""), 4000);
               }
             }}
-            title="Çıkış neden kilitli?"
+            title={hud.exitOpen ? "Çıkış açık" : "Çıkış kilitli — neden?"}
+            aria-label={hud.exitOpen ? "Çıkış açık" : "Çıkış kilitli"}
           >
-            <span className="lbl"><Icon name={hud.exitOpen ? "key" : "lock"} size={12} /> Çıkış</span>
-            <span className="val" style={{ color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
-              {hud.exitOpen ? "AÇIK" : "KİLİTLİ"}
-            </span>
+            <Icon name={hud.exitOpen ? "lockOpen" : "lock"} size={17} />
           </button>
           )}
           {/* Endless'ta hedef metni zaten "Süre Xs" → üstteki süre çipiyle aynı, tekrar etme */}

@@ -39,6 +39,7 @@ class SoundEngine {
   private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
   private visibilityHooked = false; // sekme görünürlük dinleyicisi kuruldu mu
   private pausedByHide: HTMLAudioElement[] = []; // sekme gizlenince duraklatılanlar
+  private pausedByPause: HTMLAudioElement[] = []; // oyun duraklatılınca duraklatılanlar
   muted = false;
   tension = 0; // 0..1 (Game her kare günceller)
   private lastHurt = -1;
@@ -187,6 +188,28 @@ class SoundEngine {
   resume() {
     this.init();
     if (this.ctx && this.ctx.state === "suspended") this.ctx.resume();
+  }
+
+  // Oyun duraklatıldığında TÜM ses dursun (müzik + sentez SFX/ambient). Devam edince
+  // müzik kaldığı yerden döner. Sekme-gizleme mantığının (setupVisibility) aynısı.
+  setPaused(p: boolean) {
+    const els = [this.menuAudio, this.gameAudio, ...this.screenAudios.values()];
+    if (p) {
+      this.pausedByPause = [];
+      for (const el of els) {
+        if (el && !el.paused) {
+          this.pausedByPause.push(el);
+          el.pause();
+        }
+      }
+      if (this.ctx && this.ctx.state === "running") this.ctx.suspend().catch(() => {});
+    } else {
+      if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
+      if (this.musicOn && !this.muted) {
+        for (const el of this.pausedByPause) el.play().catch(() => {});
+      }
+      this.pausedByPause = [];
+    }
   }
 
   setMuted(m: boolean) {
