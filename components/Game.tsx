@@ -1706,7 +1706,7 @@ export default function Game({
       {/* Dokunmatik kontroller (sadece dokunmatik cihazlarda görünür) */}
       <div className="touch">
         <Joystick
-          fourDir={!mission?.arena}
+          snap8={!mission?.arena}
           onMove={(x, y) => {
             const i = inputExternal.current;
             if (i) {
@@ -1796,9 +1796,9 @@ export default function Game({
 }
 
 // Analog joystick (mobil hareket) — sürükleme yönü + itme miktarı = hız.
-// fourDir=true → çıkış 4 yöne (yukarı/aşağı/sağ/sol) sabitlenir: labirentte ateş etmek
-// kolaylaşsın diye (360° dönüş yerine yön-tuşu gibi). Arena/açık alanda serbest bırakılır.
-export function Joystick({ onMove, fourDir = false }: { onMove: (x: number, y: number) => void; fourDir?: boolean }) {
+// snap8=true → çıkış 8 yöne (yatay/dikey + ÇAPRAZLAR) sabitlenir: labirentte ateş
+// kolaylaşsın diye (serbest 360° yerine 45°'lik adımlar). Arena/açık alanda serbest bırakılır.
+export function Joystick({ onMove, snap8 = false }: { onMove: (x: number, y: number) => void; snap8?: boolean }) {
   const baseRef = useRef<HTMLDivElement | null>(null);
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
   const drag = useRef<{ id: number; cx: number; cy: number; r: number } | null>(
@@ -1819,11 +1819,14 @@ export function Joystick({ onMove, fourDir = false }: { onMove: (x: number, y: n
     const ty = uy * cl;
     setThumb({ x: tx, y: ty });
     const rx = tx / d.r, ry = ty / d.r;
-    if (fourDir) {
-      // Ölü bölge + baskın eksene sabitle → tek seferde yalnız 1 yön (yön-tuşu hissi).
+    if (snap8) {
+      // Ölü bölge + en yakın 45°'ye sabitle → 8 yön (çaprazlar dahil), serbest 360° değil.
       if (Math.hypot(rx, ry) < 0.3) onMove(0, 0);
-      else if (Math.abs(rx) >= Math.abs(ry)) onMove(Math.sign(rx), 0);
-      else onMove(0, Math.sign(ry));
+      else {
+        const step = Math.PI / 4;
+        const ang = Math.round(Math.atan2(ry, rx) / step) * step;
+        onMove(Math.cos(ang), Math.sin(ang));
+      }
     } else {
       onMove(rx, ry);
     }

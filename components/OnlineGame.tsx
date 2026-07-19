@@ -2248,7 +2248,7 @@ export default function OnlineGame({
       </div>
 
       <div className="touch">
-        <Joystick fourDir={!arenaMode} onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />
+        <Joystick snap8={!arenaMode} onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />
         <button
           className="barrierbtn"
           onPointerDown={(e) => { e.preventDefault(); input.current.place = true; }}
