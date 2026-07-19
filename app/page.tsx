@@ -771,7 +771,7 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Karanlıkta Bıraktıkların</div>
           <h2 className="scr-title">BAŞARIMLAR</h2>
-          <p className="scr-sub">{achList.length}/{ACHIEVEMENTS.length} açıldı · Açtığın her rozetin altın ödülü var.</p>
+          <p className="scr-sub">{achList.length}/{ACHIEVEMENTS.length} açıldı</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 1160 }}>
           <div className="grid grid-268">
@@ -828,11 +828,7 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Kendi Elimden</div>
           <h2 className="scr-title">GÜNLÜK</h2>
-          <p className="scr-sub" style={{ fontStyle: "italic" }}>
-            Karanlıkta yürürken kâğıt parçalarına bir şeyler karaladım — korkumu, gördüklerimi, aklımdan
-            geçenleri. Sayfalar bölümlere dağıldı; bulup üstünden geçtikçe buraya eklenir.
-          </p>
-          <p className="scr-sub" style={{ marginTop: 6 }}>{journalGot.length}/{JOURNAL.length} sayfa bulundu</p>
+          <p className="scr-sub">Bölümlerde bulup topladığın sayfalar — {journalGot.length}/{JOURNAL.length}</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 840 }}>
           <div className="grid grid-340">
@@ -867,8 +863,7 @@ export default function Page() {
           <div className="scr-eyebrow">O Gecenin Kalıntıları</div>
           <h2 className="scr-title">SIRLAR</h2>
           <p className="scr-sub">
-            Görevleri tamamladıkça gelinin hikâyesinden bir sır açılır — <b style={{ color: "var(--gold-lite)" }}>{unlockedSecrets.length}/{SECRET_COUNT}</b>.
-            Açık bir sırra dokun, fotoğrafı ve hikâyesini gör.
+            Görevleri tamamladıkça açılır — <b style={{ color: "var(--gold-lite)" }}>{unlockedSecrets.length}/{SECRET_COUNT}</b>
           </p>
         </div>
         <div className="scr-body" style={{ maxWidth: 1000 }}>
@@ -1006,7 +1001,6 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Hayatta Kalma</div>
           <h2 className="scr-title">MODLAR</h2>
-          <p className="scr-sub">Ana hikâye dışı, bitmeyen hayatta kalma modları.</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 800 }}>
           <div className="grid grid-340">
@@ -1039,23 +1033,14 @@ export default function Page() {
         </div>
         <div className="subtitle" style={{ color: "#c9b8d0", marginTop: -8 }}>{endlessResult.title}</div>
 
-        <div className="subtitle" style={{ opacity: 0.85 }}>
-          Bu modda çıkış yok — tek skorun <b>dayandığın süre</b>. Ne kadar uzun dayanırsan o kadar iyi.
+        <div className="subtitle" style={{ fontSize: "clamp(24px,6.5vw,40px)", lineHeight: 1.2 }}>
+          <b style={{ color: "#8be9ff" }}>{endlessResult.survived} sn</b> dayandın
         </div>
-
-        <div className="subtitle" style={{ fontSize: "clamp(26px,7vw,44px)", lineHeight: 1.2 }}>
-          <b style={{ color: rec ? "#7dffb0" : "#8be9ff" }}>{endlessResult.survived} saniye</b>
-        </div>
-        <div className="subtitle" style={{ marginTop: -10, color: "#c9b8d0" }}>dayandın</div>
 
         <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-          <Icon name="trophy" size={17} style={{ color: "#7dffb0" }} />
-          Rekorun: <b style={{ color: "#7dffb0" }}>{endlessResult.best}s</b>
-          {rec ? (
-            <span style={{ color: "#7dffb0" }}>· en uzun gecen buydu!</span>
-          ) : (
-            <span style={{ color: "#ff9a3c" }}>· rekoru geçmek için {gap} sn daha dayanmalısın</span>
-          )}
+          <Icon name="trophy" size={16} style={{ color: "#7dffb0" }} />
+          Rekor: <b>{endlessResult.best} sn</b>
+          {!rec && <span style={{ color: "var(--muted)" }}>· {gap} sn kaldı</span>}
         </div>
 
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
@@ -1115,9 +1100,7 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Tek Kişilik</div>
           <h2 className="scr-title">KARANLIK GÖREVLER</h2>
-          <p className="scr-sub">
-            {cleared.length}/{MISSIONS.length} tamamlandı · Her görev bir sır açar.
-          </p>
+          <p className="scr-sub">{cleared.length}/{MISSIONS.length} tamamlandı · her görev bir sır açar</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 840 }}>
           <div className="grid grid-232">
@@ -1169,10 +1152,6 @@ export default function Page() {
               </div>
               <h2 className="mm-modal-title" style={{ marginBottom: 12 }}>{sel.title}</h2>
               <p className="panel-p" style={{ textAlign: "center" }}>{sel.brief}</p>
-              <div className="panel" style={{ marginTop: 16, padding: "12px 14px", textAlign: "center" }}>
-                <span className="scr-eyebrow" style={{ marginBottom: 0 }}>Hedef</span>
-                <div style={{ marginTop: 6, color: "var(--ink-body)", fontSize: 14.5 }}>{sel.objectiveHint}</div>
-              </div>
               <div className="cta-row" style={{ marginTop: 20 }}>
                 <button className="btn-primary-x" onClick={() => { const i = openMission!; setOpenMission(null); playMission(i); }}>
                   Göreve Başla
@@ -1230,9 +1209,7 @@ export default function Page() {
         <div className="scr-head">
           <div className="scr-eyebrow">Çok Oyunculu</div>
           <h2 className="scr-title">ÖLÜM KOŞUSU</h2>
-          <p className="scr-sub">
-            2–6 kişi aynı karanlığa hapis. Gelinler hepinizin peşinde — ilk kaçan hayatta kalır.
-          </p>
+          <p className="scr-sub">2–6 kişi, ilk kaçan kazanır.</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 800 }}>
           <div className="mm-primaries" style={{ marginTop: 0 }}>

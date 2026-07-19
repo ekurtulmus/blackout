@@ -117,7 +117,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
           />
           <div className="field-d">
             Boş bırakırsan <b style={{ color: "var(--gold)" }}>arkadaş kodun</b> ({getMyCode()}) görünür.
-            Yazdığın isim kalıcıdır. Bu isim online oyunlarda, çok oyunculuda ve arkadaş listende görünür.
+            Çok oyunculuda ve arkadaş listende bu isim görünür.
           </div>
         </div>
 
@@ -136,20 +136,23 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             className="field-range"
           />
 
+          {/* Tek 'Ses' anahtarı (ana) + açıkken 'Müzik' alt seçeneği */}
           <div className="field-row" style={{ marginTop: 18 }}>
-            <span className="field-t">Müzik</span>
-            <button className={"toggle" + (music ? " is-on" : "")} onClick={toggleMusic}>
-              <Icon name={music ? "music" : "mute"} size={14} />
-              {music ? "Açık" : "Kapalı"}
-            </button>
-          </div>
-          <div className="field-row" style={{ marginTop: 12 }}>
-            <span className="field-t">Tüm Sesler</span>
+            <span className="field-t">Ses</span>
             <button className={"toggle" + (!muted ? " is-on" : "")} onClick={toggleMuted}>
               <Icon name={muted ? "mute" : "music"} size={14} />
               {muted ? "Kapalı" : "Açık"}
             </button>
           </div>
+          {!muted && (
+            <div className="field-row" style={{ marginTop: 12, paddingLeft: 14 }}>
+              <span className="field-t" style={{ color: "var(--muted)" }}>Müzik</span>
+              <button className={"toggle" + (music ? " is-on" : "")} onClick={toggleMusic}>
+                <Icon name={music ? "music" : "mute"} size={14} />
+                {music ? "Açık" : "Kapalı"}
+              </button>
+            </div>
+          )}
 
           <div className="field-d" style={{ marginTop: 16 }}>
             Oyun içinde <b>Esc</b> / <b>P</b> ile duraklat. Ayarların bu cihazda saklanır.

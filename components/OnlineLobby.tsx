@@ -311,8 +311,8 @@ export default function OnlineLobby({
           </div>
           <div className="subtitle" style={{ marginBottom: 2 }}>Oyuncu adın:</div>
           {nameInput}
-          <div className="subtitle" style={{ margin: "2px 0", fontSize: 15 }}>
-            Cüzdan: <b style={{ color: "#ffd75a" }}>🪙 {coins}</b> · Oda kurmak <b style={{ color: "#ffd75a" }}>{ROOM_COST}🪙</b>
+          <div className="subtitle" style={{ margin: "2px 0", fontSize: 15, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
+            Cüzdan <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</b>
           </div>
           {notice && (
             <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, maxWidth: 420 }}>{notice}</div>
@@ -325,10 +325,10 @@ export default function OnlineLobby({
               style={{ opacity: coins < ROOM_COST ? 0.5 : 1 }}
               title={coins < ROOM_COST ? `${ROOM_COST} altın gerekli` : "Oda kur"}
             >
-              🏠 Oda Kur ({ROOM_COST}🪙)
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="home" size={15} /> Oda Kur ({ROOM_COST} <Icon name="coin" size={12} />)</span>
             </button>
             <button className="btn" onClick={() => setMode("join")}>
-              🔑 Odaya Katıl
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="key" size={15} /> Odaya Katıl</span>
             </button>
           </div>
         </>
@@ -423,7 +423,7 @@ export default function OnlineLobby({
               style={{ opacity: arena ? 1 : 0.75 }}
               title="Açıkça: labirent yerine açık arena; çıkış yok, dalga dalga gelen gelinlere karşı hayatta kal"
             >
-              ⚔️ Arena Modu: {arena ? "AÇIK" : "KAPALI"}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> Arena Modu: {arena ? "AÇIK" : "KAPALI"}</span>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
                 Açık alan · çıkış yok · dalga hayatta kalma (skor = süre)
               </span>
@@ -438,7 +438,7 @@ export default function OnlineLobby({
               style={{ opacity: pvp ? 1 : 0.75 }}
               title="Açıkça: oyuncular birbirine de mermi işletir (her isabet %10 can)"
             >
-              ⚔️ Oyuncular Birbirini Vurabilsin: {pvp ? "AÇIK" : "KAPALI"}
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> Oyuncular Birbirini Vurabilsin: {pvp ? "AÇIK" : "KAPALI"}</span>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
                 Mermi rakibe de değer — her isabet canının %10'u
               </span>
@@ -452,7 +452,7 @@ export default function OnlineLobby({
               disabled={count < 2}
               style={{ opacity: count < 2 ? 0.5 : 1 }}
             >
-              ▶ Başlat ({count})
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="play" size={13} fill /> Başlat ({count})</span>
             </button>
             <button className="btn" onClick={back}>
               ← İptal
@@ -514,7 +514,7 @@ export default function OnlineLobby({
       {/* Katıldıktan sonra: İZLEYİCİ lobisi — host'la aynı ekran ama zorluk/başlat PASİF */}
       {mode === "join" && status === "connected" && (
         <>
-          <div className="subtitle" style={{ color: "#7dffb0" }}>Odaya katıldın 👀 İzleyicisin — ev sahibi başlatınca oyun başlar.</div>
+          <div className="subtitle" style={{ color: "#7dffb0" }}>Odaya katıldın — ev sahibi başlatınca oyun başlar.</div>
           <div
             style={{
               fontSize: "clamp(40px,12vw,90px)", fontWeight: 900, letterSpacing: "0.2em",
@@ -541,7 +541,7 @@ export default function OnlineLobby({
           </div>
 
           <button className="btn btn-primary" disabled style={{ opacity: 0.4, cursor: "not-allowed" }}>
-            ▶ Ev sahibi başlatır…
+            Ev sahibi başlatır…
           </button>
 
           {/* Odada kod girme alanı KALDIRILDI: roster'daki her oyuncunun yanında zaten

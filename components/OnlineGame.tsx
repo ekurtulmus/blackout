@@ -2149,15 +2149,17 @@ export default function OnlineGame({
               ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>Bu bölümü KAZANDIN! <Icon name="trophy" size={26} /></span>
               : `${nameOf(overlay.winnerSeat)} kazandı`}
           </div>
-          <div className="subtitle" style={{ fontSize: "clamp(18px,4.5vw,28px)" }}>
-            {overlay.scores.map((s, seat) => (
-              <span key={seat}>
-                {seat > 0 && " · "}
-                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>
-                  {nameOf(seat)}: {s}
-                </b>
-              </span>
-            ))}
+          <div className="scorelist">
+            {overlay.scores
+              .map((s, seat) => ({ seat, s }))
+              .sort((a, b) => b.s - a.s)
+              .map((r, i) => (
+                <div key={r.seat} className="scorerow">
+                  <span className="sr-rank">{i + 1}.</span>
+                  <b className="sr-name" style={{ color: SEAT_COLORS[r.seat % SEAT_COLORS.length] }}>{nameOf(r.seat)}</b>
+                  <b className="sr-total">{r.s}</b>
+                </div>
+              ))}
           </div>
           <div className="subtitle">Sonraki bölüm ~5 sn içinde — dükkâna uğrayabilirsin.</div>
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
@@ -2193,23 +2195,14 @@ export default function OnlineGame({
               ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>TURU SEN KAZANDIN! <Icon name="trophy" size={26} /></span>
               : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={24} /> {nameOf(roundInfo.winner)} turu kazandı</span>}
           </div>
-          <div className="subtitle" style={{ fontSize: "clamp(15px,3.6vw,20px)" }}>
-            {roundInfo.kills} gelin öldürdü · +2 puan
-          </div>
-          {/* TURUN TAM SIRALAMASI — herkes nerede bitirdiğini görür.
-              Puanlama: 1. +2 · 2. +1 · diğerleri 0 */}
-          <div className="subtitle" style={{ fontSize: "clamp(13px,3.2vw,17px)", lineHeight: 1.7 }}>
+          {/* TURUN SIRALAMASI — sıra · isim · öldürme · toplam puan (sade) */}
+          <div className="scorelist">
             {(roundInfo.standings ?? []).map((p, i) => (
-              <div key={p.seat} style={{ display: "flex", gap: 10, justifyContent: "center", alignItems: "baseline" }}>
-                <span style={{ color: "#8f8776", minWidth: 18 }}>{i + 1}.</span>
-                <b style={{ color: SEAT_COLORS[p.seat % SEAT_COLORS.length], minWidth: 90, textAlign: "left" }}>{nameOf(p.seat)}</b>
-                <span style={{ color: "#ff9a9a" }}>{p.k} gelin</span>
-                <span style={{ color: i === 0 ? "#7dffb0" : i === 1 ? "#ffd75a" : "#8f8776" }}>
-                  {i === 0 ? "+2" : i === 1 ? "+1" : "+0"} puan
-                </span>
-                <span style={{ color: "var(--muted)" }}>
-                  (toplam {roundInfo.scores[p.seat] ?? 0})
-                </span>
+              <div key={p.seat} className="scorerow">
+                <span className="sr-rank">{i + 1}.</span>
+                <b className="sr-name" style={{ color: SEAT_COLORS[p.seat % SEAT_COLORS.length] }}>{nameOf(p.seat)}</b>
+                <span className="sr-sub">{p.k} gelin</span>
+                <b className="sr-total">{roundInfo.scores[p.seat] ?? 0} puan</b>
               </div>
             ))}
           </div>
@@ -2225,12 +2218,17 @@ export default function OnlineGame({
               ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>ARENA ŞAMPİYONU SENSİN! <Icon name="trophy" size={28} /></span>
               : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={26} /> {nameOf(arenaOver.winner)} kazandı</span>}
           </div>
-          <div className="subtitle" style={{ fontSize: "clamp(16px,4vw,24px)", lineHeight: 1.8 }}>
-            {arenaOver.scores.map((s, seat) => (
-              <div key={seat}>
-                <b style={{ color: SEAT_COLORS[seat % SEAT_COLORS.length] }}>{nameOf(seat)}</b>: {s} puan
-              </div>
-            ))}
+          <div className="scorelist">
+            {arenaOver.scores
+              .map((s, seat) => ({ seat, s }))
+              .sort((a, b) => b.s - a.s)
+              .map((r, i) => (
+                <div key={r.seat} className="scorerow">
+                  <span className="sr-rank">{i + 1}.</span>
+                  <b className="sr-name" style={{ color: SEAT_COLORS[r.seat % SEAT_COLORS.length] }}>{nameOf(r.seat)}</b>
+                  <b className="sr-total">{r.s} puan</b>
+                </div>
+              ))}
           </div>
           <button className="btn btn-primary" onClick={onExit} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             ← Menüye Dön
@@ -2243,9 +2241,6 @@ export default function OnlineGame({
         <Shop title="DÜKKÂN" onBack={closeShop} standalone />
       )}
 
-      <div className="hint">
-        <b>WASD/Ok</b> hareket · <b>Boşluk</b> ateş · <b>E</b> bariyer · <b>T</b> tuzak · <b>Q</b> kalkan · <b>R</b> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter · çıkışın için 1 gelin öldür
-      </div>
 
       <div className="touch">
         <Joystick snap8={!arenaMode} onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />

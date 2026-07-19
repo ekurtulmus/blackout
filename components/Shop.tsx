@@ -18,11 +18,10 @@ import {
 } from "@/lib/inventory";
 import { unlock } from "@/lib/achievements";
 
-// Dükkân eşya id → ince ikon (tutarlı çizgi-ikon seti)
+// Dükkân eşya id → ince ikon (tutarlı çizgi-ikon seti). Yalnız MEVCUT eşyalar
+// (kalkan/radar/tuzak/can-paketi/ekstra-can kaldırıldı).
 const ITEM_ICON: Record<string, IconName> = {
-  radar: "radar", shield: "shield", trap: "trap", veil: "veil",
-  ammoPack: "ammo", healthPack: "heart", permAmmo: "ammo",
-  extraLife: "heart", soldier: "people",
+  veil: "veil", permAmmo: "ammo", soldier: "people",
 };
 
 // Kozmetik değer → görünen ad (tasarım: swatch altında kısa isim)
@@ -43,8 +42,8 @@ const GOLD_PACKS: { gold: number; price: string; tag?: string }[] = [
   { gold: 3000, price: "55₺", tag: "en avantajlı" },
 ];
 
-// Özellik sıralaması (ilişkili eşyalar yan yana)
-const ORDER = ["shield", "radar", "veil", "trap", "ammoPack", "healthPack", "permAmmo", "extraLife", "soldier"];
+// Özellik sıralaması (mevcut eşyalar)
+const ORDER = ["veil", "permAmmo", "soldier"];
 const featureItems = SHOP_ITEMS.filter((i) => !i.cosmetic).sort(
   (a, b) => (ORDER.indexOf(a.id) + 1 || 99) - (ORDER.indexOf(b.id) + 1 || 99)
 );
@@ -122,15 +121,9 @@ export default function Shop({
     flash("Seçildi");
   }
 
-  // Elindeki adet (tüketilebilirler)
+  // Elindeki adet (tüketilebilir — yalnız Duvak kaldı)
   function ownedText(it: ShopItem): string {
-    if (it.id === "radar") return `Elinde: ${inv.radars}`;
-    if (it.id === "shield") return `Elinde: ${inv.shields}`;
-    if (it.id === "trap") return `Elinde: ${inv.traps}`;
     if (it.id === "veil") return `Elinde: ${inv.veils}`;
-    if (it.id === "ammoPack") return `Elinde: ${inv.ammoPacks}`;
-    if (it.id === "healthPack") return `Elinde: ${inv.healthPacks}`;
-    if (it.id === "extraLife") return inv.extraLives > 0 ? `+${inv.extraLives} can` : "";
     return "";
   }
 

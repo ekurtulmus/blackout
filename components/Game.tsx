@@ -1642,8 +1642,8 @@ export default function Game({
             <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.8 }}>
               <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>Kontroller</span>
               <div style={{ marginTop: 5 }}>
-                WASD/ok hareket · Boşluk ateş · <kbd>Shift</kbd> koş · <kbd>E</kbd> tuzak ·{" "}
-                <kbd>Q</kbd> kalkan · <kbd>R</kbd> radar · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter
+                WASD/ok hareket · Boşluk ya da sol tık ateş · <kbd>F</kbd>/sağ tık silah değiştir ·{" "}
+                <kbd>Shift</kbd> koş · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter (Duvak)
               </div>
             </div>
           </div>
@@ -1698,10 +1698,6 @@ export default function Game({
         </div>
       )}
 
-      <div className="hint">
-        Hareket: <b>WASD / Ok tuşları</b> &nbsp;·&nbsp; Ateş:{" "}
-        <b>Boşluk</b>
-      </div>
 
       {/* Dokunmatik kontroller (sadece dokunmatik cihazlarda görünür) */}
       <div className="touch">

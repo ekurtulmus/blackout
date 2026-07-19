@@ -49,6 +49,20 @@
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
 
+## OTURUM 2026-07-19 #17 — Ekran/popup sadeleştirme turu (2 Explore ajanı taraması sonrası)
+Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçtiği maddeleri onayladı.
+- ✅ **Doğruluk (ölü metin/kod):** Game hazırlık "Kontroller" + OnlineGame alt hint bandı + MainMenu "Fırsatlar/Çan"
+  → kaldırılan kalkan/radar/tuzak atıfları temizlendi (OnlineGame alt hint bandı KOMPLE kaldırıldı, Game altı da).
+  `Shop.tsx` ITEM_ICON/ORDER/ownedText ölü dalları (radar/shield/trap/ammoPack/healthPack/extraLife) silindi.
+- ✅ **endlessresult** sadeleşti (tekrar eden "çıkış yok/skor=süre" paragrafı silindi, arena seviyesi, az renk).
+- ✅ **OnlineLobby emoji→Icon** (🪙🏠🔑⚔️👀▶ → coin/home/key/swords/play). Oda maliyeti tek yerde.
+- ✅ **Online skor tabloları ORTAK stil** (`.scorelist/.scorerow`): bölüm-sonu/tur-sonu/arena-sonu aynı düzen
+  (sıra·isim·[öldürme]·toplam, sıralı). Tur-sonundaki +2/+1 puan kırılımı kaldırıldı.
+- ✅ **Alt ekran `scr-sub` temizliği:** Modlar (silindi), Sırlar/Günlük/Görevler/Başarımlar/Çok Oyunculu kısaltıldı.
+- ✅ **Ayarlar:** "Müzik"+"Tüm Sesler" → tek **"Ses"** + açıkken **"Müzik"** alt seçeneği; isim açıklaması kısaldı.
+- ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
+- ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
+
 ## OTURUM 2026-07-19 #16 — Büyük UX turu (tutorial+, HUD sadeleştirme, bölüm-sonu, can, menüler)
 Doğrulama: `tsc` + `next build` TEMİZ + headless tutorial 17/17. Değişiklikler TÜM oyun türlerine uygulandı.
 - ✅ **Tutorial (1. bölüm) güncellendi:** koridor uzatıldı (7 koridor, path 97). Gelinler artık SALDIRIR/can götürür

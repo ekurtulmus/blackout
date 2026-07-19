@@ -1778,6 +1778,25 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Online skor tabloları (bölüm-sonu / tur-sonu / arena-sonu) — ORTAK stil */
+.scorelist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: clamp(14px, 3.4vw, 18px);
+  line-height: 1.6;
+}
+.scorerow {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  align-items: baseline;
+}
+.sr-rank { color: var(--muted); min-width: 18px; text-align: right; }
+.sr-name { min-width: 96px; text-align: left; }
+.sr-sub { color: #ff9a9a; }
+.sr-total { color: #7dffb0; min-width: 56px; text-align: right; }
+
 /* Duraklat ekranı — yazı yerine büyük pause ikonu */
 .pause-glyph {
   color: var(--ink-title);

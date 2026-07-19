@@ -99,12 +99,8 @@ export default function MainMenu({
       title: "Kanlı Gelinler",
       items: [
         { k: "Kanlı Gelin", t: "Klasik avcı. Görünce koşar, asla vazgeçmez; bölümle zekileşir." },
-        { k: "Karanlık Gelin", t: "Işıkta yavaş, karanlıkta hızlanır. Karanlıkta gözleri kırmızı parlar." },
-        { k: "Mukus Gelini", t: "Öldüğünde 10 sn zehirli yeşil leke bırakır; üstünden geçme." },
-        { k: "Çağıran Gelin", t: "Çığlık atıp yakındaki uyuyan gelinleri uyandırır, sürü çeker." },
-        { k: "Bölünen Gelin", t: "Öldürünce iki hızlı yavruya bölünür. Köşede sıkışma." },
-        { k: "Duvar Aşan Gelin", t: "Duvarların içinden yavaşça süzülür; labirent durduramaz." },
         { k: "Kraliçe Gelin", t: "Dev boss, birkaç bölümde bir. Taçlı, kızıl auralı, çok tehlikeli." },
+        { t: "Karanlıkta hızlanan, bölünen, çağıran, duvar aşan türler de var — oynadıkça tanırsın." },
       ],
     },
     {
@@ -135,22 +131,14 @@ export default function MainMenu({
       ],
     },
     {
-      key: "duvak",
-      title: "Duvak (Görünmezlik)",
+      key: "esya",
+      title: "Duvak & Fırsatlar",
       items: [
-        { k: "Bul & kuşan", t: "Yerde bulursun; envanterden kuşanıp istediğin an tetikle." },
-        { k: "Gizlen", t: "Alınca birkaç sn görünmez olursun; gelinler seni göremez — köşeden sıvış." },
-        { k: "Dikkat", t: "Ateş edersen ya da saldırırsan görünmezlik anında bozulur." },
-      ],
-    },
-    {
-      key: "firsat",
-      title: "Fırsatlar (Yüzük, Ayna, Çan…)",
-      items: [
-        { t: "Bölümlerde ara sıra opsiyonel 'Fırsat' hedefleri çıkar. Çıkışı geciktirmez." },
+        { k: "Duvak", t: "Yerde bulup kuşan; tetikleyince birkaç sn görünmez olursun (ateş/saldırı bozar)." },
+        { t: "Bölümlerde ara sıra opsiyonel 'Fırsat' hedefleri çıkar; çıkışı geciktirmez." },
         { k: "Yüzük", t: "Ekstra altın verir — ama bir gelini çıldırtıp hızlandırır." },
         { k: "Ayna", t: "Kehanet: birkaç sn beklersen çıkışın yönünü gösterir." },
-        { k: "Çan", t: "Tüm gelinleri çana çeker — tuzak kurmak için birebir." },
+        { k: "Çan", t: "Tüm gelinleri çana çeker — hepsini bir noktada toplar." },
         { k: "Mumlar / Kan izi", t: "Mumları yak ya da doğru kan izini takip et → ödül." },
       ],
     },
