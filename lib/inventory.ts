@@ -123,37 +123,9 @@ export type ShopItem = {
   apply: (inv: Inventory) => void;
 };
 
+// NOT: Kalkan/Radar/Tuzak + Ekstra Mermi (tüketilir) + Can Paketi + Ekstra Can Hakkı
+// dükkândan KALDIRILDI (kullanıcı isteği). Kalıcı Cephane (permAmmo) korunur; Duvak kalır.
 export const SHOP_ITEMS: ShopItem[] = [
-  {
-    id: "radar",
-    title: "Radar",
-    desc: "Oyunda istediğin an kullan — çıkış yönünü 1 kez gösterir.",
-    icon: "📻",
-    price: 15,
-    kind: "consumable",
-    canBuy: () => true,
-    apply: (inv) => (inv.radars += 1),
-  },
-  {
-    id: "shield",
-    title: "Kalkan",
-    desc: "Oyunda istediğin an kullan — 3 sn dokunulmazlık.",
-    icon: "🛡️",
-    price: 20,
-    kind: "consumable",
-    canBuy: () => true,
-    apply: (inv) => (inv.shields += 1),
-  },
-  {
-    id: "trap",
-    title: "Tuzak (x2)",
-    desc: "Yere koy — üstünden geçen gelin 8 sn yavaşlar (durdurmaz). 2 adet.",
-    icon: "🕸️",
-    price: 18,
-    kind: "consumable",
-    canBuy: () => true,
-    apply: (inv) => (inv.traps += 2),
-  },
   {
     id: "veil",
     title: "Duvak (x2)",
@@ -165,26 +137,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     apply: (inv) => (inv.veils += 2),
   },
   {
-    id: "ammoPack",
-    title: "Ekstra Mermi",
-    desc: "Sonraki bölüme +3 mermiyle başla (tek kullanım).",
-    icon: "🔫",
-    price: 10,
-    kind: "consumable",
-    canBuy: () => true,
-    apply: (inv) => (inv.ammoPacks += 1),
-  },
-  {
-    id: "healthPack",
-    title: "Can Paketi",
-    desc: "Sonraki bölüme tam can + kalkanla başla (tek kullanım).",
-    icon: "❤️",
-    price: 25,
-    kind: "consumable",
-    canBuy: () => true,
-    apply: (inv) => (inv.healthPacks += 1),
-  },
-  {
     id: "permAmmo",
     title: "Sürekli Cephane",
     desc: "KALICI: her bölüme +3 mermiyle başla.",
@@ -193,16 +145,6 @@ export const SHOP_ITEMS: ShopItem[] = [
     kind: "perm",
     canBuy: (inv) => !inv.permAmmo,
     apply: (inv) => (inv.permAmmo = true),
-  },
-  {
-    id: "extraLife",
-    title: "Ekstra Can Hakkı",
-    desc: "KALICI: +1 başlangıç can hakkı.",
-    icon: "❤️➕",
-    price: 80,
-    kind: "perm",
-    canBuy: (inv) => inv.extraLives < 3,
-    apply: (inv) => (inv.extraLives += 1),
   },
   {
     id: "soldier",

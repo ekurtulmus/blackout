@@ -107,9 +107,9 @@ export default function OnlineGame({
   // Ekonomi + envanter (online): para gelin/tur başına kazanılır (kişisel, kalıcı cüzdan);
   // kalkan/radar kişisel envanterden tüketilir (SP ile aynı depo).
   const [coins, setCoins] = useState(0);
-  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, veils: 0, traps: 0 });
+  const [invCounts, setInvCounts] = useState({ veils: 0 }); // yalnız Duvak kaldı
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
-  const [equipped, setEquipped] = useState<"shield" | "radar" | "veil" | "trap" | null>(null); // kuşanılan eşya (slot)
+  const [equipped, setEquipped] = useState<"veil" | null>(null); // kuşanılan eşya (yalnız Duvak)
   const [shopOpen, setShopOpen] = useState(false); // oyun-içi dükkân (market) açık mı
   const uiOpen = useRef(false); // dükkân açıkken oyun tuşlarını kilitle (hareket etmesin)
   const radarUntil = useRef(0); // radar oku bitişi (ms, performance.now)
@@ -231,10 +231,7 @@ export default function OnlineGame({
   const barriers = useRef<Map<string, { x: number; y: number; armAt: number }>>(new Map());
   const barrierStock = useRef(3);
   const barrierCounter = useRef(0);
-  // Faz C online: tuzaklar (paylaşılan) — key -> {x,y,until(ms)}; gelinleri yavaşlatır
-  const onlineTraps = useRef<Map<string, { x: number; y: number; until: number }>>(new Map());
-  const trapStock = useRef(2);
-  const [trapCount, setTrapCount] = useState(2);
+  // (Tuzak sistemi KALDIRILDI — bariyer korunur.)
   const breakTimer = useRef(0);
   const placeHeld = useRef(false);
   const trapHeld = useRef(false);
@@ -304,11 +301,8 @@ export default function OnlineGame({
     guestBrides.current.clear();
     hp.current = PLAYER_MAX_HP;
     invulnUntil.current = performance.now() + 1500;
-    onlineTraps.current.clear();
-    trapStock.current = 2;
-    setTrapCount(2);
     radarUntil.current = 0;
-    { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps }); }
+    { const inv = getInventory(); setInvCounts({ veils: inv.veils }); }
     if (amHost.current) {
       const total = lvl.brideSpawns.length;
       hostBrides.current = lvl.brideSpawns.map((c, i) => ({
@@ -543,20 +537,6 @@ export default function OnlineGame({
       if (!barriers.current.delete(id)) return;
       room.send({ t: "barrierdel", id });
     }
-    // Faz C online: bulunduğun yere tuzak koy (gelini yavaşlatır) — herkese yayınla
-    function placeTrapOnline() {
-      if (trapStock.current <= 0 || !ready.current || resultPending.current) return;
-      const nowP = performance.now();
-      for (const [k, t] of onlineTraps.current) if (t.until <= nowP) onlineTraps.current.delete(k);
-      const c = cellOf(selfPos.current);
-      const key = c.x + "," + c.y;
-      if (onlineTraps.current.has(key)) return;
-      onlineTraps.current.set(key, { x: c.x, y: c.y, until: performance.now() + TUNING.trapSec * 1000 });
-      trapStock.current--;
-      setTrapCount(trapStock.current);
-      sound.play("pickup");
-      room.send({ t: "trap", x: c.x, y: c.y });
-    }
     function activeBarrier(x: number, y: number, now: number): boolean {
       for (const b of barriers.current.values()) {
         if (b.x === x && b.y === y && now >= b.armAt) return true;
@@ -681,10 +661,6 @@ export default function OnlineGame({
         });
       } else if (m.t === "barrierdel") {
         barriers.current.delete(m.id as string);
-      } else if (m.t === "trap") {
-        // Faz C online: başka oyuncunun koyduğu tuzak (gelini yavaşlatır)
-        const tx = m.x as number, ty = m.y as number;
-        onlineTraps.current.set(tx + "," + ty, { x: tx, y: ty, until: performance.now() + TUNING.trapSec * 1000 });
       } else if (m.t === "left") {
         onPlayerLeft(fromId, true); // gerçekten ayrıldı (Menü'ye bastı)
       } else if (m.t === "veil") {
@@ -749,11 +725,8 @@ export default function OnlineGame({
         case "ArrowLeft": case "a": case "A": input.current.left = d; break;
         case "ArrowRight": case "d": case "D": input.current.right = d; break;
         case " ": case "Spacebar": input.current.fire = d; break;
-        case "e": case "E": input.current.place = d; break;
+        case "e": case "E": input.current.place = d; break; // bariyer koy (online)
         case "f": case "F": if (d) toggleWeapon(); break; // silah değiştir (sağ tık da yapar)
-        case "t": case "T": if (d) placeTrapOnline(); break;
-        case "q": case "Q": if (d) activateShieldOnline(); break; // envanter: kalkan
-        case "r": case "R": if (d) activateRadarOnline(); break; // envanter: radar
         default: return;
       }
       e.preventDefault();
@@ -873,8 +846,6 @@ export default function OnlineGame({
       // bariyer koy (basılı tutmada bir kez)
       if (i.place && !placeHeld.current) { placeHeld.current = true; placeBarrier(); }
       if (!i.place) placeHeld.current = false;
-      if (i.trap && !trapHeld.current) { trapHeld.current = true; placeTrapOnline(); }
-      if (!i.trap) trapHeld.current = false;
 
       // mermisizken (0) önündeki bariyere 2 sn temasla kır
       if (ammoCount.current === 0 && moving) {
@@ -945,10 +916,8 @@ export default function OnlineGame({
           veiledArr.push((veiledUntil.current[o.seat] ?? 0) > now);
         }
         // Madde 0: kişi başı en fazla N gelin · Madde 8: görünmez oyuncular hedeflenmez
-        // Faz C: tuzak hücrelerinde gelinler yavaşlar (host-otoriter)
-        const slowCells = onlineTraps.current.size > 0
-          ? new Set(Array.from(onlineTraps.current.values()).filter((t) => t.until > now).map((t) => t.y * maze.cols + t.x))
-          : undefined;
+        // (Tuzak KALDIRILDI → slowCells yok.)
+        const slowCells = undefined;
         // Avcı sınırı ZORLUĞA bağlı (Kolay 2 / Orta 4 / Zor 7). Sabit 4 iken Zor'da
         // fazladan doğan gelinler sınıra takılıp aylak dolaşıyordu → zorluk artsa da
         // oyuncunun üstündeki baskı değişmiyordu.
@@ -1528,23 +1497,6 @@ export default function OnlineGame({
         ctx!.restore();
       }
 
-      // Tuzaklar (Faz C online): örümcek ağı; üstteki gelin yavaşlar
-      const nowT = performance.now();
-      for (const tr of onlineTraps.current.values()) {
-        if (tr.until <= nowT || vis.get(tr.y * cols + tr.x) === undefined) continue;
-        const sx = tr.x * TS + TS / 2 - camX, sy = tr.y * TS + TS / 2 - camY;
-        ctx!.save();
-        ctx!.globalAlpha = 0.6;
-        ctx!.strokeStyle = "rgba(180,220,235,0.8)"; ctx!.lineWidth = 1.5;
-        const r = TS * 0.36;
-        for (let a = 0; a < 8; a++) {
-          const ang = (a / 8) * Math.PI * 2;
-          ctx!.beginPath(); ctx!.moveTo(sx, sy); ctx!.lineTo(sx + Math.cos(ang) * r, sy + Math.sin(ang) * r); ctx!.stroke();
-        }
-        for (let ring = 1; ring <= 2; ring++) { ctx!.beginPath(); ctx!.arc(sx, sy, (r * ring) / 2.2, 0, Math.PI * 2); ctx!.stroke(); }
-        ctx!.restore();
-      }
-
       // gelinler (türlere göre: kraliçe büyük+taç+aura, caller halka, climber karanlıkta soluk)
       const rbrides = renderBrides();
       for (const z of rbrides) {
@@ -1887,51 +1839,8 @@ export default function OnlineGame({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Envanter: kalkanı kullan (kişisel envanterden tüket → 3 sn dokunulmazlık)
-  function activateShieldOnline() {
-    if (!ready.current || resultPending.current) return;
-    const inv = getInventory();
-    if (inv.shields <= 0) return;
-    inv.shields -= 1;
-    saveInventory(inv);
-    invulnUntil.current = Math.max(invulnUntil.current, performance.now() + 3000);
-    sound.play("veil"); // hayaletimsi kalkan sesi
-    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
-  }
-  // Envanter: radarı kullan (kişisel envanterden tüket → 1.5 sn çıkışa dönük ok)
-  function activateRadarOnline() {
-    if (!ready.current || resultPending.current) return;
-    const maze = mazeRef.current, lvl = levelRef.current;
-    if (!maze || !lvl) return;
-    const inv = getInventory();
-    if (inv.radars <= 0) return;
-    inv.radars -= 1;
-    saveInventory(inv);
-    // Çıkış yönünü BFS mesafe haritasıyla bul (komşu hücrelerden en yakını)
-    const dist = bfsDistances(maze, lvl.exit);
-    const pc = cellOf(selfPos.current);
-    const here = dist[pc.y]?.[pc.x] ?? -1;
-    let bestAng = 0;
-    let bestD = here >= 0 ? here : Infinity;
-    const opts = [
-      { dx: 1, dy: 0, a: 0 },
-      { dx: -1, dy: 0, a: Math.PI },
-      { dx: 0, dy: -1, a: -Math.PI / 2 },
-      { dx: 0, dy: 1, a: Math.PI / 2 },
-    ];
-    for (const o of opts) {
-      const d = dist[pc.y + o.dy]?.[pc.x + o.dx];
-      if (d !== undefined && d >= 0 && d < bestD) {
-        bestD = d;
-        bestAng = o.a;
-      }
-    }
-    radarAngle.current = bestAng;
-    radarUntil.current = performance.now() + 1500;
-    sound.play("secret");
-    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
-  }
-  // Envanter: duvağı kullan (birkaç sn görünmez ol) — kişisel envanterden tüket
+  // Envanter: duvağı kullan (birkaç sn görünmez ol) — kişisel envanterden tüket.
+  // (Kalkan/Radar/Tuzak KALDIRILDI — yalnız Duvak kaldı.)
   function activateVeilOnline() {
     if (!ready.current || resultPending.current || veilUntil.current > performance.now()) return;
     const inv = getInventory();
@@ -1943,33 +1852,14 @@ export default function OnlineGame({
     saveInventory(inv);
     sound.play("veil");
     room.send({ t: "veil", seat: mySeat, on: true });
-    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
+    setInvCounts({ veils: inv.veils });
   }
-  // Envanter: bulunduğun yere tuzak koy — kişisel envanterden tüket
-  function activateInvTrapOnline() {
-    if (!ready.current || resultPending.current) return;
-    const inv = getInventory();
-    if (inv.traps <= 0) return;
-    const c = cellOf(selfPos.current);
-    const key = c.x + "," + c.y;
-    if (onlineTraps.current.has(key)) return;
-    onlineTraps.current.set(key, { x: c.x, y: c.y, until: performance.now() + TUNING.trapSec * 1000 });
-    inv.traps -= 1;
-    saveInventory(inv);
-    sound.play("pickup");
-    room.send({ t: "trap", x: c.x, y: c.y });
-    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
-  }
-  // Slot: kuşanılan eşyayı kullan (boşsa envanteri aç)
-  const SLOT_ICON_ON: Record<"shield" | "radar" | "veil" | "trap", IconName> = { shield: "shield", radar: "radar", veil: "veil", trap: "trap" };
-  const equippedCountOn =
-    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "veil" ? invCounts.veils : equipped === "trap" ? invCounts.traps : 0;
+  // Slot: kuşanılan eşyayı kullan (boşsa envanteri aç). Yalnız Duvak kaldı.
+  const SLOT_ICON_ON: Record<"veil", IconName> = { veil: "veil" };
+  const equippedCountOn = equipped === "veil" ? invCounts.veils : 0;
   function useEquippedOnline() {
     if (!equipped || equippedCountOn <= 0) { setInvOpen(true); return; }
-    if (equipped === "shield") activateShieldOnline();
-    else if (equipped === "radar") activateRadarOnline();
-    else if (equipped === "veil") activateVeilOnline();
-    else if (equipped === "trap") activateInvTrapOnline();
+    if (equipped === "veil") activateVeilOnline();
   }
 
   // Dükkânı aç — hareket tuşlarını temizle (dükkânda kayıp gitmeyesin)
@@ -1984,7 +1874,7 @@ export default function OnlineGame({
     setShopOpen(false);
     setCoins(getCoins());
     const inv = getInventory();
-    setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps });
+    setInvCounts({ veils: inv.veils });
   }
 
   // Menüye dön — ayrıldığını hemen bildir (diğerleri anında görsün)
@@ -2023,10 +1913,6 @@ export default function OnlineGame({
           <div className="chip">
             <span className="lbl"><Icon name="box" size={12} /> Bariyer</span>
             <span className="val">{hud.barriers}</span>
-          </div>
-          <div className="chip">
-            <span className="lbl"><Icon name="trap" size={12} /> Tuzak</span>
-            <span className="val">{trapCount}</span>
           </div>
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
             <span className="lbl"><Icon name="coin" size={12} /> Altın</span>
@@ -2174,10 +2060,7 @@ export default function OnlineGame({
             <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
             {([
-              { kind: "shield", icon: "shield" as IconName, name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
-              { kind: "radar", icon: "radar" as IconName, name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
               { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
-              { kind: "trap", icon: "trap" as IconName, name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -2195,7 +2078,7 @@ export default function OnlineGame({
                 </span>
               </button>
             ))}
-            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.veils <= 0 && invCounts.traps <= 0 && (
+            {invCounts.veils <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Boş — menüdeki dükkândan alabilirsin.
               </div>
@@ -2349,7 +2232,7 @@ export default function OnlineGame({
       </div>
 
       <div className="touch">
-        <Joystick onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />
+        <Joystick fourDir={!arenaMode} onMove={(x, y) => { input.current.ax = x; input.current.ay = y; }} />
         <button
           className="barrierbtn"
           onPointerDown={(e) => { e.preventDefault(); input.current.place = true; }}
@@ -2358,16 +2241,6 @@ export default function OnlineGame({
           onPointerCancel={() => (input.current.place = false)}
         >
           BARİYER
-        </button>
-        <button
-          className="barrierbtn"
-          style={{ right: 130, bottom: 138, background: "radial-gradient(circle at 40% 35%, #4a6a86, #22344a)", opacity: trapCount > 0 ? 1 : 0.4 }}
-          onPointerDown={(e) => { e.preventDefault(); input.current.trap = true; }}
-          onPointerUp={() => (input.current.trap = false)}
-          onPointerLeave={() => (input.current.trap = false)}
-          onPointerCancel={() => (input.current.trap = false)}
-        >
-          <Icon name="trap" size={20} />{trapCount}
         </button>
         <button
           className={"fire" + (weapon === "sword" ? " is-sword" : "")}
@@ -2396,10 +2269,10 @@ export default function OnlineGame({
       <button
         className="invbtn invbtn-mp"
         onPointerDown={(e) => e.preventDefault()}
-        onClick={() => { const inv = getInventory(); setInvCounts({ shields: inv.shields, radars: inv.radars, veils: inv.veils, traps: inv.traps }); setInvOpen(true); }}
+        onClick={() => { const inv = getInventory(); setInvCounts({ veils: inv.veils }); setInvOpen(true); }}
         title="Envanter"
       >
-        <Icon name="box" size={18} /> {invCounts.shields + invCounts.radars + invCounts.veils + invCounts.traps}
+        <Icon name="box" size={18} /> {invCounts.veils}
       </button>
 
       {/* Kuşanılan eşya slotu (kalkan/radar) — tıkla=kullan, boşsa envanteri aç */}

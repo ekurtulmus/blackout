@@ -1122,7 +1122,18 @@ button.card:hover {
   border-color: rgba(var(--gold-rgb), 0.5);
   box-shadow: 0 0 20px rgba(var(--gold-rgb), 0.12);
 }
-.card.is-locked { opacity: 0.55; }
+.card.is-locked { opacity: 0.5; cursor: not-allowed; }
+/* Tamamlanan görev: hafif YEŞİL çerçeve/zemin (yazılar okunur kalır — dolu değil). */
+.card.is-done {
+  border-color: rgba(90, 220, 140, 0.55);
+  background: rgba(60, 200, 120, 0.08);
+}
+button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0 0 20px rgba(90, 220, 140, 0.14); }
+.card.is-done .badge-num { color: #7dffb0; border-color: rgba(90, 220, 140, 0.5); }
+/* Küçük durum rozetleri (kilit / tamam-check) — kart başlığının sağında */
+.badge-lock, .badge-done { margin-left: auto; display: inline-flex; align-items: center; }
+.badge-lock { color: var(--muted); }
+.badge-done { color: #7dffb0; }
 .card-t { font-size: 17px; font-weight: 700; color: var(--ink-title); letter-spacing: 0.02em; }
 .card-d { font-size: 15px; color: var(--ink-2); line-height: 1.5; flex: 1; }
 .card-meta {

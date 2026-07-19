@@ -71,8 +71,7 @@ function clearSpProgress() {
 // Başarım rozetleri → ince ikon eşlemesi (emoji yerine)
 const ACH_ICON: Record<string, IconName> = {
   first_kill: "drop", reach3: "target", first_coin: "coin", shopper: "cart",
-  collector: "book", taste_dark: "skull", use_shield: "shield", use_radar: "radar",
-  use_trap: "trap", kills10: "swords",
+  collector: "book", taste_dark: "skull", kills10: "swords",
   reach5: "map", reach8: "flame", flawless: "veil", queenslayer: "crown",
   savior: "handshake", escapist: "bomb", rich: "coin", kills50: "swords",
   kills100: "swords", deaths5: "skull", games10: "infinity", clears20: "map",
@@ -80,7 +79,7 @@ const ACH_ICON: Record<string, IconName> = {
   missions3: "target", missions6: "target", endless60: "infinity", endless180: "infinity",
   arena5: "swords", arena10: "swords", kor60: "moon", horde5: "swarm",
   use_veil: "veil", flawless3: "veil", queen3: "crown", escapes3: "bomb",
-  buy_perm: "ammo", buy_life: "heart",
+  buy_perm: "ammo",
   win: "trophy", win_hard: "crown", kills300: "swords", missions_all: "target",
   secrets_all: "photo", journal_all: "book", endless300: "infinity", arena20: "swords",
   queen5: "crown", rich5000: "coin",
@@ -1102,17 +1101,32 @@ export default function Page() {
           <div className="grid grid-232">
             {MISSIONS.map((m, i) => {
               const done = cleared.includes(m.id);
+              // Kademeli açılma: görevler 3'erli gruplar. İlk grup (1-3) hep açık; sonraki
+              // grup, ÖNCEKİ 3 görevin HEPSİ bitince açılır.
+              const group = Math.floor(i / 3);
+              const prevCleared =
+                group === 0 ||
+                MISSIONS.slice((group - 1) * 3, group * 3).every((pm) => cleared.includes(pm.id));
+              // Tamamlanmış görev, grubu kilitli görünse bile (eski/sırasız kayıt) her zaman oynanabilir.
+              const locked = !prevCleared && !done;
+              // Tamamlanan = hafif YEŞİL (yazılar okunur kalır, "Tamam" yazısı YOK).
+              // Kilitli = soluk + kilit. Açık-bitmemiş = normal.
+              const cls = "card" + (done ? " is-done" : locked ? " is-locked" : "");
               return (
-                // Tamamlanmamış görev = Başarımlar'daki kilitli rozet gibi hafif saydam
-                <button key={m.id} className={"card" + (done ? "" : " is-locked")} onClick={() => setOpenMission(i)}>
-                  {/* Görev no + adı aynı satırda */}
+                <button
+                  key={m.id}
+                  className={cls}
+                  disabled={locked}
+                  onClick={() => { if (!locked) setOpenMission(i); }}
+                >
                   <div className="card-head">
                     <span className="badge-num">{m.id}</span>
                     <div className="card-t">{m.title}</div>
-                    {done && <span className="badge-ok">Tamam</span>}
+                    {locked && <span className="badge-lock" aria-label="Kilitli"><Icon name="lock" size={13} /></span>}
+                    {done && <span className="badge-done" aria-label="Tamamlandı"><Icon name="check" size={14} /></span>}
                   </div>
-                  <div className="card-d">{m.objectiveHint}</div>
-                  {missionBest[m.id] ? (
+                  <div className="card-d">{locked ? "Önceki 3 görevi tamamla" : m.objectiveHint}</div>
+                  {!locked && missionBest[m.id] ? (
                     <div className="card-meta">
                       <span>En iyi {missionBest[m.id]}s</span>
                     </div>
@@ -1129,7 +1143,7 @@ export default function Page() {
             <div className="mm-modal-card">
               <div className="card-row" style={{ justifyContent: "center", gap: 12, marginBottom: 12 }}>
                 <span className="badge-num">{sel.id}</span>
-                {cleared.includes(sel.id) && <span className="badge-ok">Tamam</span>}
+                {cleared.includes(sel.id) && <span className="badge-done" aria-label="Tamamlandı"><Icon name="check" size={15} /></span>}
               </div>
               <h2 className="mm-modal-title" style={{ marginBottom: 12 }}>{sel.title}</h2>
               <p className="panel-p" style={{ textAlign: "center" }}>{sel.brief}</p>

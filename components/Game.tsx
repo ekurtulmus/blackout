@@ -108,13 +108,13 @@ export default function Game({
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
-  const [invCounts, setInvCounts] = useState({ shields: 0, radars: 0, traps: 0, veils: 0 }); // kullanılabilir eşyalar
+  const [invCounts, setInvCounts] = useState({ veils: 0 }); // kullanılabilir eşyalar (yalnız Duvak kaldı)
   // Kuşanılan eşya (slot) — bölümler arası KALICI (localStorage): bölüm geçince slot boşalmasın,
   // biz değiştirene kadar aynı eşya kuşanılı kalsın.
-  const [equipped, setEquipped] = useState<"shield" | "radar" | "trap" | "veil" | null>(() => {
+  // Yalnız Duvak kaldı (kalkan/radar/tuzak kaldırıldı) → kuşanılabilir tek eşya "veil".
+  const [equipped, setEquipped] = useState<"veil" | null>(() => {
     try {
-      const v = localStorage.getItem("blackout_equipped");
-      return v === "shield" || v === "radar" || v === "trap" || v === "veil" ? v : null;
+      return localStorage.getItem("blackout_equipped") === "veil" ? "veil" : null;
     } catch {
       return null;
     }
@@ -183,27 +183,12 @@ export default function Game({
     // +3 mermiyle başlamıyor"). Artık hayatta kalma modlarında da geçerli.
     if (!storyMission) {
       const inv = getInventory();
-      let changed = false;
-      let ammoBonus = 0;
-      if (inv.permAmmo) ammoBonus += 3; // KALICI: her bölüm/tur +3 (birikmez, hep +3)
-      if (inv.ammoPacks > 0) {
-        ammoBonus += 3;
-        inv.ammoPacks -= 1;
-        changed = true;
-      } // tek kullanım
-      if (inv.healthPacks > 0) {
-        engine.player.hp = PLAYER_MAX_HP;
-        engine.activateShield(3); // tam can + kısa kalkan
-        inv.healthPacks -= 1;
-        changed = true;
-      }
-      engine.ammoCount += ammoBonus;
-      if (changed) saveInventory(inv);
+      if (inv.permAmmo) engine.ammoCount += 3; // KALICI: her bölüm/tur +3 (birikmez, hep +3)
       // Kişiselleştirme: fener rengi + görünüm halkası
       flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
       skinRingRef.current = SKIN_RINGS[inv.skin];
       swordColorRef.current = SWORD_COLORS[inv.sword] ?? SWORD_COLORS.default;
-      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
+      setInvCounts({ veils: inv.veils });
     }
     // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
     let notice = "";
@@ -315,18 +300,6 @@ export default function Game({
         case "f":
         case "F":
           if (down) toggleWeapon(); // silah değiştir: mermi ↔ kılıç
-          break;
-        case "e":
-        case "E":
-          if (down) usePlaceTrap(); // Faz C: tuzak koy
-          break;
-        case "r":
-        case "R":
-          if (down) useRadar(); // radar kullan
-          break;
-        case "q":
-        case "Q":
-          if (down) useShield(); // kalkan kullan
           break;
         case "Escape":
         case "p":
@@ -1317,43 +1290,6 @@ export default function Game({
     if (i) i[k] = v;
   };
 
-  // Envanter: kalkanı kullan (istediğin an 3 sn dokunulmazlık)
-  const useShield = () => {
-    const e = engineRef.current;
-    if (!e || e.invuln) return;
-    const inv = getInventory();
-    if (inv.shields <= 0) return;
-    inv.shields -= 1;
-    saveInventory(inv);
-    e.activateShield(3);
-    bumpStat("shieldUses"); // başarım: use_shield
-    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
-  };
-  // Envanter: radarı kullan (çıkış yönünü 1 kez göster)
-  const useRadar = () => {
-    const e = engineRef.current;
-    if (!e) return;
-    const inv = getInventory();
-    if (inv.radars <= 0) return;
-    inv.radars -= 1;
-    saveInventory(inv);
-    e.activateRadar();
-    bumpStat("radarUses"); // başarım: use_radar
-    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
-  };
-  // Envanter: bulunduğun yere tuzak koy (gelini yavaşlatır)
-  const usePlaceTrap = () => {
-    const e = engineRef.current;
-    if (!e) return;
-    const inv = getInventory();
-    if (inv.traps <= 0) return;
-    if (e.placeTrap()) {
-      inv.traps -= 1;
-      saveInventory(inv);
-      bumpStat("trapUses"); // başarım: use_trap
-      setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
-    }
-  };
   // Envanter: duvağı kullan (birkaç sn görünmez ol)
   const useVeil = () => {
     const e = engineRef.current;
@@ -1364,21 +1300,17 @@ export default function Game({
     saveInventory(inv);
     e.activateVeil();
     bumpStat("veilUses"); // başarım: use_veil
-    setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
+    setInvCounts({ veils: inv.veils });
   };
-  // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç)
-  const SLOT_ICON: Record<"shield" | "radar" | "trap" | "veil", IconName> = { shield: "shield", radar: "radar", trap: "trap", veil: "veil" };
-  const equippedCount =
-    equipped === "shield" ? invCounts.shields : equipped === "radar" ? invCounts.radars : equipped === "trap" ? invCounts.traps : equipped === "veil" ? invCounts.veils : 0;
+  // Slot: kuşanılan eşyayı kullan (kutucuk boşsa envanteri aç). Yalnız Duvak kaldı.
+  const SLOT_ICON: Record<"veil", IconName> = { veil: "veil" };
+  const equippedCount = equipped === "veil" ? invCounts.veils : 0;
   const useEquipped = () => {
     if (!equipped || equippedCount <= 0) { setInvOpen(true); return; }
-    if (equipped === "shield") useShield();
-    else if (equipped === "radar") useRadar();
-    else if (equipped === "trap") usePlaceTrap();
-    else if (equipped === "veil") useVeil();
+    if (equipped === "veil") useVeil();
   };
   // Envanterden bir eşyayı KUŞAN (slot'a koy) — direkt kullanma
-  const equip = (kind: "shield" | "radar" | "trap" | "veil") => {
+  const equip = (kind: "veil") => {
     setEquipped(kind);
     try { localStorage.setItem("blackout_equipped", kind); } catch { /* geç */ }
     setInvOpen(false);
@@ -1559,9 +1491,6 @@ export default function Game({
             <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
             <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
             {([
-              { kind: "shield", icon: "shield" as IconName, name: "Kalkan", n: invCounts.shields, desc: "3 sn dokunulmazlık" },
-              { kind: "radar", icon: "radar" as IconName, name: "Radar", n: invCounts.radars, desc: "çıkış yönünü göster" },
-              { kind: "trap", icon: "trap" as IconName, name: "Tuzak", n: invCounts.traps, desc: "yere koy, gelini yavaşlat" },
               { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
             ] as const).map((it) => (
               <button
@@ -1581,7 +1510,7 @@ export default function Game({
                 </span>
               </button>
             ))}
-            {invCounts.shields <= 0 && invCounts.radars <= 0 && invCounts.traps <= 0 && invCounts.veils <= 0 && (
+            {invCounts.veils <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
                 Boş — dükkândan alabilirsin.
               </div>
@@ -1690,6 +1619,7 @@ export default function Game({
       {/* Dokunmatik kontroller (sadece dokunmatik cihazlarda görünür) */}
       <div className="touch">
         <Joystick
+          fourDir={!mission?.arena}
           onMove={(x, y) => {
             const i = inputExternal.current;
             if (i) {
@@ -1746,12 +1676,12 @@ export default function Game({
           onPointerDown={(e) => e.preventDefault()}
           onClick={() => {
             const inv = getInventory();
-            setInvCounts({ shields: inv.shields, radars: inv.radars, traps: inv.traps, veils: inv.veils });
+            setInvCounts({ veils: inv.veils });
             setInvOpen(true);
           }}
           title="Envanter"
         >
-          <Icon name="box" size={18} /> {invCounts.shields + invCounts.radars + invCounts.traps + invCounts.veils}
+          <Icon name="box" size={18} /> {invCounts.veils}
         </button>
       )}
 
@@ -1778,8 +1708,10 @@ export default function Game({
   );
 }
 
-// Analog joystick (mobil hareket) — sürükleme yönü + itme miktarı = hız
-export function Joystick({ onMove }: { onMove: (x: number, y: number) => void }) {
+// Analog joystick (mobil hareket) — sürükleme yönü + itme miktarı = hız.
+// fourDir=true → çıkış 4 yöne (yukarı/aşağı/sağ/sol) sabitlenir: labirentte ateş etmek
+// kolaylaşsın diye (360° dönüş yerine yön-tuşu gibi). Arena/açık alanda serbest bırakılır.
+export function Joystick({ onMove, fourDir = false }: { onMove: (x: number, y: number) => void; fourDir?: boolean }) {
   const baseRef = useRef<HTMLDivElement | null>(null);
   const [thumb, setThumb] = useState({ x: 0, y: 0 });
   const drag = useRef<{ id: number; cx: number; cy: number; r: number } | null>(
@@ -1799,7 +1731,15 @@ export function Joystick({ onMove }: { onMove: (x: number, y: number) => void })
     const tx = ux * cl;
     const ty = uy * cl;
     setThumb({ x: tx, y: ty });
-    onMove(tx / d.r, ty / d.r);
+    const rx = tx / d.r, ry = ty / d.r;
+    if (fourDir) {
+      // Ölü bölge + baskın eksene sabitle → tek seferde yalnız 1 yön (yön-tuşu hissi).
+      if (Math.hypot(rx, ry) < 0.3) onMove(0, 0);
+      else if (Math.abs(rx) >= Math.abs(ry)) onMove(Math.sign(rx), 0);
+      else onMove(0, Math.sign(ry));
+    } else {
+      onMove(rx, ry);
+    }
     e.preventDefault();
   };
   const start = (e: RPointerEvent<HTMLDivElement>) => {

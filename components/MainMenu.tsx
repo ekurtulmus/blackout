@@ -77,14 +77,14 @@ export default function MainMenu({
         ? [
             { k: "Hareket", t: "Sol alttaki joystick'i sürükle — çektiğin yöne yürürsün." },
             { k: "Ateş", t: "Sağ alttaki ATEŞ düğmesi; baktığın yöne mermi atar." },
-            { k: "Bariyer / Tuzak", t: "Sağ alttaki BARİYER ve tuzak düğmeleriyle yere koyarsın." },
-            { k: "Envanter / Dükkân", t: "Ateşin yanındaki envanter ve dükkân düğmeleri." },
+            { k: "Silah değiştir", t: "Ateşin yanındaki düğmeyle mermi ↔ kılıç arası geç." },
+            { k: "Duvak / Dükkân", t: "Envanter düğmesinden Duvak'ı kuşan; dükkân düğmesiyle alışveriş." },
           ]
         : [
             { k: "Hareket", t: "WASD veya ok tuşları · Shift ile koş (nefes barı tükenir)." },
             { k: "Ateş", t: "Boşluk tuşu — baktığın yöne ateş eder." },
-            { k: "Eşya", t: "Q kalkan · R radar · E bariyer · T tuzak/duvak." },
-            { k: "Envanter", t: "Envanter düğmesiyle çantanı aç, eşyanı kuşan." },
+            { k: "Silah değiştir", t: "F tuşu (veya sağ tık) — mermi ↔ kılıç." },
+            { k: "Duvak", t: "Envanterden Duvak'ı kuşan → görünmez ol (birkaç sn)." },
           ],
     },
     {

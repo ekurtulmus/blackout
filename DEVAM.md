@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `6fb2500` (oturum #13, CLI deploy + curl teyit)
+> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `<oturum#14 deploy sonrası güncellenecek>`
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -48,6 +48,25 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-19 #14 — Joystick 4-yön + kalkan/radar/tuzak KALDIRILDI + görev kademeli açılma
+Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Mobil/oynanış gerçek cihazda görülür.
+- ✅ **Mobil joystick — labirentte 4 YÖN, arenada serbest**: `Joystick` bileşenine `fourDir` prop'u
+  (Game.tsx). fourDir=true → çıkış ölü bölge + baskın eksene sabitlenir (yukarı/aşağı/sağ/sol; yön-tuşu
+  hissi, 360° dönüş yok → ateş kolaylaşır). Game `fourDir={!mission?.arena}`, OnlineGame `fourDir={!arenaMode}`.
+- ✅ **Kalkan / Radar / Tuzak OYUNDAN KOMPLE KALDIRILDI** (kullanıcı isteği): dükkân öğeleri
+  (`inventory.SHOP_ITEMS`), envanter panelleri, Q/R/E-T tuşları, kullanım fonksiyonları, HUD çipleri,
+  mobil tuzak butonu, online tuzak sistemi (`trapStock`/`onlineTraps`/`{t:trap}`), tuzak render/slowCells.
+  **Duvak KALIR** (tek eşya). İlgili başarımlar (use_shield/use_radar/use_trap/buy_life) da kaldırıldı.
+  NOT: Inventory TİP alanları (shields/radars/traps/…) 0 varsayılanla duruyor (okuyucular kırılmasın) —
+  görünmez/erişilmez. Nasıl Oynanır kontrol metni güncellendi (Q/R/T kalktı → silah değiştir + Duvak).
+- ✅ **Dükkândan KALDIRILDI**: Ekstra Mermi (tüketilir; `ammoPack`) — **Sürekli Cephane (permAmmo) KORUNDU**.
+  Can Paketi (`healthPack`) + Ekstra Can Hakkı (`extraLife`) komple kaldırıldı → dükkânda can/iyileşme yok.
+- ✅ **Karanlık Görevler — 3'LÜ KADEMELİ AÇILMA + yeşil tamamlandı** (`page.tsx` missions ekranı):
+  görevler 3'erli grup; ilk grup (1-3) açık, önceki 3'ün HEPSİ bitince sonraki grup açılır (4-6→7-9→10-12).
+  Kilitli görev soluk + kilit ikonu + tıklanamaz ("Önceki 3 görevi tamamla"). Tamamlanan görevde **"Tamam"
+  yazısı YOK** → kart hafif YEŞİL (`.card.is-done`, yazılar okunur) + küçük yeşil check. Biten görev grubu
+  kilitli görünse bile oynanabilir (`locked = !prevCleared && !done`).
 
 ## OTURUM 2026-07-19 #13 — Sadeleştirme/UX düzeltmeleri (tema, HUD, ses, ikon, kaçış görevi)
 Kullanıcı istek listesi. Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Mobil/oynanış gerçek cihazda görülür.

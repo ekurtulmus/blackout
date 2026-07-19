@@ -135,12 +135,7 @@ export default function Shop({
   }
 
   const invStrip: { label: string; n: number | string; icon: IconName }[] = [
-    { label: "Kalkan", n: inv.shields, icon: "shield" },
-    { label: "Radar", n: inv.radars, icon: "radar" },
-    { label: "Tuzak", n: inv.traps, icon: "trap" },
     { label: "Duvak", n: inv.veils, icon: "veil" },
-    { label: "Mermi", n: inv.ammoPacks, icon: "ammo" },
-    { label: "Can pk.", n: inv.healthPacks, icon: "heart" },
   ];
 
   const body = (
@@ -200,7 +195,6 @@ export default function Shop({
                   <Icon name={s.icon} size={15} /> {s.label} {s.n}
                 </span>
               ))}
-              {inv.extraLives > 0 && <span className="inv-item has" style={{ color: "#ff8a8a" }}>+{inv.extraLives} can</span>}
               {inv.permAmmo && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Sürekli cephane</span>}
               {inv.hiredSoldier && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Asker</span>}
             </div>
