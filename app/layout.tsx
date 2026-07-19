@@ -2,9 +2,10 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "BLACKOUT — Karanlıkta Kaçış",
+  title: "JILTED — Karanlıkta Kaçış",
   description:
-    "Karanlık labirentte el fenerinle yolunu keşfet, zombilerden kaç, gizli çıkışı bul.",
+    "Karanlık labirentte el fenerinle yolunu keşfet, Kanlı Gelinlerden kaç, gizli çıkışı bul.",
+  applicationName: "JILTED",
 };
 
 export const viewport: Viewport = {

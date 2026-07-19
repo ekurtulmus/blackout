@@ -63,6 +63,23 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-19 #17 — Sadeleştirme turu 2 + AÇILIŞ ANİMASYONU + FAVICON + ADI "JILTED"
+Doğrulama: `tsc` + `next build` TEMİZ. İki Explore ajanı tüm ekran/popup'ları tarayıp öneri çıkardı; uygulananlar:
+- ✅ **OYUN ADI artık JILTED** (görünür marka): `layout.tsx` başlık "JILTED — Karanlıkta Kaçış" + `applicationName`;
+  `MainMenu` logosu `J<span.mm-o>I</span>LTED`. İÇ ANAHTARLAR KORUNDU (`blackout_*` localStorage, `blackout:` Supabase
+  kanalları, repo/Vercel adı) — yoksa herkesin verisi/online bağlantısı bozulurdu.
+- ✅ **AÇILIŞ ANİMASYONU** (`components/Splash.tsx` + `.splash-*`/`spl-*` keyframe'ler globals.css): fenerli oyuncu +
+  kıvrılan J çizilir, "JILTED" başlık yükselir. `page.tsx` `showSplash` ile her yüklemede bir kez oynar (~4.2sn),
+  dokun=atla, sonra menü. `prefers-reduced-motion` desteklenir. (Kullanıcının verdiği standalone HTML'den taşındı.)
+- ✅ **FAVICON:** `app/icon.svg` (Next.js App Router otomatik favicon) — koyu yuvarlak kare + altın J + fener parıltısı.
+- ✅ **Doğruluk (ölü metin) düzeltmeleri:** Game hazırlık paneli kontrol satırı (E tuzak/Q kalkan/R radar KALKTI →
+  güncel tuşlar), OnlineGame alt hint bandı KALDIRILDI (ölü tuşlar), Game alt "WASD/Ateş" bandı da kaldırıldı.
+  MainMenu Nasıl Oynanır: gelin listesi kısaldı (2 temel + "gerisini keşfet"), duvak+fırsat tek konu, Çan-tuzak atfı
+  düzeltildi. `Shop.tsx` ölü kod temizlendi (ITEM_ICON/ORDER/ownedText yalnız veil/permAmmo/soldier).
+- ⏳ **KALAN öneriler (yapılmadı):** endlessresult açıklama paragrafı sil + arena seviyesine indir; OnlineLobby
+  emoji→Icon; online 3 skor tablosunu tek ortak stile indir; alt ekran scr-sub tekrarlarını kısalt; Ayarlar
+  Müzik+TümSesler birleştir; görev brifingi ayrı "Hedef" panelini kaldır. (Ajan raporunda detay var.)
+
 ## OTURUM 2026-07-19 #16 — Büyük UX turu (tutorial+, HUD sadeleştirme, bölüm-sonu, can, menüler)
 Doğrulama: `tsc` + `next build` TEMİZ + headless tutorial 17/17. Değişiklikler TÜM oyun türlerine uygulandı.
 - ✅ **Tutorial (1. bölüm) güncellendi:** koridor uzatıldı (7 koridor, path 97). Gelinler artık SALDIRIR/can götürür

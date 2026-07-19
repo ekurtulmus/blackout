@@ -185,7 +185,7 @@ export default function MainMenu({
   return (
     <div className="mm-wrap">
       <h1 className={"mm-title" + (anim ? " mm-title-in" : "")}>
-        BLACK<span className="mm-o">O</span>UT
+        J<span className="mm-o">I</span>LTED
       </h1>
 
       <div className="mm-eyebrow" style={fx("0.75s")}>

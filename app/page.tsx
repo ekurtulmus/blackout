@@ -7,6 +7,7 @@ import OnlineGame from "@/components/OnlineGame";
 import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
+import Splash from "@/components/Splash";
 import Friends from "@/components/Friends";
 import Online from "@/components/Online";
 import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
@@ -134,6 +135,7 @@ const SCREEN_MUSIC: Partial<Record<Screen, ScreenTrack>> = {
 // (arkadaş sistemi + davet bandı entegre edildi)
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
+  const [showSplash, setShowSplash] = useState(true); // açılış animasyonu (bir kez)
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -707,6 +709,9 @@ export default function Page() {
         {body}
       </MenuShell>
     );
+
+  // Açılış animasyonu (marka splash) — her yüklemede bir kez, sonra menü. Dokun=atla.
+  if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
 
   if (screen === "playing") {
     return (

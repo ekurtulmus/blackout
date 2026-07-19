@@ -1778,6 +1778,46 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* JILTED açılış animasyonu (Splash) */
+@keyframes spl-draw { from { stroke-dashoffset: 100; } to { stroke-dashoffset: 0; } }
+@keyframes spl-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spl-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spl-pop { from { opacity: 0; transform: scale(.55); } to { opacity: 1; transform: scale(1); } }
+@keyframes spl-flick { 0%, 100% { opacity: .9; } 42% { opacity: .64; } 68% { opacity: 1; } }
+@keyframes spl-vig { 0%, 100% { opacity: .5; } 50% { opacity: .8; } }
+@keyframes spl-stage { from { opacity: 0; } to { opacity: 1; } }
+.splash-stage {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 26px;
+  background: radial-gradient(130% 100% at 42% 44%, #171110 0%, #0a0706 46%, #040202 100%);
+  overflow: hidden; cursor: pointer;
+  animation: spl-stage .6s ease-out both;
+}
+.splash-vignette {
+  position: absolute; inset: 0; pointer-events: none;
+  background: radial-gradient(120% 90% at 42% 46%, transparent 46%, rgba(0,0,0,.55) 82%, rgba(0,0,0,.9) 100%);
+  animation: spl-vig 5s ease-in-out infinite;
+}
+.splash-title {
+  font-family: "Cinzel", serif; font-weight: 900;
+  font-size: clamp(48px, 14vw, 76px); letter-spacing: .16em; color: #efe7d6;
+  text-shadow: 0 0 40px rgba(224,162,74,.35);
+  animation: spl-rise .9s ease-out 2.25s both;
+}
+.splash-sub {
+  margin-top: 14px; display: flex; align-items: center; gap: 14px; justify-content: center;
+  animation: spl-rise .9s ease-out 2.65s both;
+}
+.splash-sub > span:nth-child(2) {
+  font-family: "Archivo", sans-serif; font-size: 13px; letter-spacing: .48em; color: #b3aa93; text-transform: uppercase;
+}
+.splash-rule { width: 42px; height: 1px; }
+.splash-sub .splash-rule:first-child { background: linear-gradient(90deg, transparent, rgba(224,162,74,.6)); }
+.splash-sub .splash-rule:last-child { background: linear-gradient(90deg, rgba(224,162,74,.6), transparent); }
+@media (prefers-reduced-motion: reduce) {
+  .splash-stage, .splash-vignette, .splash-title, .splash-sub { animation-duration: .01s !important; }
+}
+
 /* Online skor tabloları (bölüm-sonu / tur-sonu / arena-sonu) — ORTAK stil */
 .scorelist {
   display: flex;
