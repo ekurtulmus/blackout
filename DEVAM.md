@@ -76,9 +76,9 @@ Doğrulama: `tsc` + `next build` TEMİZ. İki Explore ajanı tüm ekran/popup'la
   güncel tuşlar), OnlineGame alt hint bandı KALDIRILDI (ölü tuşlar), Game alt "WASD/Ateş" bandı da kaldırıldı.
   MainMenu Nasıl Oynanır: gelin listesi kısaldı (2 temel + "gerisini keşfet"), duvak+fırsat tek konu, Çan-tuzak atfı
   düzeltildi. `Shop.tsx` ölü kod temizlendi (ITEM_ICON/ORDER/ownedText yalnız veil/permAmmo/soldier).
-- ⏳ **KALAN öneriler (yapılmadı):** endlessresult açıklama paragrafı sil + arena seviyesine indir; OnlineLobby
-  emoji→Icon; online 3 skor tablosunu tek ortak stile indir; alt ekran scr-sub tekrarlarını kısalt; Ayarlar
-  Müzik+TümSesler birleştir; görev brifingi ayrı "Hedef" panelini kaldır. (Ajan raporunda detay var.)
+- ✅ **Diğer sadeleştirmeler (commit `6d4c46a`):** endlessresult açıklama paragrafı silindi/arena seviyesine indi;
+  OnlineLobby emoji→Icon; online 3 skor tablosu tek ortak `.score-*` stiline; alt ekran scr-sub tekrarları kısaldı;
+  Ayarlar Müzik+TümSesler birleşti; görev brifingi ayrı "Hedef" paneli kaldırıldı.
 
 ## OTURUM 2026-07-19 #16 — Büyük UX turu (tutorial+, HUD sadeleştirme, bölüm-sonu, can, menüler)
 Doğrulama: `tsc` + `next build` TEMİZ + headless tutorial 17/17. Değişiklikler TÜM oyun türlerine uygulandı.
