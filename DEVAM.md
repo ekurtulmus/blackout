@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `c539c07` (oturum #14, CLI deploy + curl teyit)
+> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `<oturum#15 deploy sonrası güncellenecek>`
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -48,6 +48,23 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-19 #15 — REHBERLİ 1. BÖLÜM (tutorial koridoru + senaryo)
+Doğrulama: `tsc` + `next build` TEMİZ + **headless sim 17/17** (scratchpad `tut-test.js`). Oyun içi his gerçek cihazda görülür.
+- ✅ **Kampanya level 1 (görev değil) artık LABİRENT DEĞİL → düz KIVRIMLI KORİDOR** (çıkmaz yok) + adım adım
+  öğreten senaryo. `lib/tutorial.ts`: `buildTutorialCorridor()` (15×11, 5 yatay koridor, sıralı `path` 69 hücre) +
+  `TUTORIAL_BEATS` (yol oranına bağlı 10 beat) + `tutorialBeatIndices()`.
+- ✅ **engine.ts entegrasyonu:** ctor'da `level===1 && !mission` → `setupTutorial()` (koridor kur, gelin=0,
+  eşya=0, `invulnUntil=MAX` dokunulmaz, `tutSwordLocked`, `exitOpen=false`) + `return` (normal üretim atlanır).
+  `updateTutorial()` oyuncunun yol ilerlemesini ölçüp geçilen beat'i tetikler (`fireTutBeat`). Kılıç savurma
+  `!tutSwordLocked` ile kapılı. Dışa açılan: `tutorial/tutHint/tutHealthShown/tutPointShop/tutItems`.
+  **Senaryo:** başla(zararsız) → **kılıç** bul (kilit açılır) → gelin (kılıçla) → **tabanca+mermi** (+8) → gelin
+  (silahla) → **can barı belirir + 3 can + dokunulmazlık kapanır** → **duvak** (otomatik görünmez) → duvaklı gelin
+  (etkisi geçince saldırır) → **altın → dükkânı işaret et** → "gerisi LABİRENT" → çıkış açılır → bölüm biter.
+  (`maze/player/exit/seen` alanlarına `!` definite-assignment eklendi çünkü ctor erken dönüyor.)
+- ✅ **Game.tsx UI:** `tut` state; alt-orta **büyük ipucu bandı** (`.tut-hint`), **Can çipi** can barı belirene
+  kadar GİZLİ, yerde **parlayan kılıç/tabanca/duvak** işaretleri (canvas). permAmmo +3 bonusu tutorial'da verilmez
+  (mermi senaryodan gelir). Bölüm-1 sonu ekranında "gerisi labirent" notu + **"Dükkâna Uğra" altın nabız** (`.pulse-gold`).
 
 ## OTURUM 2026-07-19 #14 — Joystick 4-yön + kalkan/radar/tuzak KALDIRILDI + görev kademeli açılma
 Doğrulama: `npx tsc --noEmit` + `next build` TEMİZ. Mobil/oynanış gerçek cihazda görülür.

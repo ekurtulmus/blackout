@@ -1346,6 +1346,11 @@ export default function Page() {
           <div className="subtitle">
             Bu koridordan sağ çıktın… ama fısıltılar peşinde. Skor: <b>{score}</b>
           </div>
+          {level === 1 && (
+            <div className="subtitle" style={{ color: "#8be9ff", fontWeight: 600 }}>
+              Rehber bitti. Bundan sonrası gerçek <b>LABİRENT</b> — istersen kazandığın altınla dükkâna uğra.
+            </div>
+          )}
           <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
             <Icon name="coin" size={16} /> Kazanılan: <b>+{coinInfo.gained} altın</b>
             {coinInfo.bonus > 0 && (
@@ -1366,7 +1371,7 @@ export default function Page() {
               Sonraki Bölüm →
             </button>
             <button
-              className="btn"
+              className={"btn" + (level === 1 ? " pulse-gold" : "")}
               onClick={() => { setShopReturn("levelclear"); setScreen("shop"); }}
               style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
             >

@@ -105,6 +105,8 @@ export default function Game({
   const [soldierState, setSoldierState] = useState<"none" | "rescue" | "escort">("none");
   const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
   const prevHpRef = useRef(PLAYER_MAX_HP);
+  // Rehberli 1. bölüm (tutorial) — motordan okunan durum
+  const [tut, setTut] = useState({ on: false, hint: "", healthShown: false });
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
@@ -183,7 +185,8 @@ export default function Game({
     // +3 mermiyle başlamıyor"). Artık hayatta kalma modlarında da geçerli.
     if (!storyMission) {
       const inv = getInventory();
-      if (inv.permAmmo) engine.ammoCount += 3; // KALICI: her bölüm/tur +3 (birikmez, hep +3)
+      // Rehberli bölümde mermi SENARYODAN gelir (tabancayı bulunca) → permAmmo bonusunu verme.
+      if (inv.permAmmo && !engine.tutorial) engine.ammoCount += 3; // KALICI: her bölüm/tur +3
       // Kişiselleştirme: fener rengi + görünüm halkası
       flashColorRef.current = FLASH_COLORS[inv.flashColor] ?? FLASH_COLORS.default;
       skinRingRef.current = SKIN_RINGS[inv.skin];
@@ -474,6 +477,34 @@ export default function Game({
         ctx!.fillStyle = "#d9b874";
         ctx!.fillRect(-w / 2, -h / 2, w, h * 0.3);
         ctx!.restore();
+      }
+
+      // --- Rehberli bölüm yer eşyaları (kılıç / tabanca / duvak) — parlayan işaret ---
+      if (engine.tutorial) {
+        const pulse = 0.6 + 0.4 * Math.sin(engine.time * 4);
+        for (const it of engine.tutItems) {
+          if (it.taken) continue;
+          if (vis.get(it.cell.y * cols + it.cell.x) === undefined) continue;
+          const sx = it.cell.x * TS + TS / 2 - camX;
+          const sy = it.cell.y * TS + TS / 2 - camY + Math.sin(engine.time * 2) * 2;
+          ctx!.save();
+          ctx!.translate(sx, sy);
+          if (it.kind === "sword") {
+            ctx!.shadowColor = "rgba(200,220,255,0.8)"; ctx!.shadowBlur = 10 * pulse;
+            ctx!.strokeStyle = "#cfd8e6"; ctx!.lineWidth = Math.max(2, TS * 0.06); ctx!.lineCap = "round";
+            ctx!.beginPath(); ctx!.moveTo(-TS * 0.16, TS * 0.16); ctx!.lineTo(TS * 0.16, -TS * 0.16); ctx!.stroke();
+            ctx!.strokeStyle = "#8a6b3a"; ctx!.beginPath(); ctx!.moveTo(-TS * 0.2, TS * 0.1); ctx!.lineTo(-TS * 0.08, TS * 0.22); ctx!.stroke();
+          } else if (it.kind === "gun") {
+            ctx!.shadowColor = "rgba(255,190,90,0.7)"; ctx!.shadowBlur = 9 * pulse;
+            ctx!.fillStyle = "#3a3f47"; ctx!.fillRect(-TS * 0.2, -TS * 0.06, TS * 0.34, TS * 0.1); // namlu
+            ctx!.fillRect(-TS * 0.06, -TS * 0.04, TS * 0.09, TS * 0.2); // kabza
+          } else {
+            ctx!.shadowColor = "rgba(210,225,255,0.8)"; ctx!.shadowBlur = 11 * pulse;
+            ctx!.strokeStyle = "rgba(220,232,255," + (0.6 + 0.4 * pulse) + ")"; ctx!.lineWidth = Math.max(1.5, TS * 0.05);
+            ctx!.beginPath(); ctx!.arc(0, 0, TS * 0.18, 0, Math.PI * 2); ctx!.stroke();
+          }
+          ctx!.restore();
+        }
       }
 
       // --- Can paketleri (kırmızı haç) ---
@@ -1219,6 +1250,7 @@ export default function Game({
         veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
       if (mission) setObjective(engine.objectiveText());
+      if (engine.tutorial) setTut({ on: true, hint: engine.tutHint, healthShown: engine.tutHealthShown });
       // Can azaldıysa can barını kısa süre yanıp söndür (fark edilsin)
       const curHp = Math.max(0, engine.player.hp);
       if (curHp < prevHpRef.current - 0.4) {
@@ -1347,6 +1379,8 @@ export default function Game({
       <div className="hud">
         {/* Sol: bilgi çipleri — durum (can/nefes) önce, sayaçlar sonra, geçici uyarılar en sonda */}
         <div className="hud-info">
+          {/* Rehberli bölümde can barı, "3 can" tanıtılana kadar GİZLİ (o ana kadar dokunulmazsın). */}
+          {(!tut.on || tut.healthShown) && (
           <div className="chip">
             <span className="lbl">Can</span>
             <div className={"hpbar" + (hpBlink ? " blink" : "")}>
@@ -1358,6 +1392,7 @@ export default function Game({
               ))}
             </div>
           </div>
+          )}
           <div className="chip">
             <span className="lbl">Nefes</span>
             <div className="hpbar" style={{ width: 90 }}>
@@ -1520,6 +1555,11 @@ export default function Game({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Rehberli 1. bölüm: alt-ortada büyük ipucu bandı (adım adım öğretir) */}
+      {tut.on && tut.hint && (
+        <div className="tut-hint">{tut.hint}</div>
       )}
 
       {(hud.warn || exitMsg) && (

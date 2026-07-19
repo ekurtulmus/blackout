@@ -33,6 +33,7 @@ import {
 } from "./miniquests";
 import { ScareDirector, type ScareKind } from "./scares";
 import { JOURNAL, getCollected } from "./journal";
+import { buildTutorialCorridor, tutorialBeatIndices, TUTORIAL_BEATS, type TutItemKind } from "./tutorial";
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -98,8 +99,8 @@ export type Player = {
 
 export class GameEngine {
   config: LevelConfig;
-  maze: Maze;
-  player: Player;
+  maze!: Maze;
+  player!: Player;
   zombies: Zombie[] = [];
   ammoItems: Ammo[] = [];
   healthItems: Ammo[] = []; // yerdeki can paketleri (Ammo şeklini paylaşır)
@@ -144,7 +145,7 @@ export class GameEngine {
   collected = 0; // toplanan parça sayısı
   noFire = false; // ateş yasak mı (sessiz görev)
   missionFailReason: "" | "time" | "death" = ""; // başarısızlık nedeni (HUD/ekran)
-  exit: Vec;
+  exit!: Vec;
   exitOpen = false;
   // Faz E: kaçış bölümü (çıkış çöküyor — geri sayımla kaç)
   escape = false;
@@ -180,7 +181,7 @@ export class GameEngine {
   status: GameStatus = "playing";
 
   // kalıcı "görülen" ızgarası (hafıza sisi)
-  seen: boolean[][];
+  seen!: boolean[][];
   visible: VisibleCell[] = [];
 
   warnTimer = 0; // "önce bir zombi öldür" uyarısı
@@ -192,6 +193,18 @@ export class GameEngine {
   events: SoundEvent[] = []; // bu kare oluşan ses olayları
   tension = 0; // 0..1 en yakın farkında zombiye göre gerilim (kalp atışı/ambiyans)
   bloodStains: { x: number; y: number; r: number; seed: number }[] = []; // kalıcı kan izleri
+
+  // --- Rehberli 1. Bölüm (tutorial): kampanya level 1 && !mission ---
+  tutorial = false;
+  tutHint = ""; // ekranda gösterilen rehber ipucu (Game okur)
+  tutHealthShown = false; // can barı belirdi mi (o ana kadar dokunulmaz)
+  tutPointShop = false; // dükkânı işaret et
+  tutItems: { kind: TutItemKind; cell: Vec; taken: boolean }[] = []; // yerde çizilen eşyalar
+  private tutSwordLocked = false; // kılıç bulunana kadar savurulamaz
+  private tutPath: Vec[] = [];
+  private tutBeatIdx: number[] = [];
+  private tutNextBeat = 0;
+  private tutMaxProgress = -1;
 
   private fireCd = 0;
   private nextId = 1;
@@ -257,6 +270,12 @@ export class GameEngine {
     // Dinamik fener/görüş (Madde 4,5) — dip anında ses ipucu
     this.flashlight = new Flashlight(this.config.visionRadius);
     this.flashlight.onDip = () => this.events.push("flicker");
+    // REHBERLİ 1. BÖLÜM: kampanya level 1 (görev değil) → labirent yerine düz koridor +
+    // senaryo. Normal harita/çıkış/gelin/eşya üretimi ATLANIR (setupTutorial her şeyi kurar).
+    if (level === 1 && !mission) {
+      this.setupTutorial();
+      return;
+    }
     this.maze = mission?.arena
       ? generateArena(this.config.cols, this.config.rows)
       : generateMaze(
@@ -621,6 +640,7 @@ export class GameEngine {
     if (this.hurtFlash > 0) this.hurtFlash -= dt;
 
     this.updatePlayer(dt, input);
+    if (this.tutorial) this.updateTutorial(); // rehberli bölüm: beat'leri ilerlemeye göre tetikle
     this.updateBullets(dt);
     this.updateZombies(dt);
     this.processRespawns();
@@ -756,7 +776,7 @@ export class GameEngine {
 
     // KILIÇ: mermi tüketmez, menzil kısa. Baktığın yöndeki koni içinde EN YAKIN
     // gelinleri biçer — tek darbede en fazla TUNING.swordMaxTargets (2).
-    if (input.sword && this.swordCd <= 0) {
+    if (input.sword && !this.tutSwordLocked && this.swordCd <= 0) {
       this.swordCd = TUNING.swordCd;
       this.swordSwing = TUNING.swordSwingSec;
       if (this.veilUntil > this.time) this.veilUntil = 0; // saldırı = duvak bozulur
@@ -1072,6 +1092,128 @@ export class GameEngine {
   activateVeil(seconds = TUNING.veilSec) {
     this.veilUntil = this.time + seconds;
     this.events.push("veil");
+  }
+
+  // --- REHBERLİ 1. BÖLÜM ---
+  // Koridor + senaryo kurulumu (constructor'dan çağrılır; normal üretim atlanır).
+  private setupTutorial() {
+    this.tutorial = true;
+    const { maze, path } = buildTutorialCorridor();
+    this.maze = maze;
+    this.tutPath = path;
+    this.floors = path.slice();
+    const s = path[0];
+    this.player = { pos: { x: s.x + 0.5, y: s.y + 0.5 }, dir: { x: 1, y: 0 }, hp: PLAYER_MAX_HP };
+    this.seen = Array.from({ length: maze.rows }, () =>
+      Array.from({ length: maze.cols }, () => false)
+    );
+    this.exit = path[path.length - 1];
+    this.exitOpen = false; // "openexit" beat açar
+    this.zombies = []; // yalnız senaryo doğurur
+    this.ammoItems = [];
+    this.healthItems = [];
+    this.veilItems = [];
+    this.ammoCount = 0;
+    this.tutSwordLocked = true; // kılıç bulunana kadar
+    this.invulnUntil = Number.MAX_SAFE_INTEGER; // "health" beat'e kadar dokunulmaz
+    this.tutBeatIdx = tutorialBeatIndices(path.length);
+    this.tutNextBeat = 0;
+    this.tutMaxProgress = -1;
+    // Yerde çizilecek eşyalar (kılıç/tabanca/duvak) ilgili beat hücrelerine
+    const cellFor = (action: string): Vec | null => {
+      const bi = TUTORIAL_BEATS.findIndex((b) => b.action === action);
+      return bi >= 0 ? path[this.tutBeatIdx[bi]] : null;
+    };
+    for (const kind of ["sword", "gun", "veil"] as TutItemKind[]) {
+      const c = cellFor(kind);
+      if (c) this.tutItems.push({ kind, cell: { x: c.x, y: c.y }, taken: false });
+    }
+    this.tutHint = TUTORIAL_BEATS[0].hint;
+  }
+
+  // Her karede: oyuncunun yol ilerlemesini ölç, geçilen beat'leri tetikle.
+  private updateTutorial() {
+    const p = this.player.pos;
+    let nearest = Math.max(0, this.tutMaxProgress);
+    let bestD = Infinity;
+    for (let i = 0; i < this.tutPath.length; i++) {
+      const c = this.tutPath[i];
+      const d = Math.hypot(c.x + 0.5 - p.x, c.y + 0.5 - p.y);
+      if (d < bestD) {
+        bestD = d;
+        nearest = i;
+      }
+    }
+    if (nearest > this.tutMaxProgress) this.tutMaxProgress = nearest;
+    while (
+      this.tutNextBeat < this.tutBeatIdx.length &&
+      this.tutMaxProgress >= this.tutBeatIdx[this.tutNextBeat]
+    ) {
+      this.fireTutBeat(this.tutNextBeat);
+      this.tutNextBeat++;
+    }
+  }
+
+  private fireTutBeat(i: number) {
+    const beat = TUTORIAL_BEATS[i];
+    this.tutHint = beat.hint;
+    const spawnAhead = (offset: number) => {
+      const idx = Math.min(this.tutPath.length - 1, this.tutBeatIdx[i] + offset);
+      const c = this.tutPath[idx];
+      this.zombies.push({
+        id: this.nextId++,
+        pos: { x: c.x + 0.5, y: c.y + 0.5 },
+        hp: 1,
+        aware: true,
+        lastSeen: null,
+        seenTimer: LOSE_AGGRO_TIME,
+        wanderDir: this.randomDir(),
+        wanderTimer: 0,
+        path: null,
+        repathTimer: 0,
+      });
+    };
+    const takeItem = (kind: TutItemKind) => {
+      const it = this.tutItems.find((t) => t.kind === kind);
+      if (it) it.taken = true;
+    };
+    switch (beat.action) {
+      case "start":
+        break;
+      case "sword":
+        this.tutSwordLocked = false;
+        takeItem("sword");
+        this.events.push("pickup");
+        break;
+      case "gun":
+        this.ammoCount += 8;
+        takeItem("gun");
+        this.events.push("pickup");
+        break;
+      case "bride":
+        spawnAhead(4);
+        break;
+      case "health":
+        this.tutHealthShown = true;
+        this.invulnUntil = this.time; // dokunulmazlık biter → hasar başlar
+        this.events.push("dooropen");
+        break;
+      case "veil":
+        takeItem("veil");
+        this.activateVeil(); // otomatik görünmez ol
+        this.events.push("pickup");
+        break;
+      case "brideVeil":
+        spawnAhead(3); // duvaklıyken doğar; etkisi geçince saldırır
+        break;
+      case "shop":
+        this.tutPointShop = true;
+        break;
+      case "openexit":
+        this.exitOpen = true;
+        this.events.push("dooropen");
+        break;
+    }
   }
 
   // Envanter: radarı aktive et — 1.5 sn ekranda çıkışa dönük OK göster (metin yok)
