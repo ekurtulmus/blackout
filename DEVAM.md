@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `6d4c46a` (oturum #17: ekran/popup sadeleştirme turu; CLI deploy + curl). Not: TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif (kimlik+ses korunur).
+> Son güncelleme: **2026-07-20** · Canlı sürüm: commit `183eb02` (oturum #17: oyun adı **JILTED** + açılış animasyonu + favicon `app/icon.svg` + doğruluk/sadeleştirme; iç anahtarlar `blackout_` KORUNDU). Not: TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif (kimlik+ses korunur).
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
