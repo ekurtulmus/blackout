@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `<oturum#15 deploy sonrası güncellenecek>`
+> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `f7f12d2` (oturum #15, CLI deploy + curl teyit)
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
