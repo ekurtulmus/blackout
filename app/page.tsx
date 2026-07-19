@@ -210,6 +210,27 @@ export default function Page() {
 
   // Kayıtlı ilerlemeyi yükle (tamamlanan görevler + en iyi süreler + sırlar + zorluk)
   useEffect(() => {
+    // TEK SEFERLİK İLERLEME SIFIRLAMA: bu sürümle herkes SIFIRDAN başlar. Kimlik (arkadaş
+    // kodu/isim/arkadaşlar) ve ses tercihleri KORUNUR; altın/envanter/görev/başarım/skor/
+    // günlük/sır/devam kaydı silinir. reset_v eşleşince bir daha çalışmaz.
+    try {
+      const RESET_V = "2026-07-19-fresh";
+      if (localStorage.getItem("blackout_reset_v") !== RESET_V) {
+        const keep = new Set([
+          "blackout_uid", "blackout_name", "blackout_friends", "blackout_sent",
+          "blackout_freq_in", "blackout_vol", "blackout_music", "blackout_muted", "blackout_reset_v",
+        ]);
+        const rm: string[] = [];
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i);
+          if (k && k.startsWith("blackout_") && !keep.has(k)) rm.push(k);
+        }
+        for (const k of rm) localStorage.removeItem(k);
+        localStorage.setItem("blackout_reset_v", RESET_V);
+      }
+    } catch {
+      /* geç */
+    }
     initStarterCoins(); // yeni oyuncuya 1000 altın (bir kez)
     try {
       const raw = localStorage.getItem("blackout_missions_cleared");
@@ -1338,15 +1359,15 @@ export default function Page() {
 
       {screen === "levelclear" && (
         <div className="clear-scr">
-          {/* Sade hiyerarşi: küçük etiket → ilerleme → (rehber notu) → eylemler → altın en altta */}
-          <div className="clear-eyebrow">Bölüm tamamlandı</div>
+          {/* Başlık (büyük) → ilerleme (biraz küçük) → (rehber notu) → eylemler → altın; cüzdan altta */}
+          <div className="clear-title">Bölüm Tamamlandı</div>
           <div className="clear-progress">{level}<span className="clear-total"> / 10</span></div>
           {level === 1 && (
             <div className="clear-note">Rehber bitti. Bundan sonrası gerçek labirent.</div>
           )}
           {newAch.length > 0 && (
             <div className="clear-ach">
-              <Icon name="trophy" size={15} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+              <Icon name="trophy" size={16} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
           <div className="clear-actions">
@@ -1362,10 +1383,10 @@ export default function Page() {
             </button>
           </div>
           <div className="clear-gold">
-            <Icon name="coin" size={15} /> +{coinInfo.gained}
+            <Icon name="coin" size={16} /> +{coinInfo.gained}
             {coinInfo.bonus > 0 && <span className="clear-gold-b"> (bonus +{coinInfo.bonus})</span>}
-            <span className="clear-gold-sep">·</span> Cüzdan {coinInfo.total}
           </div>
+          <div className="clear-wallet">Cüzdan {coinInfo.total}</div>
         </div>
       )}
 

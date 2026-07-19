@@ -1789,36 +1789,37 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   gap: 14px;
   text-align: center;
 }
-.clear-eyebrow {
-  font-size: 12px;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--muted);
-}
-.clear-progress {
+.clear-title {
   font-family: "Cinzel", serif;
-  font-size: clamp(40px, 9vw, 60px);
+  font-size: clamp(34px, 8vw, 56px);
   font-weight: 800;
-  line-height: 1;
+  line-height: 1.05;
   color: var(--ink-title);
   letter-spacing: 0.02em;
 }
-.clear-total { color: var(--muted); font-weight: 600; font-size: 0.55em; }
-.clear-note { font-size: 14.5px; color: var(--ink-2); max-width: 420px; line-height: 1.5; }
-.clear-ach {
-  font-size: 13px; color: var(--gold-lite);
-  display: inline-flex; align-items: center; gap: 6px;
-}
-.clear-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
-.clear-gold {
-  margin-top: 20px;
-  font-size: 13.5px;
+.clear-progress {
+  font-family: "Cinzel", serif;
+  font-size: clamp(24px, 5.5vw, 38px);
+  font-weight: 700;
+  line-height: 1;
   color: var(--gold-warm);
-  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
-  opacity: 0.9;
+  letter-spacing: 0.02em;
+}
+.clear-total { color: var(--muted); font-weight: 600; font-size: 0.7em; }
+.clear-note { font-size: 16px; color: var(--ink-2); max-width: 440px; line-height: 1.55; }
+.clear-ach {
+  font-size: 15px; color: var(--gold-lite);
+  display: inline-flex; align-items: center; gap: 7px;
+}
+.clear-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.clear-gold {
+  margin-top: 18px;
+  font-size: 16px;
+  color: var(--gold-warm);
+  display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
 }
 .clear-gold-b { color: var(--muted); }
-.clear-gold-sep { color: var(--muted); margin: 0 2px; }
+.clear-wallet { font-size: 14.5px; color: var(--muted); }
 
 /* Rehber sonrası dükkânı işaret eden altın nabız */
 .pulse-gold {
