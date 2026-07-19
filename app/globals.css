@@ -1771,7 +1771,7 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
 /* Mobilde (dokunmatik) joystick + ateş butonları alttadır → ipucu bandını yukarı al,
    butonları kapatmasın. */
 @media (pointer: coarse) {
-  .tut-hint { bottom: 36%; }
+  .tut-hint { bottom: 23%; }
 }
 @keyframes tuthint-in {
   from { opacity: 0; transform: translate(-50%, 8px); }
