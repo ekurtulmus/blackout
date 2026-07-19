@@ -76,15 +76,13 @@ export default function MainMenu({
       items: isTouch
         ? [
             { k: "Hareket", t: "Sol alttaki joystick'i sürükle — çektiğin yöne yürürsün." },
-            { k: "Ateş", t: "Sağ alttaki ATEŞ düğmesi; baktığın yöne mermi atar." },
+            { k: "Ateş / Kılıç", t: "Sağ alttaki büyük düğme kuşandığın silahı kullanır." },
             { k: "Silah değiştir", t: "Ateşin yanındaki düğmeyle mermi ↔ kılıç arası geç." },
-            { k: "Duvak / Dükkân", t: "Envanter düğmesinden Duvak'ı kuşan; dükkân düğmesiyle alışveriş." },
           ]
         : [
             { k: "Hareket", t: "WASD veya ok tuşları · Shift ile koş (nefes barı tükenir)." },
-            { k: "Ateş", t: "Boşluk tuşu — baktığın yöne ateş eder." },
-            { k: "Silah değiştir", t: "F tuşu (veya sağ tık) — mermi ↔ kılıç." },
-            { k: "Duvak", t: "Envanterden Duvak'ı kuşan → görünmez ol (birkaç sn)." },
+            { k: "Ateş / Kılıç", t: "Boşluk ya da SOL TIK — kuşandığın silahı kullanır." },
+            { k: "Silah değiştir", t: "F tuşu veya SAĞ TIK — mermi ↔ kılıç." },
           ],
     },
     {
@@ -132,27 +130,17 @@ export default function MainMenu({
       title: "Dükkân & Altın",
       items: [
         { k: "Altın kazan", t: "Gelin öldürünce ve bölüm geçince altın kazanırsın." },
-        { k: "Dükkân", t: "Dükkân'dan kalkan, radar, tuzak, ekstra can, kalıcı geliştirme ve kozmetik al." },
-        { k: "Her yerde geçerli", t: "Aldığın eşya tüm modlarda ve bölümlerde kullanılır." },
-      ],
-    },
-    {
-      key: "envanter",
-      title: "Envanter",
-      items: [
-        { k: "Kalkan", t: "Kısa süre dokunulmazlık — sıkıştığında kullan." },
-        { k: "Radar", t: "Çıkış yönünü bir kez ok olarak gösterir." },
-        { k: "Tuzak", t: "Yere koy; üstünden geçen gelin bir süre yavaşlar (durdurmaz)." },
-        { t: "Eşyanı envanterden kuşanıp istediğin an tetikle." },
+        { k: "Dükkân", t: "Kalıcı geliştirmeler (sürekli cephane, asker müttefiki) ve kozmetik (fener/kılıç/görünüm renkleri) al." },
+        { k: "Her yerde geçerli", t: "Aldığın her şey tüm modlarda ve bölümlerde geçerlidir." },
       ],
     },
     {
       key: "duvak",
       title: "Duvak (Görünmezlik)",
       items: [
-        { k: "Duvak eşyası", t: "Yerde bulursun; alınca 5 sn görünmez olursun." },
-        { k: "Gizlen", t: "Görünmezken gelinler seni göremez — köşeden sıvış." },
-        { k: "Dikkat", t: "Ateş edersen görünmezlik anında bozulur." },
+        { k: "Bul & kuşan", t: "Yerde bulursun; envanterden kuşanıp istediğin an tetikle." },
+        { k: "Gizlen", t: "Alınca birkaç sn görünmez olursun; gelinler seni göremez — köşeden sıvış." },
+        { k: "Dikkat", t: "Ateş edersen ya da saldırırsan görünmezlik anında bozulur." },
       ],
     },
     {

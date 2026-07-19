@@ -17,7 +17,7 @@ export const THEMES: Theme[] = [
   { key: "kilise", name: "Kilise", floor: [50, 50, 64], wall: [112, 108, 126] }, // soğuk mor-gri taş
   // Orman: duvarlar AĞAÇ, zeminde alçak ot (koridor ortası boş)
   { key: "orman", name: "Orman", floor: [34, 46, 32], wall: [30, 44, 28], decor: "forest", wallStyle: "trees" },
-  { key: "mezarlik", name: "Mezarlık", floor: [42, 44, 46], wall: [92, 96, 100], decor: "graves" }, // soğuk toprak + mezar taşları
+  { key: "mezarlik", name: "Mezarlık", floor: [42, 44, 46], wall: [92, 96, 100] }, // soğuk toprak (mezar taşı dekoru KALDIRILDI — kafa karıştırıyordu)
   { key: "buz", name: "Buz Mağarası", floor: [40, 54, 62], wall: [120, 150, 172] }, // buzul mavi + soluk buz
   { key: "kanalizasyon", name: "Kanalizasyon", floor: [36, 44, 40], wall: [66, 82, 70] }, // küf yeşili nemli taş
   { key: "cehennem", name: "Cehennem", floor: [46, 28, 26], wall: [116, 56, 42] }, // kor kırmızısı volkanik kaya

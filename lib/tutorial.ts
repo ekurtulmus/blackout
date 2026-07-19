@@ -9,7 +9,7 @@ import type { Maze } from "./maze";
 // Döner: maze + başlangıçtan çıkışa SIRALI yol hücreleri (path[0]=başlangıç, son=çıkış).
 export function buildTutorialCorridor(): { maze: Maze; path: Vec[] } {
   const cols = 15;
-  const rows = 11; // tek sayı; 5 yatay koridor (y=1,3,5,7,9)
+  const rows = 15; // tek sayı; 7 yatay koridor (daha uzun rehber)
   const walls: boolean[][] = Array.from({ length: rows }, () =>
     Array.from({ length: cols }, () => true)
   );
@@ -17,7 +17,7 @@ export function buildTutorialCorridor(): { maze: Maze; path: Vec[] } {
   const carve = (x: number, y: number) => {
     walls[y][x] = false;
   };
-  const rowsY = [1, 3, 5, 7, 9];
+  const rowsY = [1, 3, 5, 7, 9, 11, 13];
   for (let ri = 0; ri < rowsY.length; ri++) {
     const y = rowsY[ri];
     const leftToRight = ri % 2 === 0;
@@ -46,10 +46,10 @@ export function buildTutorialCorridor(): { maze: Maze; path: Vec[] } {
 // GEÇİNCE beat tetiklenir: ipucu yazısı gösterilir + action uygulanır.
 export type TutAction =
   | "start"
-  | "sword" // yerde kılıç → kilit açılır
-  | "bride" // önde gelin doğ (zararsız aşamada canını götürmez)
-  | "gun" // yerde tabanca+mermi → mermi verilir
-  | "health" // can barı belirir + 3 can + dokunulmazlık kapanır (hasar başlar)
+  | "sword" // yerde kılıç → kilit açılır + ELE kuşanılır
+  | "bride" // önde gelin doğ (SALDIRIR, canını götürebilir)
+  | "gun" // yerde tabanca+mermi → mermi verilir + ELE kuşanılır
+  | "sprint" // koşmayı tanıt (bilgi)
   | "veil" // yerde duvak → otomatik görünmez ol
   | "brideVeil" // duvaklıyken gelin doğ (etkisi geçince saldırır)
   | "shop" // altın kazanıldı → dükkânı işaret et
@@ -58,17 +58,19 @@ export type TutAction =
 export type TutBeat = { at: number; hint: string; action: TutAction };
 
 // Sıra ÖNEMLİ (yol boyunca artan `at`). Motor bunları path index'e çevirir.
+// NOT: Gelinler 1. bölümde de SALDIRIR ve can götürür; can barı baştan görünür.
 export const TUTORIAL_BEATS: TutBeat[] = [
   { at: 0.0, hint: "Karanlıktasın. Fenerin baktığın yeri aydınlatır — ilerle.", action: "start" },
-  { at: 0.12, hint: "Yerde bir KILIÇ var! Al ve yaklaşan geline saldır.", action: "sword" },
-  { at: 0.2, hint: "Bir gelin geliyor — üstüne git ve SALDIR!", action: "bride" },
-  { at: 0.33, hint: "TABANCA + mermi buldun! Silahını değiştir, sonra ateş et.", action: "gun" },
-  { at: 0.41, hint: "Bu gelini uzaktan vur — ATEŞ et!", action: "bride" },
-  { at: 0.53, hint: "Artık 3 CANIN var. Dikkat: bundan sonra gelinler canını götürür!", action: "health" },
-  { at: 0.63, hint: "DUVAK aldın — birkaç saniye GÖRÜNMEZ oldun.", action: "veil" },
-  { at: 0.71, hint: "Görünmezken gelin seni fark etmez… ama duvak bitince saldırır!", action: "brideVeil" },
-  { at: 0.83, hint: "Gelini indirince ALTIN kazandın! İstersen DÜKKÂN'a göz at.", action: "shop" },
-  { at: 0.92, hint: "Bundan sonrası gerçek LABİRENT. Çıkışa ulaş ve maceraya başla!", action: "openexit" },
+  { at: 0.09, hint: "Yerde bir KILIÇ! Aldın, artık elinde. Yaklaşan geline saldır.", action: "sword" },
+  { at: 0.17, hint: "Bir gelin! Üstüne git ve SALDIR — sana dokunursa CANIN gider.", action: "bride" },
+  { at: 0.29, hint: "TABANCA + mermi! Aldın, artık elinde. Uzaktan ATEŞ edebilirsin.", action: "gun" },
+  { at: 0.37, hint: "Bu gelini uzaktan vur — ATEŞ et! (Sol tık / ATEŞ)", action: "bride" },
+  { at: 0.48, hint: "Sıkışınca KOŞARAK kaç (nefesin tükenir, sonra dolar).", action: "sprint" },
+  { at: 0.57, hint: "Bir gelin daha — dilediğin silahla indir.", action: "bride" },
+  { at: 0.67, hint: "DUVAK aldın — birkaç saniye GÖRÜNMEZ oldun.", action: "veil" },
+  { at: 0.75, hint: "Görünmezken gelin seni fark etmez… ama duvak bitince saldırır!", action: "brideVeil" },
+  { at: 0.86, hint: "Gelini indirince ALTIN kazandın! Bölüm sonunda dükkâna uğrayabilirsin.", action: "shop" },
+  { at: 0.93, hint: "Bundan sonrası gerçek LABİRENT. Çıkışa ulaş ve maceraya başla!", action: "openexit" },
 ];
 
 // Beat'lerin path index karşılıkları (artan, benzersiz). Motor kurulumda bir kez üretir.

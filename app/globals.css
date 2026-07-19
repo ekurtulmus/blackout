@@ -1773,6 +1773,53 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* Duraklat ekranı — yazı yerine büyük pause ikonu */
+.pause-glyph {
+  color: var(--ink-title);
+  opacity: 0.92;
+  margin-bottom: 6px;
+  display: inline-flex;
+}
+
+/* Bölüm-sonu ekranı — sade hiyerarşi, az renk, altın en altta */
+.clear-scr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+.clear-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.clear-progress {
+  font-family: "Cinzel", serif;
+  font-size: clamp(40px, 9vw, 60px);
+  font-weight: 800;
+  line-height: 1;
+  color: var(--ink-title);
+  letter-spacing: 0.02em;
+}
+.clear-total { color: var(--muted); font-weight: 600; font-size: 0.55em; }
+.clear-note { font-size: 14.5px; color: var(--ink-2); max-width: 420px; line-height: 1.5; }
+.clear-ach {
+  font-size: 13px; color: var(--gold-lite);
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.clear-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 6px; }
+.clear-gold {
+  margin-top: 20px;
+  font-size: 13.5px;
+  color: var(--gold-warm);
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  opacity: 0.9;
+}
+.clear-gold-b { color: var(--muted); }
+.clear-gold-sep { color: var(--muted); margin: 0 2px; }
+
 /* Rehber sonrası dükkânı işaret eden altın nabız */
 .pulse-gold {
   border-color: rgba(255, 205, 90, 0.85) !important;
@@ -1793,9 +1840,22 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
 
 .hud-actions {
   display: flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: flex-end;
   gap: 8px;
   flex: none;
+  position: relative;
+}
+/* Aşağı-ok ile açılan aksiyon menüsü (?, ses, duraklat) — dikey yığın */
+.hud-actions-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  animation: hudmenu-in 0.18s ease;
+}
+@keyframes hudmenu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .chip {

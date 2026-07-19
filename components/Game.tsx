@@ -107,6 +107,7 @@ export default function Game({
   const prevHpRef = useRef(PLAYER_MAX_HP);
   // Rehberli 1. bölüm (tutorial) — motordan okunan durum
   const [tut, setTut] = useState({ on: false, hint: "", healthShown: false });
+  const [actionsOpen, setActionsOpen] = useState(false); // sağ üst: ? / ses / duraklat menüsü açık mı
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
   const [invOpen, setInvOpen] = useState(false); // oyun-içi envanter paneli açık mı
@@ -327,6 +328,11 @@ export default function Game({
     };
     const cvEl = canvasRef.current;
     cvEl?.addEventListener("contextmenu", onCtx);
+    // PC: SOL TIK = kuşanılan silahı kullan (ateş / kılıç savur)
+    const onMouseDown = (e: MouseEvent) => { if (e.button === 0) input.fire = true; };
+    const onMouseUp = (e: MouseEvent) => { if (e.button === 0) input.fire = false; };
+    cvEl?.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
 
     // Ses tarayıcı kuralı gereği ilk kullanıcı hareketinde başlar
     sound.init();
@@ -677,13 +683,22 @@ export default function Game({
               ctx!.fill();
             }
           } else if (q.kind === "ring") {
+            // YÜZÜK: kalın altın halka (delikli) + tepede parlayan taş → "çember/ayna"dan ayrışsın
             ctx!.shadowColor = "rgba(255,215,90,0.9)";
             ctx!.shadowBlur = 12;
             ctx!.strokeStyle = "#ffd75a";
-            ctx!.lineWidth = TS * 0.06;
+            ctx!.lineWidth = TS * 0.08;
             ctx!.beginPath();
-            ctx!.arc(sx, sy, TS * 0.14, 0, Math.PI * 2);
+            ctx!.arc(sx, sy + TS * 0.04, TS * 0.13, 0, Math.PI * 2);
             ctx!.stroke();
+            ctx!.fillStyle = "#bfe6ff"; // taş (elmas)
+            ctx!.beginPath();
+            ctx!.moveTo(sx, sy - TS * 0.2);
+            ctx!.lineTo(sx + TS * 0.07, sy - TS * 0.11);
+            ctx!.lineTo(sx, sy - TS * 0.04);
+            ctx!.lineTo(sx - TS * 0.07, sy - TS * 0.11);
+            ctx!.closePath();
+            ctx!.fill();
           } else if (q.kind === "bell") {
             ctx!.shadowColor = "rgba(210,170,90,0.9)";
             ctx!.shadowBlur = 10;
@@ -713,14 +728,22 @@ export default function Game({
             ctx!.lineWidth = 2;
             ctx!.stroke();
           } else if (q.kind === "mirror") {
+            // AYNA: SAPLI el aynası → yuvarlak cam + altta sap (duvak/yüzükten ayrışsın)
             const armed = engine.miniQuestText().includes("Uzaklaş");
+            ctx!.strokeStyle = "#8a6a3a"; // sap
+            ctx!.lineWidth = TS * 0.06;
+            ctx!.lineCap = "round";
+            ctx!.beginPath();
+            ctx!.moveTo(sx, sy + TS * 0.06);
+            ctx!.lineTo(sx, sy + TS * 0.22);
+            ctx!.stroke();
             ctx!.shadowColor = armed ? "rgba(255,60,60,0.9)" : "rgba(180,220,255,0.8)";
             ctx!.shadowBlur = armed ? 16 : 10;
             ctx!.fillStyle = armed ? "#3a2230" : "#b9d6ea";
             ctx!.beginPath();
-            ctx!.ellipse(sx, sy, TS * 0.12, TS * 0.2, 0, 0, Math.PI * 2);
+            ctx!.arc(sx, sy - TS * 0.05, TS * 0.14, 0, Math.PI * 2); // yuvarlak cam
             ctx!.fill();
-            ctx!.strokeStyle = "#7a6a52";
+            ctx!.strokeStyle = "#7a6a52"; // çerçeve
             ctx!.lineWidth = 2;
             ctx!.stroke();
           }
@@ -961,6 +984,16 @@ export default function Game({
           ctx!, TS, cssW / 2, cssH / 2, p.dir, sw.blade, sw.glow,
           Math.max(0, engine.swordSwing / TUNING.swordSwingSec)
         );
+      } else {
+        // TABANCA: kuşanılıysa elde küçük namlu görünür (silah kullanıldığı belli olsun)
+        ctx!.save();
+        ctx!.translate(cssW / 2, cssH / 2);
+        ctx!.rotate(Math.atan2(p.dir.y, p.dir.x));
+        ctx!.fillStyle = "#41474f";
+        ctx!.fillRect(TS * 0.12, -TS * 0.055, TS * 0.36, TS * 0.11); // namlu (ileri)
+        ctx!.fillStyle = "#2b2f36";
+        ctx!.fillRect(TS * 0.14, TS * 0.02, TS * 0.1, TS * 0.16); // kabza
+        ctx!.restore();
       }
       // Kalkan (dokunulmazlık) halkası
       if (engine.invuln) {
@@ -1250,7 +1283,15 @@ export default function Game({
         veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
       if (mission) setObjective(engine.objectiveText());
-      if (engine.tutorial) setTut({ on: true, hint: engine.tutHint, healthShown: engine.tutHealthShown });
+      if (engine.tutorial) {
+        setTut({ on: true, hint: engine.tutHint, healthShown: engine.tutHealthShown });
+        // Senaryo silahı ELE kuşandırır (kılıç/tabanca bulunca kullanıma hazır)
+        if (engine.tutEquip) {
+          weaponRef.current = engine.tutEquip;
+          setWeapon(engine.tutEquip);
+          engine.tutEquip = "";
+        }
+      }
       // Can azaldıysa can barını kısa süre yanıp söndür (fark edilsin)
       const curHp = Math.max(0, engine.player.hp);
       if (curHp < prevHpRef.current - 0.4) {
@@ -1305,6 +1346,8 @@ export default function Game({
       window.clearInterval(hudTimer);
       window.removeEventListener("resize", resize);
       cvEl?.removeEventListener("contextmenu", onCtx);
+      cvEl?.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       window.removeEventListener("keydown", startAudio);
@@ -1382,7 +1425,6 @@ export default function Game({
           {/* Rehberli bölümde can barı, "3 can" tanıtılana kadar GİZLİ (o ana kadar dokunulmazsın). */}
           {(!tut.on || tut.healthShown) && (
           <div className="chip">
-            <span className="lbl">Can</span>
             <div className={"hpbar" + (hpBlink ? " blink" : "")}>
               <div className="hpfill" style={{ width: `${hpPct}%`, background: hpColor }} />
             </div>
@@ -1410,7 +1452,7 @@ export default function Game({
           )}
           {!mission?.noFire && (
             <div className="chip">
-              <span className="lbl"><Icon name="ammo" size={12} /> Mermi</span>
+              <span className="lbl"><Icon name="ammo" size={14} /></span>
               <span className="val">{hud.ammo}</span>
             </div>
           )}
@@ -1425,7 +1467,7 @@ export default function Game({
           )}
           {!mission && (
             <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
-              <span className="lbl"><Icon name="coin" size={12} /> Altın</span>
+              <span className="lbl"><Icon name="coin" size={14} /></span>
               <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
             </div>
           )}
@@ -1467,14 +1509,6 @@ export default function Game({
               <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
             </div>
           )}
-          {soldierState !== "none" && (
-            <div className="chip" style={{ borderColor: soldierState === "escort" ? "rgba(125,255,176,0.7)" : "rgba(139,233,255,0.7)" }}>
-              <span className="lbl"><Icon name="people" size={12} /> Asker</span>
-              <span className="val" style={{ color: soldierState === "escort" ? "#7dffb0" : "#8be9ff" }}>
-                {soldierState === "escort" ? "yanında" : "zincirini çöz"}
-              </span>
-            </div>
-          )}
           {hud.veil > 0 && (
             <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
               <span className="lbl"><Icon name="veil" size={12} /> Görünmez</span>
@@ -1482,37 +1516,51 @@ export default function Game({
             </div>
           )}
           {mq && !mission && (
-            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
-              <span className="lbl"><Icon name="flame" size={12} /> Fırsat</span>
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title="Fırsat görevi">
+              <span className="lbl"><Icon name="flame" size={14} /></span>
               <span className="val" style={{ color: "#ffd75a" }}>{mq}</span>
             </div>
           )}
         </div>
 
         {/* Sağ üst: yardım · ses · duraklat (hep yan yana, aynı sırada) */}
+        {/* Sağ üst: tek aşağı-ok → açılınca ? / ses / duraklat (hamburger tarzı) */}
         <div className="hud-actions">
           <button
             className="chip mutebtn"
-            onClick={openHelp}
-            title="Hedef / kontroller / uyarı"
-            style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
+            onClick={() => setActionsOpen((o) => !o)}
+            title="Menü"
+            aria-label="Menü"
+            style={levelNotice && !actionsOpen ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
           >
-            <Icon name="help" size={17} />
+            <Icon name={actionsOpen ? "chevronUp" : "chevronDown"} size={18} />
           </button>
-          <button
-            className="chip mutebtn"
-            onClick={() => {
-              const m = !sound.muted;
-              sound.setMuted(m);
-              setMuted(m);
-            }}
-            title={muted ? "Sesi aç" : "Sesi kapat"}
-          >
-            <Icon name={muted ? "mute" : "music"} size={17} />
-          </button>
-          <button className="chip mutebtn" onClick={togglePause} title={paused ? "Devam et" : "Duraklat"}>
-            <Icon name={paused ? "play" : "pause"} size={17} fill />
-          </button>
+          {actionsOpen && (
+            <div className="hud-actions-menu">
+              <button
+                className="chip mutebtn"
+                onClick={() => { openHelp(); setActionsOpen(false); }}
+                title="Hedef / kontroller / uyarı"
+                style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
+              >
+                <Icon name="help" size={17} />
+              </button>
+              <button
+                className="chip mutebtn"
+                onClick={() => {
+                  const m = !sound.muted;
+                  sound.setMuted(m);
+                  setMuted(m);
+                }}
+                title={muted ? "Sesi aç" : "Sesi kapat"}
+              >
+                <Icon name={muted ? "mute" : "music"} size={17} />
+              </button>
+              <button className="chip mutebtn" onClick={() => { togglePause(); setActionsOpen(false); }} title={paused ? "Devam et" : "Duraklat"}>
+                <Icon name={paused ? "play" : "pause"} size={17} fill />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1642,8 +1690,7 @@ export default function Game({
               </svg>
             </button>
           )}
-          <div className="scr-eyebrow">Ara Verdin</div>
-          <h2 className="scr-title" style={{ fontSize: "clamp(30px,7vw,52px)" }}>DURAKLATILDI</h2>
+          <div className="pause-glyph" aria-label="Duraklatıldı"><Icon name="pause" size={54} fill /></div>
           <button className="btn-primary-x" onClick={togglePause}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
             Devam Et

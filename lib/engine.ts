@@ -197,8 +197,9 @@ export class GameEngine {
   // --- Rehberli 1. Bölüm (tutorial): kampanya level 1 && !mission ---
   tutorial = false;
   tutHint = ""; // ekranda gösterilen rehber ipucu (Game okur)
-  tutHealthShown = false; // can barı belirdi mi (o ana kadar dokunulmaz)
+  tutHealthShown = false; // can barı görünür mü (tutorial'da baştan true)
   tutPointShop = false; // dükkânı işaret et
+  tutEquip: "" | "sword" | "gun" = ""; // senaryo silahı ELE kuşandırır (Game okur+uygular)
   tutItems: { kind: TutItemKind; cell: Vec; taken: boolean }[] = []; // yerde çizilen eşyalar
   private tutSwordLocked = false; // kılıç bulunana kadar savurulamaz
   private tutPath: Vec[] = [];
@@ -1115,7 +1116,8 @@ export class GameEngine {
     this.veilItems = [];
     this.ammoCount = 0;
     this.tutSwordLocked = true; // kılıç bulunana kadar
-    this.invulnUntil = Number.MAX_SAFE_INTEGER; // "health" beat'e kadar dokunulmaz
+    this.tutHealthShown = true; // gelinler saldırır → can barı BAŞTAN görünür
+    this.invulnUntil = this.time + 1.5; // yalnız kısa doğuş dokunulmazlığı (normal)
     this.tutBeatIdx = tutorialBeatIndices(path.length);
     this.tutNextBeat = 0;
     this.tutMaxProgress = -1;
@@ -1182,22 +1184,21 @@ export class GameEngine {
         break;
       case "sword":
         this.tutSwordLocked = false;
+        this.tutEquip = "sword"; // kılıç ELE kuşanılır (kullanıma hazır)
         takeItem("sword");
         this.events.push("pickup");
         break;
       case "gun":
         this.ammoCount += 8;
+        this.tutEquip = "gun"; // tabanca ELE kuşanılır (kullanıma hazır)
         takeItem("gun");
         this.events.push("pickup");
         break;
       case "bride":
         spawnAhead(4);
         break;
-      case "health":
-        this.tutHealthShown = true;
-        this.invulnUntil = this.time; // dokunulmazlık biter → hasar başlar
-        this.events.push("dooropen");
-        break;
+      case "sprint":
+        break; // yalnız bilgi ipucu
       case "veil":
         takeItem("veil");
         this.activateVeil(); // otomatik görünmez ol

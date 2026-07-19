@@ -408,10 +408,11 @@ export default function Page() {
   }, [screen]);
 
   function play(lv: number, sc: number, lv3: number) {
-    saveSpProgress(lv, sc, lv3); // kaldığı bölümden devam edebilsin
+    const capped = Math.min(4, lv3); // can hakkı EN FAZLA 4 (3 baz + 1 kalıcı); eski kayıtlar da kısılır
+    saveSpProgress(lv, sc, capped); // kaldığı bölümden devam edebilsin
     setLevel(lv);
     setScore(sc);
-    setLives(lv3);
+    setLives(capped);
     setRunId((r) => r + 1);
     setScreen("playing");
   }
@@ -824,7 +825,7 @@ export default function Page() {
                     <div className="card-t">{got ? e.title : "Kayıp Sayfa"}</div>
                     {!got && <Icon name="lock" size={15} />}
                   </div>
-                  <div className="card-d" style={{ fontStyle: "italic" }}>
+                  <div className="card-d">
                     {got ? e.text : "Bu sayfa henüz karanlıkta. Bölümlerde ararken bulabilirsin."}
                   </div>
                 </div>
@@ -924,7 +925,7 @@ export default function Page() {
         key={`endless-${endlessRunId}`}
         level={1}
         score={0}
-        lives={1 + getInventory().extraLives}
+        lives={1}
         themeSeed={endlessRunId}
         mission={endlessMission}
         onEnd={handleEndlessEnd}
@@ -939,7 +940,7 @@ export default function Page() {
         key={`arena-${arenaRunId}`}
         level={1}
         score={0}
-        lives={1 + getInventory().extraLives}
+        lives={1}
         themeSeed={arenaRunId}
         mission={arenaMission}
         onEnd={handleArenaEnd}
@@ -961,7 +962,7 @@ export default function Page() {
         </div>
         <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <Icon name="trophy" size={17} style={{ color: "#7dffb0" }} />
-          En iyi: <b style={{ color: "#7dffb0" }}>{arenaResult.best}. dalga</b>
+          Rekor: <b style={{ color: "#7dffb0" }}>{arenaResult.best} dalga</b>
         </div>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
           <button className="btn btn-primary" onClick={() => playArena(arenaMission)}>Tekrar Dene →</button>
@@ -972,12 +973,12 @@ export default function Page() {
   }
 
   if (screen === "modes") {
-    const sBest = (m: Mission, unit: string) => (survBest[m.id] > 0 ? `En iyi ${survBest[m.id]}${unit}` : undefined);
+    const sBest = (m: Mission, unit: string) => (survBest[m.id] > 0 ? `Rekor ${survBest[m.id]}${unit}` : undefined);
     const modeList: { title: string; icon: IconName; desc: string; onClick: () => void; best?: string }[] = [
-      { title: "Bitmeyen Gece", icon: "infinity", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: () => playEndless(ENDLESS), best: sBest(ENDLESS, "s") },
-      { title: "Kör Gece", icon: "moon", desc: "Fenersiz, kapkaranlıkta hayatta kalma. Sesle ve refleksle dayan.", onClick: () => playEndless(KOR_GECE), best: sBest(KOR_GECE, "s") },
-      { title: "Arena", icon: "swords", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, ". dalga") },
-      { title: "Sürü Gecesi", icon: "swarm", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, ". dalga") },
+      { title: "Bitmeyen Gece", icon: "infinity", desc: "Çıkış yok; gelinler döner ve çoğalır. Dayandığın her saniye skorun.", onClick: () => playEndless(ENDLESS), best: sBest(ENDLESS, " sn") },
+      { title: "Kör Gece", icon: "moon", desc: "Fenersiz, kapkaranlıkta hayatta kalma. Sesle ve refleksle dayan.", onClick: () => playEndless(KOR_GECE), best: sBest(KOR_GECE, " sn") },
+      { title: "Arena", icon: "swords", desc: "Açık alanda dalga hayatta kalma. Her 6 öldürmede dalga yükselir; bol altın.", onClick: () => playArena(ARENA), best: sBest(ARENA, " dalga") },
+      { title: "Sürü Gecesi", icon: "swarm", desc: "Açık alanda yoğun, hızlı büyüyen sürü. Arena'nın çok daha zoru.", onClick: () => playArena(HORDE), best: sBest(HORDE, " dalga") },
     ];
     return chrome(
       <div className="scr">
@@ -1291,12 +1292,12 @@ export default function Page() {
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
                   Devam Et · Bölüm {rp.level}
                 </button>
-                <button className="mm-ghost" onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}>
+                <button className="mm-ghost" onClick={() => { clearSpProgress(); play(1, 0, 4); }}>
                   Baştan Başla
                 </button>
               </>
             ) : (
-              <button className="btn-primary-x" onClick={() => { clearSpProgress(); play(1, 0, 3 + getInventory().extraLives); }}>
+              <button className="btn-primary-x" onClick={() => { clearSpProgress(); play(1, 0, 4); }}>
                 Karanlığa Gir →
               </button>
             )}
@@ -1336,38 +1337,20 @@ export default function Page() {
       )}
 
       {screen === "levelclear" && (
-        <>
-          <div className="big" style={{ color: "#6ee7ff" }}>
-            Bölüm {level} Tamamlandı
-          </div>
-          <div className="subtitle" style={{ fontStyle: "italic", color: "#c9b8d0" }}>
-            “{flavorForLevel(level)}”
-          </div>
-          <div className="subtitle">
-            Bu koridordan sağ çıktın… ama fısıltılar peşinde. Skor: <b>{score}</b>
-          </div>
+        <div className="clear-scr">
+          {/* Sade hiyerarşi: küçük etiket → ilerleme → (rehber notu) → eylemler → altın en altta */}
+          <div className="clear-eyebrow">Bölüm tamamlandı</div>
+          <div className="clear-progress">{level}<span className="clear-total"> / 10</span></div>
           {level === 1 && (
-            <div className="subtitle" style={{ color: "#8be9ff", fontWeight: 600 }}>
-              Rehber bitti. Bundan sonrası gerçek <b>LABİRENT</b> — istersen kazandığın altınla dükkâna uğra.
-            </div>
+            <div className="clear-note">Rehber bitti. Bundan sonrası gerçek labirent.</div>
           )}
-          <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
-            <Icon name="coin" size={16} /> Kazanılan: <b>+{coinInfo.gained} altın</b>
-            {coinInfo.bonus > 0 && (
-              <span style={{ color: "#c9b8d0" }}> (bölüm bonusu +{coinInfo.bonus})</span>
-            )}
-            {" · "}Cüzdan: <b>{coinInfo.total}</b>
-          </div>
           {newAch.length > 0 && (
-            <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
-              <Icon name="trophy" size={16} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
+            <div className="clear-ach">
+              <Icon name="trophy" size={15} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
-            <button
-              className="btn btn-primary"
-              onClick={() => play(level + 1, score, lives)}
-            >
+          <div className="clear-actions">
+            <button className="btn btn-primary" onClick={() => play(level + 1, score, lives)}>
               Sonraki Bölüm →
             </button>
             <button
@@ -1377,11 +1360,13 @@ export default function Page() {
             >
               <Icon name="cart" size={16} /> Dükkâna Uğra
             </button>
-            <button className="btn" onClick={() => setScreen("menu")}>
-              ← Menüye Dön
-            </button>
           </div>
-        </>
+          <div className="clear-gold">
+            <Icon name="coin" size={15} /> +{coinInfo.gained}
+            {coinInfo.bonus > 0 && <span className="clear-gold-b"> (bonus +{coinInfo.bonus})</span>}
+            <span className="clear-gold-sep">·</span> Cüzdan {coinInfo.total}
+          </div>
+        </div>
       )}
 
       {screen === "gameover" && (

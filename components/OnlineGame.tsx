@@ -743,6 +743,11 @@ export default function OnlineGame({
     };
     const cvEl = canvasRef.current;
     cvEl?.addEventListener("contextmenu", onCtx);
+    // PC: SOL TIK = kuşanılan silahı kullan (ateş / kılıç)
+    const onMouseDown = (e: MouseEvent) => { if (e.button === 0) input.current.fire = true; };
+    const onMouseUp = (e: MouseEvent) => { if (e.button === 0) input.current.fire = false; };
+    cvEl?.addEventListener("mousedown", onMouseDown);
+    window.addEventListener("mouseup", onMouseUp);
 
     let dpr = 1, cssW = 0, cssH = 0, TS = 36;
     function resize() {
@@ -1651,6 +1656,16 @@ export default function OnlineGame({
       if (weaponRef.current === "sword" && !selfDead) {
         const sw = swordColorRef.current;
         drawSword(ctx!, TS, cx, cy, selfDir.current, sw.blade, sw.glow, Math.max(0, swordSwing.current / TUNING.swordSwingSec));
+      } else if (!selfDead) {
+        // TABANCA: kuşanılıysa elde küçük namlu (silah kullanıldığı belli olsun)
+        ctx!.save();
+        ctx!.translate(cx, cy);
+        ctx!.rotate(Math.atan2(selfDir.current.y, selfDir.current.x));
+        ctx!.fillStyle = "#41474f";
+        ctx!.fillRect(TS * 0.12, -TS * 0.055, TS * 0.36, TS * 0.11);
+        ctx!.fillStyle = "#2b2f36";
+        ctx!.fillRect(TS * 0.14, TS * 0.02, TS * 0.1, TS * 0.16);
+        ctx!.restore();
       }
       if (selfDead) ctx!.restore();
       drawNameTag(cx, cy, nameOf(mySeat), selfDead ? "#999" : myColor); // kendi ismin de kafanın üstünde
@@ -1829,6 +1844,8 @@ export default function OnlineGame({
       cancelAnimationFrame(raf);
       window.clearTimeout(toastTimer);
       cvEl?.removeEventListener("contextmenu", onCtx);
+      cvEl?.removeEventListener("mousedown", onMouseDown);
+      window.removeEventListener("mouseup", onMouseUp);
       window.removeEventListener("keydown", kd);
       window.removeEventListener("keyup", ku);
       window.removeEventListener("resize", resize);
@@ -1895,7 +1912,6 @@ export default function OnlineGame({
         {/* Sol: bilgi çipleri — durum → kaynaklar → mod bilgisi → skor tablosu */}
         <div className="hud-info">
           <div className="chip">
-            <span className="lbl">Can</span>
             <div className="hpbar">
               <div
                 className="hpfill"
@@ -1907,7 +1923,7 @@ export default function OnlineGame({
             </div>
           </div>
           <div className="chip">
-            <span className="lbl"><Icon name="ammo" size={12} /> Mermi</span>
+            <span className="lbl"><Icon name="ammo" size={14} /></span>
             <span className="val">{hud.ammo}</span>
           </div>
           <div className="chip">
@@ -1915,7 +1931,7 @@ export default function OnlineGame({
             <span className="val">{hud.barriers}</span>
           </div>
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
-            <span className="lbl"><Icon name="coin" size={12} /> Altın</span>
+            <span className="lbl"><Icon name="coin" size={14} /></span>
             <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
           </div>
           <div className="chip">
@@ -1953,8 +1969,8 @@ export default function OnlineGame({
             </div>
           )}
           {mqHud && (
-            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }}>
-              <span className="lbl"><Icon name="flame" size={12} /> Fırsat</span>
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title="Fırsat görevi">
+              <span className="lbl"><Icon name="flame" size={14} /></span>
               <span className="val" style={{ color: "#ffd75a" }}>{mqHud}</span>
             </div>
           )}

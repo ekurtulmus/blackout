@@ -43,6 +43,8 @@ export type IconName =
   | "pause"
   | "sword"
   | "exit"
+  | "chevronDown"
+  | "chevronUp"
   | "ammo";
 
 // Her ikon: viewBox 0 0 24 24 içinde stroke tabanlı yollar.
@@ -229,6 +231,8 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <rect x="13" y="5" width="2.8" height="14" rx="1.2" />
     </>
   ),
+  chevronDown: <path d="M6 9l6 6 6-6" />,
+  chevronUp: <path d="M6 15l6-6 6 6" />,
 };
 
 export default function Icon({

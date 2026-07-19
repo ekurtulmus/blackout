@@ -2,7 +2,7 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `f7f12d2` (oturum #15, CLI deploy + curl teyit)
+> Son güncelleme: **2026-07-19** · Canlı sürüm: commit `<oturum#16 deploy sonrası güncellenecek>`
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -48,6 +48,26 @@
 > Doğrulama: **`npx tsc --noEmit` + `next build` temiz**. **UYARI:** dev-server Turbopack/OneDrive cache bazen SAHTE
 > hata gösterir — `next build` temizse gerçek değildir. `.next` EPERM verirse sil, tekrar dene. Online/oynanış
 > **gerçek tarayıcı + 2 cihaz** ister (gizli panelde rAF durur, presence tek kimlik).
+
+## OTURUM 2026-07-19 #16 — Büyük UX turu (tutorial+, HUD sadeleştirme, bölüm-sonu, can, menüler)
+Doğrulama: `tsc` + `next build` TEMİZ + headless tutorial 17/17. Değişiklikler TÜM oyun türlerine uygulandı.
+- ✅ **Tutorial (1. bölüm) güncellendi:** koridor uzatıldı (7 koridor, path 97). Gelinler artık SALDIRIR/can götürür
+  (dokunulmazlık aşamaları kaldırıldı, can barı baştan görünür). Kılıç/tabanca alınınca **ELE oto-kuşanılır**
+  (`engine.tutEquip` → Game setWeapon). Silaha geçince oyuncuda **elde küçük tabanca** çizilir (kılıç zaten çiziliydi).
+  **SOL TIK = ateş/kılıç** (Game + OnlineGame; sağ tık = silah değiştir). Koşma beat'i eklendi.
+- ✅ **Bölüm-sonu ekranı yeniden:** flavor ("bu koridordan sağ çıktın") kaldırıldı, "Bölüm X" yerine küçük
+  **"X / 10"** (Cinzel), az renk, **altın en altta**, "Menüye Dön" butonu kaldırıldı (geri butonu var). `.clear-*` CSS.
+- ✅ **Oyun HUD sadeleşti (tüm türler):** Asker çipi kaldırıldı; Fırsat/Altın/Mermi yazıları → yalnız line icon;
+  Can yazısı kaldırıldı (bar kalır). Game + OnlineGame.
+- ✅ **Can hakkı en fazla 4:** `play()` merkezi `Math.min(4,...)` kapağı; kampanya başlangıcı sabit **4** (3+1);
+  eski `extraLives` şişmesi kısıldı; mod-canlarından extraLives bağımlılığı çıkarıldı.
+- ✅ **Sağ üst aksiyonlar hamburger:** ?/ses/duraklat tek **aşağı-ok** ile açılan `.hud-actions-menu` içinde
+  (chevronDown/Up ikonları eklendi). Duraklat ekranında yazı yerine **büyük pause ikonu** (`.pause-glyph`).
+- ✅ **Modlar:** "En iyi X. dalga" → **"Rekor N dalga"** / "Rekor N sn" (arena sonuç ekranı dahil).
+- ✅ **Günlük** metni italik değil (diğer kartlarla aynı). **Nasıl Oynanır** temizlendi: kaldırılan
+  kalkan/radar/tuzak/ekstra-can referansları çıktı, **Duvak tekrarı** giderildi (Kontroller'den çıkarıldı, tek konu).
+- ✅ **İkon ayrımı:** yerdeki **yüzük** (delikli altın halka + taş) ve **ayna** (saplı el aynası) yeniden çizildi —
+  duvak/ayna/yüzük artık ayrışıyor. **Mezarlık dekoru KALDIRILDI** (`themes.ts` mezarlik `decor` silindi).
 
 ## OTURUM 2026-07-19 #15 — REHBERLİ 1. BÖLÜM (tutorial koridoru + senaryo)
 Doğrulama: `tsc` + `next build` TEMİZ + **headless sim 17/17** (scratchpad `tut-test.js`). Oyun içi his gerçek cihazda görülür.
