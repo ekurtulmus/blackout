@@ -1436,8 +1436,8 @@ export default function Game({
           </div>
           )}
           <div className="chip">
-            <span className="lbl">Nefes</span>
-            <div className="hpbar" style={{ width: 90 }}>
+            <span className="lbl"><Icon name="wind" size={14} /></span>
+            <div className="hpbar" style={{ width: 80 }}>
               <div
                 className="hpfill"
                 style={{ width: `${stamina}%`, background: stamina > 20 ? "#7ec8ff" : "#ff9a3c" }}
@@ -1445,8 +1445,8 @@ export default function Game({
             </div>
           </div>
           {!mission && (
-            <div className="chip">
-              <span className="lbl">Bölüm</span>
+            <div className="chip" title="Bölüm">
+              <span className="lbl"><Icon name="layers" size={14} /></span>
               <span className="val">{hud.level}</span>
             </div>
           )}

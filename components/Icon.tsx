@@ -45,6 +45,10 @@ export type IconName =
   | "exit"
   | "chevronDown"
   | "chevronUp"
+  | "wind"
+  | "layers"
+  | "plus"
+  | "wallet"
   | "ammo";
 
 // Her ikon: viewBox 0 0 24 24 içinde stroke tabanlı yollar.
@@ -233,6 +237,27 @@ const PATHS: Record<IconName, React.ReactNode> = {
   ),
   chevronDown: <path d="M6 9l6 6 6-6" />,
   chevronUp: <path d="M6 15l6-6 6 6" />,
+  wind: (
+    <>
+      <path d="M3 8h9a2.4 2.4 0 1 0-2.4-2.4" />
+      <path d="M3 12h13a2.4 2.4 0 1 1-2.4 2.4" />
+      <path d="M3 16h7" />
+    </>
+  ),
+  layers: (
+    <>
+      <path d="M12 3l9 5-9 5-9-5z" />
+      <path d="M3 13l9 5 9-5" />
+    </>
+  ),
+  plus: <path d="M12 6v12M6 12h12" />,
+  wallet: (
+    <>
+      <path d="M4 7a2 2 0 0 1 2-2h11v3" />
+      <rect x="3" y="7" width="18" height="12" rx="2" />
+      <circle cx="16.5" cy="13" r="1.4" fill="currentColor" />
+    </>
+  ),
 };
 
 export default function Icon({

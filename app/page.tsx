@@ -413,6 +413,7 @@ export default function Page() {
       return;
     }
     sound.stopWhistles();
+    sound.stopGameMusic(); // oyun-dışı ekranlarda oyun müziği (game.mp3) SÜRMESİN (menüde çalmaya devam ediyordu)
     // Kendi müziği olan ekranlar (SCREEN_MUSIC): menü müziği kısılır, ekranın parçası açılır.
     const track = SCREEN_MUSIC[screen];
     if (track) {
@@ -1330,7 +1331,7 @@ export default function Page() {
           </div>
           <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
             <button className="btn btn-primary" onClick={() => play(level, score, lives)}>
-              Tekrar Dene
+              Devam Et
             </button>
             <button className="btn" onClick={() => setScreen("menu")}>
               ← Menüye Dön
@@ -1364,11 +1365,22 @@ export default function Page() {
               <Icon name="cart" size={16} /> Dükkâna Uğra
             </button>
           </div>
-          <div className="clear-gold">
-            <Icon name="coin" size={16} /> +{coinInfo.gained}
-            {coinInfo.bonus > 0 && <span className="clear-gold-b"> (bonus +{coinInfo.bonus})</span>}
+          <div className="clear-table">
+            <div className="clear-row">
+              <span className="clear-row-l"><Icon name="coin" size={15} /> Kazanılan</span>
+              <span className="clear-row-v">+{coinInfo.gained}</span>
+            </div>
+            {coinInfo.bonus > 0 && (
+              <div className="clear-row">
+                <span className="clear-row-l"><Icon name="plus" size={15} /> Bonus</span>
+                <span className="clear-row-v">+{coinInfo.bonus}</span>
+              </div>
+            )}
+            <div className="clear-row">
+              <span className="clear-row-l"><Icon name="wallet" size={15} /> Cüzdan</span>
+              <span className="clear-row-v">{coinInfo.total}</span>
+            </div>
           </div>
-          <div className="clear-wallet">Cüzdan {coinInfo.total}</div>
         </div>
       )}
 

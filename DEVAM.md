@@ -63,6 +63,18 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-20 #18 — HUD ikonlaştırma + müzik fix + tek ses toggle + ölüm butonu + altın tablosu
+Doğrulama: `tsc` + `next build` TEMİZ.
+- ✅ **HUD yazıları → ikon:** "Nefes" → `wind` ikonu (bar kaldı), "Bölüm" → `layers` ikonu + sayı (title="Bölüm").
+  Game + OnlineGame. (Yeni ikonlar: wind, layers, plus, wallet.)
+- ✅ **Menü müzik fix:** oyundan menüye dönünce oyun müziği (game.mp3) sürüyordu → `page.tsx` ekran-müzik
+  effect'inde oyun-dışı dalda `sound.stopGameMusic()` eklendi (Game unmount'una güvenmek yetmiyordu).
+- ✅ **Ayarlar tek ses toggle:** "Müzik" alt-seçeneği kaldırıldı; tek "Ses Açık/Kapalı" (`toggleSound` — açınca
+  müzik de açılır).
+- ✅ **Ölüm ekranı butonu:** "Tekrar Dene" → "Devam Et" (yalnız etiket; işleyiş `play(level,score,lives)` aynı).
+- ✅ **Bölüm-sonu altın TABLOSU:** Kazanılan/Bonus/Cüzdan alt alta, ikonlu (coin/plus/wallet), TEK vurgu rengi
+  (`.clear-table`/`.clear-row`, etiket muted + değer gold-warm; rengarenk değil).
+
 ## OTURUM 2026-07-19 #17 — Sadeleştirme turu 2 + AÇILIŞ ANİMASYONU + FAVICON + ADI "JILTED"
 Doğrulama: `tsc` + `next build` TEMİZ. İki Explore ajanı tüm ekran/popup'ları tarayıp öneri çıkardı; uygulananlar:
 - ✅ **OYUN ADI artık JILTED** (görünür marka): `layout.tsx` başlık "JILTED — Karanlıkta Kaçış" + `applicationName`;

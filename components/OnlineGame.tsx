@@ -1934,8 +1934,8 @@ export default function OnlineGame({
             <span className="lbl"><Icon name="coin" size={14} /></span>
             <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
           </div>
-          <div className="chip">
-            <span className="lbl">Bölüm</span>
+          <div className="chip" title="Bölüm">
+            <span className="lbl"><Icon name="layers" size={14} /></span>
             <span className="val">{hud.level}</span>
           </div>
           {info.pvp && (

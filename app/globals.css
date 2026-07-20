@@ -1876,14 +1876,23 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   display: inline-flex; align-items: center; gap: 7px;
 }
 .clear-actions { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
-.clear-gold {
+/* Bölüm-sonu altın tablosu — alt alta, ikonlu, TEK vurgu rengi (rengarenk değil) */
+.clear-table {
   margin-top: 18px;
-  font-size: 16px;
-  color: var(--gold-warm);
-  display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap;
+  width: min(280px, 82vw);
+  display: flex; flex-direction: column;
+  border: 1px solid rgba(var(--edge-rgb), 0.22);
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(var(--chip-rgb), 0.35);
 }
-.clear-gold-b { color: var(--muted); }
-.clear-wallet { font-size: 14.5px; color: var(--muted); }
+.clear-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 14px; font-size: 14.5px;
+}
+.clear-row + .clear-row { border-top: 1px solid rgba(var(--edge-rgb), 0.14); }
+.clear-row-l { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
+.clear-row-v { font-weight: 700; color: var(--gold-warm); }
 
 /* Rehber sonrası dükkânı işaret eden altın nabız */
 .pulse-gold {

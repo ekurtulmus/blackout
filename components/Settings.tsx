@@ -82,16 +82,17 @@ export default function Settings({ onBack }: { onBack: () => void }) {
     sound.resume();
     sound.setVolume(v / 100);
   }
-  function toggleMusic() {
-    const on = !music;
-    setMusic(on);
-    sound.resume();
-    sound.setMusic(on);
-  }
-  function toggleMuted() {
+  // Ses aç/kapa TEK anahtar: kapalı = sus; açık = müzik + efektler birlikte açık.
+  function toggleSound() {
     const m = !muted;
     setMuted(m);
     sound.setMuted(m);
+    if (!m) {
+      // sesi açtı → müzik de açık olsun
+      sound.resume();
+      setMusic(true);
+      sound.setMusic(true);
+    }
   }
 
   return (
@@ -136,23 +137,14 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             className="field-range"
           />
 
-          {/* Tek 'Ses' anahtarı (ana) + açıkken 'Müzik' alt seçeneği */}
+          {/* Ses aç/kapa — TEK anahtar (müzik + efektler birlikte) */}
           <div className="field-row" style={{ marginTop: 18 }}>
             <span className="field-t">Ses</span>
-            <button className={"toggle" + (!muted ? " is-on" : "")} onClick={toggleMuted}>
+            <button className={"toggle" + (!muted ? " is-on" : "")} onClick={toggleSound}>
               <Icon name={muted ? "mute" : "music"} size={14} />
               {muted ? "Kapalı" : "Açık"}
             </button>
           </div>
-          {!muted && (
-            <div className="field-row" style={{ marginTop: 12, paddingLeft: 14 }}>
-              <span className="field-t" style={{ color: "var(--muted)" }}>Müzik</span>
-              <button className={"toggle" + (music ? " is-on" : "")} onClick={toggleMusic}>
-                <Icon name={music ? "music" : "mute"} size={14} />
-                {music ? "Açık" : "Kapalı"}
-              </button>
-            </div>
-          )}
 
           <div className="field-d" style={{ marginTop: 16 }}>
             Oyun içinde <b>Esc</b> / <b>P</b> ile duraklat. Ayarların bu cihazda saklanır.
