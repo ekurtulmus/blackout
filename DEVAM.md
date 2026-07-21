@@ -2,7 +2,20 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-20** · Canlı sürüm: commit `3a2e50e` (oturum #18: HUD ikonlaştırma + menü müzik fix + tek ses toggle + ölüm butonu "Devam Et" + bölüm-sonu altın tablosu). Oyun adı **JILTED** (iç anahtarlar `blackout_` KORUNDU). TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif.
+> Son güncelleme: **2026-07-20** · Canlı sürüm: commit `6b07d95` (oturum #19: UI buton sesi "şişe ağzı üflemesi"). Oyun adı **JILTED** (iç anahtarlar `blackout_` KORUNDU). TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif.
+>
+> ### 🔜 AÇIK İŞLER (yeni sohbette buradan devam)
+> 1. **Bağlılık/elde tutma mekanikleri** — kullanıcıya interaktif seçim listesi sunuldu (çekirdek döngü / günlük /
+>    sosyal / ilerleme / gerilim), **seçim henüz gelmedi**. En çok önerilen ikili: **press-your-luck**
+>    ("Kaç / Daha derine in" + çarpan, Bitmeyen Gece üzerine) ve **meta-para** (ölünce bile kalıcı ilerleme).
+> 2. **Ses dili genişletme** — genel butona "şişe ağzı üflemesi" bağlandı. İstenirse: birincil buton, geri/kapat,
+>    onay, hover, hata için ayrı sesler. Aday sentezler kullanıcının `Downloads` klasöründeki demo HTML'lerinde
+>    (`jilted-sesler-ufleme.html`, `-insan.html`, `-kisa.html`, `jilted-gergin-sesler.html`) — hepsi Web Audio,
+>    doğrudan `lib/audio.ts`'e taşınabilir.
+> 3. **Onboarding merdiveni** — 1. bölüm tutorial'ı yapıldı; kalan basamaklar (dükkân/boss/zorluk/başarım/çok
+>    oyunculu vurgusu) "kilit değil VURGU" ilkesiyle kademeli gösterilecek. Detay: memory `blackout-onboarding-merdiveni`.
+> 4. **Önerilen ama yapılmadı:** juice (titreşim/haptik, ekran sarsıntısı, gelin "fark etti" stinger'ı) ve
+>    performans (`ctx.shadowBlur` yoğun kullanımı düşük-uçlu telefonlarda FPS düşürüyor).
 >
 > **CANLI (sabit link):** https://blackout-plum.vercel.app · GitHub `ekurtulmus/blackout` (main).
 > ⚠️ **DEPLOY YÖNTEMİ DEĞİŞTİ:** Vercel'in GitHub webhook'u BOZUK — `git push` artık otomatik deploy
@@ -62,6 +75,17 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Ayarlar:** "Müzik"+"Tüm Sesler" → tek **"Ses"** + açıkken **"Müzik"** alt seçeneği; isim açıklaması kısaldı.
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
+
+## OTURUM 2026-07-20 #19 — UI buton sesi ("şişe ağzı üflemesi")
+- ✅ `lib/audio.ts` **`uiClick()`**: bandpass rezonans + aşağı süpüren filtre (nefes/üfleme karakteri), iki katman
+  (gövde 0.055 + parıltı 0.024) — **bilerek KISIK** (her tıklamada çalıyor). Her basışta hafif rastgele sapma
+  (filtre/süre) → art arda basınca "makine" gibi duyulmaz. Mute'ken ya da ses kilidi açılmadan çalmaz.
+- ✅ `app/page.tsx`: **tek document `pointerdown` dinleyicisi** tüm `<button>` / `[role=button]` öğelerini yakalar
+  (menü, dükkân, ayarlar, görevler, lobi, sonuç ekranları, splash). Her bileşene tek tek eklemeye gerek yok.
+- ✅ **Oyun-içi kontroller HARİÇ**: `.touch, .actionrow, .fire, .actbtn, .slotbtn, .invbtn, .barrierbtn, .joybase`
+  — bunlar saniyede birkaç kez basılıyor ve kendi oyun sesleri var.
+- Ses tasarımı süreci: kullanıcı "kibar UI klik"leri beğenmedi → gergin sesler → insan/formant → kısa/odak
+  dağıtmayan → **üfleme** ailesinde karar kıldı. Adaylar Downloads'taki demo HTML'lerinde duruyor.
 
 ## OTURUM 2026-07-20 #18 — HUD ikonlaştırma + müzik fix + tek ses toggle + ölüm butonu + altın tablosu
 Doğrulama: `tsc` + `next build` TEMİZ.
