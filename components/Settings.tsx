@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { sound } from "@/lib/audio";
 import { getMyCode } from "@/lib/friends";
 import { wipeProgress } from "@/lib/progress";
+import { useLang, useT } from "@/lib/i18n";
+import { LANGS, LANG_META } from "@/lib/i18n/langs";
 import Icon from "@/components/Icon";
 
 // Sıfırlama kuralı + korunan anahtarlar TEK KAYNAKTA: lib/progress.ts
@@ -12,6 +14,8 @@ import Icon from "@/components/Icon";
 const NAME_KEY = "blackout_name";
 
 export default function Settings({ onBack }: { onBack: () => void }) {
+  const t = useT();
+  const { lang, setLang } = useLang();
   const [vol, setVol] = useState(100);
   const [music, setMusic] = useState(true);
   const [muted, setMuted] = useState(false);
@@ -31,7 +35,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
     } catch {
       /* geç */
     }
-    setNameMsg(v.trim() ? "✓ Kaydedildi" : "");
+    setNameMsg(v.trim() ? t("settings.name.saved") : "");
     window.setTimeout(() => setNameMsg(""), 1500);
   }
 
@@ -83,15 +87,38 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   return (
     <div className="scr">
       <div className="scr-head">
-        <div className="scr-eyebrow">Tercihlerin</div>
-        <h2 className="scr-title">AYARLAR</h2>
+        <div className="scr-eyebrow">{t("settings.eyebrow")}</div>
+        <h2 className="scr-title">{t("settings.title")}</h2>
       </div>
 
       <div className="scr-body" style={{ maxWidth: 760, display: "flex", flexDirection: "column", gap: 12 }}>
+        {/* DİL — en üstte: oyunu anlamadığı dilde açan biri ilk bunu bulmalı.
+            Diller KENDİ adlarıyla yazılır ("Русский"), yoksa o dilin oyuncusu tanıyamaz. */}
+        <div className="panel">
+          <div className="field-row">
+            <span className="field-t">{t("lang.title")}</span>
+          </div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10 }}>
+            {LANGS.map((l) => (
+              <button
+                key={l}
+                className={"toggle" + (lang === l ? " is-on" : "")}
+                onClick={() => setLang(l)}
+                lang={l}
+                aria-pressed={lang === l}
+              >
+                <span aria-hidden="true">{LANG_META[l].flag}</span>
+                {LANG_META[l].native}
+              </button>
+            ))}
+          </div>
+          <div className="field-d" style={{ marginTop: 12 }}>{t("lang.desc")}</div>
+        </div>
+
         {/* Kalıcı oyuncu adı */}
         <div className="panel">
           <div className="field-row">
-            <span className="field-t">Oyuncu Adın</span>
+            <span className="field-t">{t("settings.name")}</span>
             <span style={{ color: "var(--ok-text)", fontSize: 13 }}>{nameMsg}</span>
           </div>
           <input
@@ -101,16 +128,13 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             placeholder={getMyCode()}
             maxLength={8}
           />
-          <div className="field-d">
-            Boş bırakırsan <b style={{ color: "var(--gold)" }}>arkadaş kodun</b> ({getMyCode()}) görünür.
-            Çok oyunculuda ve arkadaş listende bu isim görünür.
-          </div>
+          <div className="field-d">{t("settings.name.desc", { code: getMyCode() })}</div>
         </div>
 
         {/* Ses */}
         <div className="panel">
           <div className="field-row">
-            <span className="field-t">Ses Seviyesi</span>
+            <span className="field-t">{t("settings.volume")}</span>
             <span style={{ color: "var(--gold)", fontWeight: 700 }}>{vol}%</span>
           </div>
           <input
@@ -124,40 +148,34 @@ export default function Settings({ onBack }: { onBack: () => void }) {
 
           {/* Ses aç/kapa — TEK anahtar (müzik + efektler birlikte) */}
           <div className="field-row" style={{ marginTop: 18 }}>
-            <span className="field-t">Ses</span>
+            <span className="field-t">{t("settings.sound")}</span>
             <button className={"toggle" + (!muted ? " is-on" : "")} onClick={toggleSound}>
               <Icon name={muted ? "mute" : "music"} size={14} />
-              {muted ? "Kapalı" : "Açık"}
+              {muted ? t("settings.off") : t("settings.on")}
             </button>
           </div>
 
-          <div className="field-d" style={{ marginTop: 16 }}>
-            Oyun içinde <b>Esc</b> / <b>P</b> ile duraklat. Ayarların bu cihazda saklanır.
-          </div>
+          <div className="field-d" style={{ marginTop: 16 }}>{t("settings.hint")}</div>
         </div>
 
         {/* Tehlikeli bölge */}
         <div className="panel" style={{ borderColor: "rgba(255,90,90,0.4)", borderTop: "2px solid var(--blood)" }}>
           <div className="field-t" style={{ color: "var(--danger-text)", display: "inline-flex", alignItems: "center", gap: 7 }}>
-            <Icon name="warn" size={16} /> Tüm İlerlemeyi Sıfırla
+            <Icon name="warn" size={16} /> {t("settings.reset.title")}
           </div>
           {!confirmReset ? (
             <>
-              <div className="field-d" style={{ marginTop: 8 }}>
-                Tüm ilerlemen silinir: <b>altın, envanter ve satın almalar</b>, tamamlanan görevler,
-                açılan sırlar, günlük sayfaları, başarımlar, en iyi skorlar ve <b>kaldığın bölüm</b>.
-                {" "}<b>Geri alınamaz.</b> Adın, arkadaşların ve ses tercihlerin korunur.
-              </div>
-              <button className="danger-btn" onClick={() => setConfirmReset(true)}>Sıfırla</button>
+              <div className="field-d" style={{ marginTop: 8 }}>{t("settings.reset.desc")}</div>
+              <button className="danger-btn" onClick={() => setConfirmReset(true)}>{t("settings.reset.btn")}</button>
             </>
           ) : (
             <>
               <div style={{ marginTop: 8, fontSize: 14, color: "var(--warn-text)", lineHeight: 1.5, fontWeight: 700 }}>
-                Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.
+                {t("settings.reset.confirm")}
               </div>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 12 }}>
-                <button className="danger-btn is-solid" onClick={resetProgress}>Evet, hepsini sil</button>
-                <button className="mm-ghost" onClick={() => setConfirmReset(false)}>Vazgeç</button>
+                <button className="danger-btn is-solid" onClick={resetProgress}>{t("settings.reset.yes")}</button>
+                <button className="mm-ghost" onClick={() => setConfirmReset(false)}>{t("settings.reset.cancel")}</button>
               </div>
             </>
           )}

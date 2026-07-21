@@ -10,6 +10,7 @@ import MainMenu from "@/components/MainMenu";
 import Splash from "@/components/Splash";
 import Finale from "@/components/Finale";
 import { wipeProgress } from "@/lib/progress";
+import { useT } from "@/lib/i18n";
 import Friends from "@/components/Friends";
 import Online from "@/components/Online";
 import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
@@ -136,6 +137,7 @@ const SCREEN_MUSIC: Partial<Record<Screen, ScreenTrack>> = {
 
 // (arkadaş sistemi + davet bandı entegre edildi)
 export default function Page() {
+  const t = useT();
   const [screen, setScreen] = useState<Screen>("menu");
   const [showSplash, setShowSplash] = useState(true); // açılış animasyonu (bir kez)
   const [finaleSeen, setFinaleSeen] = useState(false); // kampanya kapanış sahnesi oynadı mı
@@ -1246,9 +1248,9 @@ export default function Page() {
     return chrome(
       <div className="scr">
         <div className="scr-head">
-          <div className="scr-eyebrow">Çok Oyunculu</div>
-          <h2 className="scr-title">ÖLÜM KOŞUSU</h2>
-          <p className="scr-sub">2–6 kişi, ilk kaçan kazanır.</p>
+          <div className="scr-eyebrow">{t("multi.eyebrow")}</div>
+          <h2 className="scr-title">{t("multi.title")}</h2>
+          <p className="scr-sub">{t("multi.sub")}</p>
         </div>
         <div className="scr-body" style={{ maxWidth: 800 }}>
           <div className="mm-primaries" style={{ marginTop: 0 }}>
@@ -1263,8 +1265,8 @@ export default function Page() {
                 </svg>
               </span>
               <span className="mm-card-txt">
-                <span className="mm-card-title">ARKADAŞLARINLA OYNA</span>
-                <span className="mm-card-sub">Oda kur, kodu paylaş · özel oda</span>
+                <span className="mm-card-title">{t("multi.friends")}</span>
+                <span className="mm-card-sub">{t("multi.friends.sub")}</span>
               </span>
             </button>
             {/* Online Odalar ŞİMDİLİK KAPALI — ekran (screen === "online") duruyor, yalnız
@@ -1281,13 +1283,13 @@ export default function Page() {
                 </svg>
               </span>
               <span className="mm-card-txt">
-                <span className="mm-card-title">ONLINE ODALAR <span className="mm-soon">Yakında</span></span>
+                <span className="mm-card-title">{t("multi.rooms")} <span className="mm-soon">{t("multi.soon.badge")}</span></span>
               </span>
             </button>
           </div>
           {onlineSoon > 0 && (
             // key: her tıklamada yeniden mount → giriş animasyonu tekrar oynar
-            <div key={onlineSoon} className="mm-soon-note">Online odalar çok yakında oyunda olacak</div>
+            <div key={onlineSoon} className="mm-soon-note">{t("multi.soon.note")}</div>
           )}
         </div>
       </div>

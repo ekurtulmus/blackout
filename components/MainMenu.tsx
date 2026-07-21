@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useT } from "@/lib/i18n";
 
 // Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
 let introShown = false;
@@ -37,6 +38,7 @@ export default function MainMenu({
   help?: boolean;
   onHelpClose?: () => void;
 }) {
+  const t = useT();
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const [isTouch, setIsTouch] = useState(false);
   const anim = !introShown;
@@ -215,8 +217,8 @@ export default function MainMenu({
             </svg>
           </span>
           <span className="mm-card-txt">
-            <span className="mm-card-title">TEK KİŞİLİK</span>
-            <span className="mm-card-sub">Yalnız kaçış · 10 bölüm</span>
+            <span className="mm-card-title">{t("menu.single")}</span>
+            <span className="mm-card-sub">{t("menu.single.sub")}</span>
           </span>
         </button>
         <button className="mm-card" onClick={onMulti}>
@@ -227,8 +229,8 @@ export default function MainMenu({
             </svg>
           </span>
           <span className="mm-card-txt">
-            <span className="mm-card-title">ÇOK OYUNCULU</span>
-            <span className="mm-card-sub">Ölüm koşusu · 2–6 kişi</span>
+            <span className="mm-card-title">{t("menu.multi")}</span>
+            <span className="mm-card-sub">{t("menu.multi.sub")}</span>
           </span>
         </button>
       </div>

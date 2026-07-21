@@ -91,6 +91,40 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-21 #26 — ÇOK DİLLİLİK (i18n) ALTYAPISI — 6 dil · İLK DİLİM
+Doğrulama: `tsc` TEMİZ · tarayıcıda 6 dil geçişi + font değişimi ölçüldü.
+**ÖLÇÜM (işin gerçek boyutu):** kullanıcıya görünen **771 ayrı metin · ~4100 kelime · 33 dosya**
+(tarama scripti: scratchpad `scan-strings.mjs`). 5 dile çevrilince ~20.500 kelime.
+**BU OTURUMDA ALTYAPI + İLK DİLİM YAPILDI, KALAN ~740 METİN BEKLİYOR.**
+- ✅ **`lib/i18n/`** — `langs.ts` (diller+meta+font eşlemesi), `index.tsx` (I18nProvider/useT/useLang),
+  `dict/{tr,en,ru,es,hi,zh}.ts`. Diller: **tr · en · ru · es · hi · zh**.
+- ✅ **EKSİK ÇEVİRİ = DERLEME HATASI.** `dict/tr.ts` KAYNAKTIR; `DictKey = keyof typeof tr` ve
+  `Translation = Record<DictKey, string>` sayesinde bir dilde anahtar eksikse `tsc` patlar.
+  **KANITLANDI:** ru.ts'ten `settings.volume` silindi → `TS2741: Property "settings.volume" is missing`.
+  Yani "bir dilde metin unutuldu" durumu sessizce kaçamaz.
+- ✅ **YAZI TİPİ SORUNU ÇÖZÜLDÜ (kritik):** Cinzel YALNIZ Latin, Archivo'da da Kiril/Devanagari/CJK
+  YOK → Rusça/Hintçe/Çince sistem fontuna düşüp tipografiyi bozuyordu.
+  Çözüm: `globals.css` `--font-title` / `--font-body` değişkenleri; i18n seçili dile göre
+  `--font-*-i18n` yazar. `"Cinzel", serif` ve `"Archivo", sans-serif` doğrudan yazımları
+  değişkenlere çevrildi. **KURAL: yeni yerlerde font adını doğrudan YAZMA, değişken kullan.**
+  Latin dillerde (tr/en/es) değişken tanımsız → mevcut fontlar, **EK İNDİRME YOK**;
+  ru/hi/zh fontları YALNIZ o dil seçilince `<link>` ile eklenir (Çince font ~10 MB).
+  Ölçüldü: en/es/tr'de `fontLinki: []`, ru→Playfair+Noto Sans, zh→Noto Serif SC, hi→Tiro Devanagari.
+- ✅ **Dil seçici** Ayarlar'ın EN ÜSTÜNDE (oyunu anlamadığı dilde açan ilk onu bulmalı).
+  Diller KENDİ adlarıyla ("Русский", "中文") — yoksa o dilin oyuncusu tanıyamaz.
+  Seçim `blackout_lang`'de; **`lib/progress.ts` KEEP listesine eklendi** → ilerleme sıfırlansa bile
+  dil korunur. İlk açılışta `navigator.languages`'ten otomatik seçilir.
+- ✅ **ÇEVRİLEN İLK DİLİM (~33 anahtar):** Ayarlar ekranı (tamamı) · ana menü 2 birincil kart ·
+  Çok Oyunculu ekranı (başlıklar + iki kart + "Yakında" notu).
+- 🔜 **KALAN (sıradaki oturumlar):** `lib/achievements.ts` (87) · `MainMenu.tsx` kalanı (86) ·
+  `page.tsx` (73) · `OnlineGame.tsx` (65) · `lib/secrets.ts` (56) · `Game.tsx` (47) ·
+  `lib/missions.ts` (45) · `OnlineLobby.tsx` (34) · `lib/inventory.ts` (30) · `Shop.tsx` (28) ·
+  `lib/journal.ts` (27) · `Friends.tsx` (24) · `Finale.tsx` (23) · kalan küçükler.
+  ⚠️ **YERLEŞİM RİSKİ:** Rusça/İspanyolca metin Türkçeden ~%15-30 UZUN. Dar butonlar/HUD çipleri
+  taşabilir — her ekran çevrildikten sonra 375px'te kontrol edilmeli (finalde "GÜN AĞARDI"
+  zaten kıl payı sığıyordu).
+  ⚠️ `Icon.tsx`'teki 57 "metin" SVG path verisi — ÇEVİRİ DEĞİL, dokunma.
+
 ## OTURUM 2026-07-21 #25 — PLAY STORE HAZIRLIĞI: PWA temeli (manifest + ikonlar + service worker)
 Doğrulama: `tsc` + `next build` TEMİZ · üretim derlemesiyle (localhost:3008) uçtan uca test ·
 canlıda teyit edildi. Canlı commit `30354c3`.

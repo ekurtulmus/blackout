@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import SWRegister from "@/components/SWRegister";
+import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "JILTED — Karanlıkta Kaçış",
@@ -48,7 +49,8 @@ export default function RootLayout({
       </head>
       <body>
         <SWRegister />
-        {children}
+        {/* Çeviri sağlayıcısı EN DIŞTA: her ekran useT() ile metin çeker. */}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );

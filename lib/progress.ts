@@ -15,6 +15,8 @@
 export const PROGRESS_KEEP_KEYS: readonly string[] = [
   "blackout_uid",
   "blackout_name",
+  // Dil seçimi İLERLEME DEĞİLDİR: sıfırlayan biri oyunu anlamadığı bir dilde bulmasın.
+  "blackout_lang",
   "blackout_friends",
   "blackout_sent",
   "blackout_freq_in",
