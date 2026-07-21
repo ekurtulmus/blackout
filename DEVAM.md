@@ -91,6 +91,38 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-21 #24 — Silahlar herkeste görünür + "Yakında" akışı + SES DÜĞÜM SIZINTISI
+Doğrulama: `tsc` + `next build` TEMİZ. Ses sızıntısı ve "Yakında" akışı tarayıcıda ÖLÇÜLDÜ.
+- ✅ **SİLAHLAR DİĞER OYUNCULARDA GÖRÜNMÜYORDU** (`OnlineGame.tsx`): diğer oyuncular yalnız
+  `drawPlayer` ile çiziliyordu, ELİNDEKİ SİLAH HİÇ çizilmiyordu → parayla alınan kılıç rengini
+  kimse göremiyordu (kişiselleştirmenin bütün amacı buydu).
+  **DÜZELTME:** `pos` mesajına `w` (gun/sword) + `swc` (kılıç rengi anahtarı) + `swg` (savurma
+  ilerlemesi) eklendi; `Other` tipine `weapon/swordKey/swing` alanları geldi. Çizim TEK
+  fonksiyonda toplandı: **`drawHeldWeapon()`** — kendi oyuncun ve diğerleri AYNI kodu kullanır
+  (eskiden yalnız kendine ait satır içi kod vardı). Ölüyken çizilmez (kendinde de öyle).
+  Eski istemci `w/swc/swg` yollamazsa varsayılan (gun/default/0) — kırılmaz.
+- ✅ **"Yakında" akışı** (kullanıcı isteği): kart alt yazısı ("Yabancılarla oynamak hazırlanıyor")
+  KALDIRILDI, yalnız **Yakında** rozeti kaldı. Tıklayınca altta *"Online odalar çok yakında oyunda
+  olacak"* çıkıp **3 sn** sonra kalkıyor; her tıklamada sayaç artıyor (`key` ile yeniden mount →
+  animasyon tekrar oynar, 3 sn baştan başlar) → döngü her tıklamada çalışır.
+  Ölçüldü: 1.8sn'de duruyor · 3.8sn'de kalkmış · tekrar tıklayınca yeniden çıkıyor.
+- 🔴 **SES: WEB AUDIO DÜĞÜM SIZINTISI — menü müzikleri GEÇ AÇILIYORDU** (`lib/audio.ts`).
+  **KÖK NEDEN:** motor HİÇBİR düğümü `disconnect` etmiyordu (dosyada tek `disconnect()`/`onended`
+  yoktu). Her ses, düğümlerini (kaynak+filtre+gain+reverb send) grafikte KALICI bırakıyordu.
+  Oyun efektlerinde fark edilmiyordu ama **buton sesi her tıklamada ~8 düğüm ekliyor** ve menüde
+  sürekli tıklanıyor → grafik şişiyor, audio thread yavaşlıyor, `playScreenMusic` geç açılıyordu.
+  (Bu yüzden "buton sesini ekledikten SONRA" başladı.)
+  **DÜZELTME:** `connectOut()` artık kendi ürettiği ara düğümleri döndürüyor + yeni
+  **`autoDispose(src, nodes)`** `src.onended`'de tüm zinciri koparıyor; `tone`/`noise`/`uiClick`
+  bunu kullanıyor. **ÖLÇÜLDÜ (tarayıcı, connect/disconnect sayacı):** 20 buton basışı →
+  **160 bağlantı → 160 kopma**; geriye yalnız 43 kalıcı düğüm (master/reverb/ambiyans) kalıyor,
+  yani artık BİRİKMİYOR.
+- ✅ **İkinci gecikme kaynağı** (`playScreenMusic`): fade `el.play()` promise'i çözülene kadar
+  BEKLİYORDU (ilk girişte dosya indirilir) ve üstüne 600 ms rampa biniyordu. Artık rampa hemen
+  başlıyor (600 → **350 ms**), ses gelir gelmez zaten yükselmiş oluyor.
+- ⚠️ **DOĞRULANAMAYAN:** silahın diğer oyuncuda görünmesi — 2 gerçek cihaz + çalışan oyun döngüsü
+  ister (panelde rAF durur). Kod yolu tamam, sahada bakılmalı.
+
 ## OTURUM 2026-07-21 #23 — TOPLU SIFIRLAMA (herkes baştan) + sıfırlama mantığı tek kaynağa
 Doğrulama: `tsc` TEMİZ + tarayıcıda gerçek yükleme testi (aşağıda).
 - 🔴 **HERKESİN İLERLEMESİ SIFIRLANDI:** `app/page.tsx` sürüm damgası

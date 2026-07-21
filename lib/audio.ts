@@ -385,7 +385,12 @@ class SoundEngine {
       return;
     }
     el.volume = 0;
-    el.play().then(() => this.fadeTo(el, target, 600)).catch(() => {});
+    // Fade'i play() SONUCUNU BEKLEMEDEN başlat: play promise'i ancak çalma gerçekten
+    // başlayınca çözülür (ilk girişte dosya indirilir), sonra üstüne 600 ms rampa
+    // biniyordu → müzik belirgin gecikmeyle geliyordu. Artık rampa hemen işler,
+    // ses gelir gelmez zaten yükselmiş olur. Rampa da 600 → 350 ms.
+    el.play().catch(() => {});
+    this.fadeTo(el, target, 350);
   }
 
   // Ekran müziğini durdur (menü müziğine geri dönülür — page.tsx yönetir).
@@ -453,9 +458,12 @@ class SoundEngine {
       g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + dur);
       src.connect(f);
       f.connect(g);
-      this.connectOut(g, 0.3);
+      const extra = this.connectOut(g, 0.3);
       src.start(t0 + delay);
       src.stop(t0 + delay + dur + 0.05);
+      // KRİTİK: buton sesi her tıklamada çalıyor — temizlenmezse düğümler birikir
+      // ve menü müzikleri geç açılmaya başlar (bu hatanın ta kendisiydi).
+      this.autoDispose(src, [f, g, ...extra]);
     };
     // Her basışta hafif sapma → art arda basınca "makine" gibi duyulmaz
     puff(R(0.14, 0.16), R(600, 700), R(420, 480), R(6, 9), 0.055, 0);
@@ -463,13 +471,17 @@ class SoundEngine {
   }
 
   // --- yardımcılar ---
-  private connectOut(node: AudioNode, wet = 0.25, pan = 0) {
-    if (!this.ctx || !this.master) return;
+  // Kendi oluşturduğu ARA düğümleri döndürür → çağıran, ses bitince onları da
+  // grafikten çıkarabilsin (bkz. autoDispose).
+  private connectOut(node: AudioNode, wet = 0.25, pan = 0): AudioNode[] {
+    if (!this.ctx || !this.master) return [];
+    const extra: AudioNode[] = [];
     let n: AudioNode = node;
     if (pan !== 0 && this.ctx.createStereoPanner) {
       const p = this.ctx.createStereoPanner();
       p.pan.value = pan;
       node.connect(p);
+      extra.push(p);
       n = p;
     }
     n.connect(this.master);
@@ -478,7 +490,25 @@ class SoundEngine {
       s.gain.value = wet;
       n.connect(s);
       s.connect(this.reverb);
+      extra.push(s);
     }
+    return extra;
+  }
+
+  // SES BİTİNCE ZİNCİRİ GRAFİKTEN ÇIKAR.
+  // Bu motor eskiden HİÇBİR düğümü disconnect etmiyordu: her çalan ses, düğümlerini
+  // (kaynak + filtre + gain + reverb send) grafikte KALICI olarak bırakıyordu. Oyun-içi
+  // efektlerde fark edilmiyordu ama BUTON SESİ her tıklamada ~8 düğüm ekliyor ve menüde
+  // gezinirken sürekli tıklanıyor → ses grafiği şişiyor, audio thread yavaşlıyor ve
+  // EKRAN MÜZİKLERİ GEÇ BAŞLIYORDU. Artık her ses kendini temizliyor.
+  private autoDispose(src: AudioScheduledSourceNode, nodes: (AudioNode | undefined)[]) {
+    src.onended = () => {
+      try { src.disconnect(); } catch { /* geç */ }
+      for (const n of nodes) {
+        if (!n) continue;
+        try { n.disconnect(); } catch { /* geç */ }
+      }
+    };
   }
 
   private env(g: GainNode, t0: number, peak: number, atk: number, dec: number) {
@@ -508,10 +538,11 @@ class SoundEngine {
     const g = this.ctx.createGain();
     src.connect(f);
     f.connect(g);
-    this.connectOut(g, wet, pan);
+    const extra = this.connectOut(g, wet, pan);
     this.env(g, t0, peak, 0.002, dur);
     src.start(t0);
     src.stop(t0 + dur + 0.05);
+    this.autoDispose(src, [f, g, ...extra]);
   }
 
   private tone(
@@ -531,10 +562,11 @@ class SoundEngine {
     o.frequency.exponentialRampToValueAtTime(Math.max(1, f1), t0 + dur);
     const g = this.ctx.createGain();
     o.connect(g);
-    this.connectOut(g, wet, pan);
+    const extra = this.connectOut(g, wet, pan);
     this.env(g, t0, peak, 0.006, dur);
     o.start(t0);
     o.stop(t0 + dur + 0.05);
+    this.autoDispose(o, [g, ...extra]);
   }
 
   // Gerçek bir kadın ağlaması/feryadı — çok kısa, hayaletimsi (ölen gelin için).

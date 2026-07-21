@@ -201,8 +201,19 @@ export default function Page() {
   const [spDiff, setSpDiff] = useState<Diff>("orta");
   // Nasıl Oynanır: düğme kabuğun sağ üstünde (MenuShell), modal MainMenu'de → durum burada
   const [helpOpen, setHelpOpen] = useState(false);
-  // Online Odalar şimdilik KAPALI (kullanıcı isteği — sonra açılacak). Karta basınca kısa not.
-  const [onlineSoon, setOnlineSoon] = useState(false);
+  // Online Odalar şimdilik KAPALI (kullanıcı isteği — sonra açılacak). Karta basınca 3 sn
+  // görünen kısa not. Sayaç: her basışta artar → not yeniden mount olur (animasyon tekrar
+  // oynar) ve 3 sn sayacı baştan başlar. Böylece döngü her tıklamada çalışır.
+  const [onlineSoon, setOnlineSoon] = useState(0);
+  const onlineSoonTimer = useRef<number | null>(null);
+  function showOnlineSoon() {
+    setOnlineSoon((n) => n + 1);
+    if (onlineSoonTimer.current) window.clearTimeout(onlineSoonTimer.current);
+    onlineSoonTimer.current = window.setTimeout(() => {
+      setOnlineSoon(0);
+      onlineSoonTimer.current = null;
+    }, 3000);
+  }
 
   // TEMA: Aydınlık (beyaz) tema KALDIRILDI (kullanıcı isteği) — oyun hep KARANLIK.
   // data-theme her zaman "dark"; eski blackout_theme kaydı yok sayılır, toggle gösterilmez.
@@ -1261,7 +1272,7 @@ export default function Page() {
                 setScreen("online") olsun. */}
             <button
               className="mm-card is-soon"
-              onClick={() => setOnlineSoon(true)}
+              onClick={showOnlineSoon}
               aria-disabled="true"
             >
               <span className="mm-card-ico">
@@ -1271,12 +1282,12 @@ export default function Page() {
               </span>
               <span className="mm-card-txt">
                 <span className="mm-card-title">ONLINE ODALAR <span className="mm-soon">Yakında</span></span>
-                <span className="mm-card-sub">Yabancılarla oynamak hazırlanıyor</span>
               </span>
             </button>
           </div>
-          {onlineSoon && (
-            <div className="mm-soon-note">O kapı henüz açılmadı. Şimdilik arkadaşlarını çağır.</div>
+          {onlineSoon > 0 && (
+            // key: her tıklamada yeniden mount → giriş animasyonu tekrar oynar
+            <div key={onlineSoon} className="mm-soon-note">Online odalar çok yakında oyunda olacak</div>
           )}
         </div>
       </div>

@@ -80,7 +80,10 @@ const KIND_DMG: Record<BKind, number> = {
   normal: 1, dark: 1, mucus: 1, caller: 1, splitter: 1, climber: 1,
   queen: TUNING.queenDmgMul,
 };
-type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null; dead?: boolean; rk?: number };
+// weapon/swordKey/swing: diğer oyuncunun ELİNDEKİ silah — kılıç rengi KİŞİSELLEŞTİRMESİ
+// karşı tarafta da görünsün diye pos ile taşınır (eskiden yalnız kendi ekranında çiziliyordu,
+// yani satın alınan kılıç rengini kimse göremiyordu).
+type Other = { pos: Vec; target: Vec; dir: Vec; seenAt: number; seat: number; name: string; everSeen: boolean; sPos?: Vec | null; dead?: boolean; rk?: number; weapon?: "gun" | "sword"; swordKey?: string; swing?: number };
 
 export default function OnlineGame({
   room,
@@ -209,6 +212,7 @@ export default function OnlineGame({
   const swordCd = useRef(0);
   const swordSwing = useRef(0);
   const swordColorRef = useRef(SWORD_COLORS.default);
+  const swordKeyRef = useRef("default"); // seçili kılıç rengi anahtarı (pos ile yayınlanır)
   const toggleWeapon = () => {
     const w = weaponRef.current === "gun" ? "sword" : "gun";
     weaponRef.current = w;
@@ -376,7 +380,8 @@ export default function OnlineGame({
     // Dükkan askeri: sahipsen her bölümde yanında doğar (ölene dek)
     soldierPos.current = getInventory().hiredSoldier ? { ...mySpawn.current } : null;
     soldierFireCd.current = 1;
-    swordColorRef.current = SWORD_COLORS[getInventory().sword] ?? SWORD_COLORS.default;
+    swordKeyRef.current = getInventory().sword || "default";
+    swordColorRef.current = SWORD_COLORS[swordKeyRef.current] ?? SWORD_COLORS.default;
     setPhase("playing");
     setHud((h) => ({ ...h, level: lvl.level, ammo: 0, exitOpen: false, kills: 0 }));
   }
@@ -621,6 +626,10 @@ export default function OnlineGame({
         o.sPos = m.sx != null && m.sy != null ? { x: m.sx as number, y: m.sy as number } : null;
         o.dead = !!m.dead; // ölü/donmuş mu (soluk çiz)
         o.rk = (m.rk as number) ?? 0; // arena: bu oyuncunun tur öldürmesi (host tally için)
+        // Elindeki silah + kılıç rengi + savurma (eski istemciler bunları yollamaz → varsayılan)
+        o.weapon = m.w === "sword" ? "sword" : "gun";
+        o.swordKey = (m.swc as string) || "default";
+        o.swing = (m.swg as number) ?? 0;
         // #1 self-healing: host heartbeat'ine güncel bölüm no'sunu ekler (yalnız host).
         // Ben geride kaldıysam (bölümüm host'unkinden küçük VE bir geçiş beklemiyorsam)
         // → host'tan mevcut bölümü iste. "result" mesajım düşmüş olsa bile böyle yetişirim.
@@ -1647,6 +1656,25 @@ export default function OnlineGame({
         drawNameTag(sx, sy, name, color);
       };
 
+      // ELDEKİ SİLAH — ORTAK çizim: hem kendin hem DİĞER oyuncular aynı fonksiyonu kullanır.
+      // Eskiden yalnız kendi oyuncun için çiziliyordu → parayla alınan kılıç rengini kimse
+      // göremiyordu (kişiselleştirmenin bütün amacı başkalarının görmesi).
+      const drawHeldWeapon = (sx: number, sy: number, dir: Vec, isSword: boolean, swordKey: string, swingT: number) => {
+        if (isSword) {
+          const sw = SWORD_COLORS[swordKey] ?? SWORD_COLORS.default;
+          drawSword(ctx!, TS, sx, sy, dir, sw.blade, sw.glow, Math.max(0, Math.min(1, swingT)));
+          return;
+        }
+        ctx!.save();
+        ctx!.translate(sx, sy);
+        ctx!.rotate(Math.atan2(dir.y, dir.x));
+        ctx!.fillStyle = "#41474f";
+        ctx!.fillRect(TS * 0.12, -TS * 0.055, TS * 0.36, TS * 0.11);
+        ctx!.fillStyle = "#2b2f36";
+        ctx!.fillRect(TS * 0.14, TS * 0.02, TS * 0.1, TS * 0.16);
+        ctx!.restore();
+      };
+
       // diğer oyuncular (görüşte) — koltuk rengiyle halkalı + isim
       const nowP = performance.now();
       for (const o of others.current.values()) {
@@ -1657,6 +1685,8 @@ export default function OnlineGame({
         if (o.dead) ctx!.save(), (ctx!.globalAlpha = 0.4); // ölü/donmuş → soluk
         drawPlayer(ctx!, TS, ox, oy, o.dir, T, !o.dead, flicker, lvl.visionRadius, { cone: false, ring: o.dead ? "#888" : SEAT_COLORS[o.seat % SEAT_COLORS.length] });
         if (o.dead) ctx!.restore();
+        // silahı (ölüyken çizilmez — kendi oyuncunda da öyle)
+        if (!o.dead) drawHeldWeapon(ox, oy, o.dir, o.weapon === "sword", o.swordKey ?? "default", o.swing ?? 0);
         drawNameTag(ox, oy, o.name, o.dead ? "#999" : SEAT_COLORS[o.seat % SEAT_COLORS.length]);
         // o oyuncunun dükkan askeri (varsa)
         if (o.sPos) drawSoldierMarker(o.sPos.x, o.sPos.y, SEAT_COLORS[o.seat % SEAT_COLORS.length], o.name);
@@ -1671,20 +1701,9 @@ export default function OnlineGame({
       const selfDead = deadUntil.current > nowSelf;
       if (selfDead) ctx!.save(), (ctx!.globalAlpha = 0.4);
       drawPlayer(ctx!, TS, cx, cy, selfDir.current, T, selfDead ? false : selfMoving.current, flicker, vEff, selfDead ? { ring: "#888" } : invuln ? { ring: "#6ee7ff" } : undefined);
-      // KILIÇ: kuşanılıysa elinde görünür
-      if (weaponRef.current === "sword" && !selfDead) {
-        const sw = swordColorRef.current;
-        drawSword(ctx!, TS, cx, cy, selfDir.current, sw.blade, sw.glow, Math.max(0, swordSwing.current / TUNING.swordSwingSec));
-      } else if (!selfDead) {
-        // TABANCA: kuşanılıysa elde küçük namlu (silah kullanıldığı belli olsun)
-        ctx!.save();
-        ctx!.translate(cx, cy);
-        ctx!.rotate(Math.atan2(selfDir.current.y, selfDir.current.x));
-        ctx!.fillStyle = "#41474f";
-        ctx!.fillRect(TS * 0.12, -TS * 0.055, TS * 0.36, TS * 0.11);
-        ctx!.fillStyle = "#2b2f36";
-        ctx!.fillRect(TS * 0.14, TS * 0.02, TS * 0.1, TS * 0.16);
-        ctx!.restore();
+      // Kendi silahın — diğer oyuncularla AYNI fonksiyon (tek kaynak)
+      if (!selfDead) {
+        drawHeldWeapon(cx, cy, selfDir.current, weaponRef.current === "sword", swordKeyRef.current, swordSwing.current / TUNING.swordSwingSec);
       }
       if (selfDead) ctx!.restore();
       drawNameTag(cx, cy, nameOf(mySeat), selfDead ? "#999" : myColor); // kendi ismin de kafanın üstünde
@@ -1822,7 +1841,9 @@ export default function OnlineGame({
           // olduğu için self-healing o 5 saniye boyunca KÖR kalıyordu (oyuncu eski labirentte
           // oynamaya devam ediyordu). Hedefi duyurunca geride kalan ANINDA fark edip istiyor.
           const hostLvl = amHost.current ? (pendingLevelNum.current || levelRef.current.level) : undefined;
-          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current, lvl: hostLvl });
+          // w/swc/swg: elindeki silah + kılıç rengi + savurma ilerlemesi → herkes birbirinin
+          // silahını (ve satın aldığı kılıç rengini) görsün.
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current, lvl: hostLvl, w: weaponRef.current, swc: swordKeyRef.current, swg: Math.max(0, swordSwing.current / TUNING.swordSwingSec) });
         }
         // #1: host, overlay boyunca "result"ı periyodik yeniden yayınlar (kayıp mesaj
         // sigortası — tek yayında düşerse ~1 sn içinde tekrar ulaşır).
