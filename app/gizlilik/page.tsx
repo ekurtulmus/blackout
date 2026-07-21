@@ -9,8 +9,10 @@ import type { Metadata } from "next";
 // Oyuna yeni bir servis (reklam, analitik, oyuncu veritabanı) eklenirse BU SAYFA GÜNCELLENMELİ —
 // yanlış gizlilik beyanı Play'de uygulamanın kaldırılma sebebidir.
 
-// TEK DEĞİŞTİRİLECEK YER: iletişim adresi. Play mağaza kaydındaki e-posta ile AYNI olmalı.
-const ILETISIM = "kriptoofis@gmail.com";
+// İLETİŞİM: bu sayfada e-posta adresi YAYINLANMIYOR (kullanıcı isteği — açık adres spam çeker).
+// Yerine Play mağaza kaydındaki geliştirici iletişim bilgisine yönlendiriliyor; Play zaten
+// her uygulama için orada bir iletişim yolu göstermeyi zorunlu tutuyor, yani politika
+// "ulaşılabilir iletişim" şartını karşılıyor.
 const SON_GUNCELLEME = "21 Temmuz 2026";
 
 export const metadata: Metadata = {
@@ -31,7 +33,10 @@ function Blok({ baslik, children }: { baslik: string; children: React.ReactNode 
 
 export default function GizlilikPage() {
   return (
-    <main style={{ maxWidth: 760, margin: "0 auto", padding: "48px 22px 80px" }}>
+    // .doc-scr: body { overflow:hidden } (oyun için gerekli) sayfayı kaydırılamaz
+    // yapıyordu → sayfanın kendisi kaydırma kabı (bkz. globals.css).
+    <main className="doc-scr">
+      <div className="doc-inner">
       <h1 style={{ fontFamily: "Cinzel, serif", fontSize: "clamp(30px,7vw,44px)", color: "var(--ink-title)", margin: 0 }}>
         Gizlilik Politikası
       </h1>
@@ -103,13 +108,15 @@ export default function GizlilikPage() {
       </Blok>
 
       <Blok baslik="Değişiklikler ve iletişim">
-        Bu politika değişirse yukarıdaki tarih güncellenir. Sorun veya talebin için:{" "}
-        <a href={`mailto:${ILETISIM}`} style={{ color: "var(--gold-warm)" }}>{ILETISIM}</a>
+        Bu politika değişirse yukarıdaki tarih güncellenir. Soru, talep veya veri silme isteğin
+        için <b>Google Play&apos;deki uygulama sayfasında yer alan geliştirici iletişim bilgisini</b>{" "}
+        kullanabilirsin.
       </Blok>
 
       <p style={{ marginTop: 40 }}>
         <a href="/" style={{ color: "var(--gold-warm)", fontSize: 15 }}>← Oyuna dön</a>
       </p>
+      </div>
     </main>
   );
 }

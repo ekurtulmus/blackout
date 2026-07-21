@@ -200,6 +200,21 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* BELGE SAYFALARI (gizlilik politikası vb.).
+   `body { overflow: hidden }` OYUN için gerekli — tam ekran canvas kaymasın diye. Ama bu,
+   normal uzun metin sayfalarını KAYDIRILAMAZ yapıyor (sayfa aşağı inmiyordu).
+   Çözüm: body'ye DOKUNMA (yoksa oyun ekranı bozulur) → sayfanın KENDİSİ kaydırma kabı olsun.
+   Aynı desen projede zaten var (bkz. tam ekran overlay'ler: position:fixed + overflow-y:auto). */
+.doc-scr {
+  position: fixed;
+  inset: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch; /* iOS'ta akıcı kaydırma */
+  overscroll-behavior: contain;
+  background: var(--bg);
+}
+.doc-inner { max-width: 760px; margin: 0 auto; padding: 48px 22px 96px; }
+
 /* Kontroller gövdeden Archivo miras alır */
 button,
 input,
