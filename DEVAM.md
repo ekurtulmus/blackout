@@ -2,12 +2,14 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-21** · Canlı sürüm: commit `6b07d95` (oturum #19). ⚠️ **Oturum #20-21-22 henüz
-> CANLIYA ALINMADI** — yerelde `tsc` + `next build` temiz.
+> Son güncelleme: **2026-07-21** · Canlı sürüm: commit **`ec6af54`** (oturum #20+#21+#22 tek commit).
+> CANLIDA DOĞRULANDI (CSS+JS paketinden): `fin-last/fin-word/fin-dark` · `mm-soon-note/is-soon` ·
+> `price:44/270/360` · "Şimdilik." · `.gold-*` ve "Altın Satın Al" SİLİNMİŞ.
 > #20: kampanya final sahnesi · #21: online kapatıldı + ekonomi revizyonu (altın satışı YOK, fiyat ×3,
 > başlangıç 0) + sıfırlama hatası · #22: **bölüm geçişi desync kök nedeni (bayat reachexit)** +
 > arkadaş isim senkronu + olmayan koda istek + bölüm-sonu tablosu.
-> ⚠️ #22'deki online düzeltmeleri **2 GERÇEK CİHAZLA DOĞRULANMADI** — sahada test edilmeli.
+> 🔴 **#22'deki online düzeltmeleri 2 GERÇEK CİHAZLA DOĞRULANMADI** — canlıda test edilmeli:
+> A kapıdan geçince B de aynı anda geçiyor mu, puan doğru kişiye mi yazılıyor, oda kapanıyor mu.
 > Oyun adı **JILTED** (iç anahtarlar `blackout_` KORUNDU). TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif.
 >
 > ### 🔜 AÇIK İŞLER (yeni sohbette buradan devam)
