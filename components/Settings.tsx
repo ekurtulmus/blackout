@@ -3,29 +3,11 @@
 import { useEffect, useState } from "react";
 import { sound } from "@/lib/audio";
 import { getMyCode } from "@/lib/friends";
+import { wipeProgress } from "@/lib/progress";
 import Icon from "@/components/Icon";
 
-// Sıfırlamada KORUNACAK anahtarlar: kimlik (arkadaş kodu/isim/arkadaşlar) + ses tercihleri.
-// DİKKAT — burada "SİLİNECEKLER" listesi TUTMUYORUZ: eskiden öyleydi ve her yeni özellikte
-// unutuluyordu. Unutulanlar yüzünden "sıfırladım ama hiçbir şey sıfırlanmadı" oluyordu:
-//   blackout_sp_progress  → "Devam Et · Bölüm 7" duruyordu
-//   blackout_stats        → başarım sayaçları duruyordu, başarımlar anında geri açılıyordu
-//   blackout_equipped     → kuşanılan kozmetik duruyordu
-//   blackout_best_<id>    → Kör Gece / Sürü Gecesi rekorları duruyordu (yalnız endless+arena siliniyordu)
-// Artık TERSİ: "blackout_" ile başlayan HER ŞEY silinir, yalnız aşağıdakiler kalır.
-// (app/page.tsx'teki tek-seferlik sürüm sıfırlamasıyla AYNI mantık — yeni anahtar
-// eklendiğinde burayı güncellemek GEREKMEZ.)
-const KEEP_KEYS = new Set([
-  "blackout_uid",
-  "blackout_name",
-  "blackout_friends",
-  "blackout_sent",
-  "blackout_freq_in",
-  "blackout_vol",
-  "blackout_music",
-  "blackout_muted",
-  "blackout_reset_v",
-]);
+// Sıfırlama kuralı + korunan anahtarlar TEK KAYNAKTA: lib/progress.ts
+// (app/page.tsx'teki tek-seferlik sürüm sıfırlaması da aynı fonksiyonu kullanır).
 
 const NAME_KEY = "blackout_name";
 
@@ -54,17 +36,7 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   }
 
   function resetProgress() {
-    try {
-      // Önce topla, SONRA sil: silerken indeksler kayar, aynı döngüde silmek anahtar atlatır.
-      const rm: string[] = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const k = localStorage.key(i);
-        if (k && k.startsWith("blackout_") && !KEEP_KEYS.has(k)) rm.push(k);
-      }
-      for (const k of rm) localStorage.removeItem(k);
-    } catch {
-      /* geç */
-    }
+    wipeProgress();
     // Tüm bellek önbelleklerini de temizlemek için sayfayı yeniden yükle
     try {
       window.location.reload();

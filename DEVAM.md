@@ -2,7 +2,10 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-21** · Canlı sürüm: commit **`ec6af54`** (oturum #20+#21+#22 tek commit).
+> Son güncelleme: **2026-07-21** · 🔴 **TOPLU SIFIRLAMA AKTİF:** `blackout_reset_v="2026-07-21-ekonomi"`
+> — oyunu açan HERKES bir kez sıfırlanır (kimlik/arkadaş/ses korunur). Tekrar gerekirse damgayı değiştir
+> (`app/page.tsx`; kural `lib/progress.ts`).
+> Canlı sürüm: commit **`ec6af54`** (oturum #20+#21+#22 tek commit).
 > CANLIDA DOĞRULANDI (CSS+JS paketinden): `fin-last/fin-word/fin-dark` · `mm-soon-note/is-soon` ·
 > `price:44/270/360` · "Şimdilik." · `.gold-*` ve "Altın Satın Al" SİLİNMİŞ.
 > #20: kampanya final sahnesi · #21: online kapatıldı + ekonomi revizyonu (altın satışı YOK, fiyat ×3,
@@ -87,6 +90,22 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Ayarlar:** "Müzik"+"Tüm Sesler" → tek **"Ses"** + açıkken **"Müzik"** alt seçeneği; isim açıklaması kısaldı.
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
+
+## OTURUM 2026-07-21 #23 — TOPLU SIFIRLAMA (herkes baştan) + sıfırlama mantığı tek kaynağa
+Doğrulama: `tsc` TEMİZ + tarayıcıda gerçek yükleme testi (aşağıda).
+- 🔴 **HERKESİN İLERLEMESİ SIFIRLANDI:** `app/page.tsx` sürüm damgası
+  `blackout_reset_v` **"2026-07-19-fresh" → "2026-07-21-ekonomi"**. Oyunu bir daha açan HERKESTE
+  bir kez çalışır. **NEDEN:** ekonomi değişti (altın satışı kalktı, fiyat ×3, başlangıç 0) —
+  eski kayıtlarda 1000 altınla her şeyi almış oyuncular vardı, yeni ekonomi anlamsız kalıyordu.
+  **Tekrar toplu sıfırlama gerekirse: bu damgayı değiştirmek YETER.**
+- ✅ **TEK KAYNAK `lib/progress.ts` (YENİ):** `PROGRESS_KEEP_KEYS` + `wipeProgress()`.
+  Aynı korunacaklar listesi `page.tsx` (toplu) ve `Settings.tsx` (kullanıcının kendi butonu)
+  içinde İKİ KOPYA hâlindeydi (#21'de öyle bırakılmıştı) → ikisi de artık `wipeProgress()` çağırıyor.
+  Kural değişmedi: `blackout_` ile başlayan HER ŞEY silinir, yalnız kimlik+arkadaşlar+ses korunur.
+- ✅ Doğrulandı (tarayıcı): eski damgalı dolu kayıt → yüklemede coins/inventory/sp_progress/stats/
+  achievements/missions/journal/best_99/equipped **silindi**, coins **0**; name/uid/friends/sent/
+  vol/muted **korundu**; damga yenilendi. **İKİNCİ yüklemede yeni ilerleme SİLİNMEDİ** (idempotent —
+  yoksa herkes her açılışta sıfırlanırdı).
 
 ## OTURUM 2026-07-21 #22 — BÖLÜM GEÇİŞİ DESYNC (kök neden) + arkadaş isim/kod hataları
 Doğrulama: `tsc` + `next build` TEMİZ. ⚠️ **Online akış 2 GERÇEK CİHAZ ister — düzeltmeler kod

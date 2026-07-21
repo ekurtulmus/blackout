@@ -9,6 +9,7 @@ import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import Splash from "@/components/Splash";
 import Finale from "@/components/Finale";
+import { wipeProgress } from "@/lib/progress";
 import Friends from "@/components/Friends";
 import Online from "@/components/Online";
 import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
@@ -219,19 +220,13 @@ export default function Page() {
     // TEK SEFERLİK İLERLEME SIFIRLAMA: bu sürümle herkes SIFIRDAN başlar. Kimlik (arkadaş
     // kodu/isim/arkadaşlar) ve ses tercihleri KORUNUR; altın/envanter/görev/başarım/skor/
     // günlük/sır/devam kaydı silinir. reset_v eşleşince bir daha çalışmaz.
+    // Bu damgayı DEĞİŞTİRMEK = HERKESİN ilerlemesini bir kez sıfırlar (oyunu bir daha
+    // açtığında). Ekonomi değişince (altın satışı kaldırıldı, fiyat ×3, başlangıç 0)
+    // eski kayıtlar anlamsız kalıyordu: 1000 altınla her şeyi almış oyuncular vardı.
     try {
-      const RESET_V = "2026-07-19-fresh";
+      const RESET_V = "2026-07-21-ekonomi";
       if (localStorage.getItem("blackout_reset_v") !== RESET_V) {
-        const keep = new Set([
-          "blackout_uid", "blackout_name", "blackout_friends", "blackout_sent",
-          "blackout_freq_in", "blackout_vol", "blackout_music", "blackout_muted", "blackout_reset_v",
-        ]);
-        const rm: string[] = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const k = localStorage.key(i);
-          if (k && k.startsWith("blackout_") && !keep.has(k)) rm.push(k);
-        }
-        for (const k of rm) localStorage.removeItem(k);
+        wipeProgress(); // korunanlar: kimlik + arkadaşlar + ses (bkz. lib/progress.ts)
         localStorage.setItem("blackout_reset_v", RESET_V);
       }
     } catch {
