@@ -6,6 +6,7 @@
 
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import { getBrowserClient } from "./supabaseClient";
+import type { DictKey } from "@/lib/i18n/dict";
 
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const UID_KEY = "blackout_uid";
@@ -333,11 +334,13 @@ export class FriendPresence {
   // kod doğrulanmadan yayın yapılıyordu: yanlış/olmayan koda istek "gönderildi"
   // görünüp boşluğa gidiyordu (üstelik markSent yüzünden bir daha denenemiyordu).
   // Artık çevrimiçi değilse GÖNDERMİYORUZ ve işaretlemiyoruz → kullanıcı tekrar deneyebilir.
-  sendRequest(toCode: string): { ok: boolean; reason?: string } {
+  // DİKKAT: `reason` METİN DEĞİL, ÇEVİRİ ANAHTARIDIR. Bu dosya React olmadığı için
+  // useT() kullanamaz; çağıran taraf (Friends.tsx / OnlineLobby.tsx) t(reason) ile basar.
+  sendRequest(toCode: string): { ok: boolean; reason?: DictKey } {
     const c = toCode.trim().toUpperCase();
-    if (!this.ch) return { ok: false, reason: "Bağlantı yok — internetini kontrol et" };
+    if (!this.ch) return { ok: false, reason: "online.friends.err.noConnection" };
     if (!this.isOnline(c)) {
-      return { ok: false, reason: "Bu kodda çevrimiçi kimse yok. Kodu kontrol et — arkadaşın oyunu açık olmalı." };
+      return { ok: false, reason: "online.friends.err.offline" };
     }
     markSent(c);
     this.ch.send({

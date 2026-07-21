@@ -1,49 +1,33 @@
 // JILTED — desteklenen diller (tek kaynak).
 //
-// Dil eklemek: (1) buraya kod + meta ekle, (2) lib/i18n/dict/<kod>.ts oluştur,
-// (3) lib/i18n/dict/index.ts'e bağla. TypeScript eksik çeviriyi DERLEME HATASI yapar
-// (bkz. dict/index.ts) — yani "bir dilde metin unutuldu" durumu imkânsızdır.
+// ŞU AN: Türkçe + İngilizce. (Rusça/İspanyolca/Hintçe/Çince başlanmıştı, kullanıcı
+// isteğiyle KALDIRILDI — önce oyunun TAMAMI İngilizceye çevrilecek, diğer diller sonra.)
+//
+// Dil eklemek: (1) LANGS + LANG_META'ya ekle, (2) gerekiyorsa LANG_FONTS'a font ekle,
+// (3) lib/i18n/dict/parts/*.ts dosyalarının HEPSİNE o dilin metinlerini ekle.
+// TypeScript eksik çeviriyi DERLEME HATASI yapar (bkz. parts/_part.ts) — yani bir dilde
+// metin unutulması imkânsızdır; hangi parçada eksik olduğunu tsc yüzüne söyler.
 
-export const LANGS = ["tr", "en", "ru", "es", "hi", "zh"] as const;
+export const LANGS = ["tr", "en"] as const;
 export type Lang = (typeof LANGS)[number];
 
 export const DEFAULT_LANG: Lang = "tr";
 
-// native: dil seçicide KENDİ dilinde görünür (kullanıcı kendi dilini tanısın diye —
-// "Rusça" yazarsak Rus oyuncu okuyamaz).
+// native: dil seçicide KENDİ dilinde görünür (kullanıcı kendi dilini tanısın diye).
 export const LANG_META: Record<Lang, { native: string; en: string; flag: string }> = {
   tr: { native: "Türkçe", en: "Turkish", flag: "🇹🇷" },
   en: { native: "English", en: "English", flag: "🇬🇧" },
-  ru: { native: "Русский", en: "Russian", flag: "🇷🇺" },
-  es: { native: "Español", en: "Spanish", flag: "🇪🇸" },
-  hi: { native: "हिन्दी", en: "Hindi", flag: "🇮🇳" },
-  zh: { native: "中文", en: "Chinese", flag: "🇨🇳" },
 };
 
-// YAZI TİPİ SORUNU: Cinzel (başlıklar) YALNIZ Latin; Archivo'da da Kiril/Devanagari/CJK yok.
-// Bu diller için ayrı font ailesi gerekir, yoksa metin sistem fontuna düşer ve
-// oyunun tipografi kimliği bozulur.
-// Latin diller (tr/en/es) mevcut fontları kullanır → EK İNDİRME YOK.
-// Diğerleri yalnız O DİL SEÇİLİYSE yüklenir (Çince font ~10 MB, herkese indirtilemez).
-export const LANG_FONTS: Partial<Record<Lang, { href: string; title: string; body: string }>> = {
-  ru: {
-    href: "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Noto+Sans:wght@400;500;600;700;800&display=swap",
-    title: '"Playfair Display", serif', // Kiril destekli serif (Cinzel'in yerine)
-    body: '"Noto Sans", sans-serif',
-  },
-  hi: {
-    href: "https://fonts.googleapis.com/css2?family=Tiro+Devanagari+Hindi&family=Noto+Sans+Devanagari:wght@400;500;600;700;800&display=swap",
-    title: '"Tiro Devanagari Hindi", serif',
-    body: '"Noto Sans Devanagari", sans-serif',
-  },
-  zh: {
-    href: "https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&family=Noto+Sans+SC:wght@400;500;700&display=swap",
-    title: '"Noto Serif SC", serif',
-    body: '"Noto Sans SC", sans-serif',
-  },
-};
+// DİLE GÖRE YAZI TİPİ — mekanizma DURUYOR ama şu an boş.
+// Cinzel (başlıklar) YALNIZ Latin alfabesini kapsar; Archivo'da da Kiril/Devanagari/CJK yok.
+// Türkçe ve İngilizce Latin olduğu için mevcut fontlar yeterli → EK İNDİRME YOK.
+// Rusça/Hintçe/Çince geri gelirse buraya font eklemek yeter (globals.css --font-title /
+// --font-body değişkenleri zaten hazır), yoksa o diller sistem fontuna düşer.
+export const LANG_FONTS: Partial<Record<Lang, { href: string; title: string; body: string }>> = {};
 
-// Tarayıcı dilinden en yakın desteklenen dili bul ("en-US" → "en", "zh-Hans-CN" → "zh").
+// Tarayıcı dilinden en yakın desteklenen dili bul ("en-US" → "en").
+// Desteklenmeyen bir dil (ör. "de") gelirse Türkçeye düşer.
 export function detectLang(candidates: readonly string[]): Lang {
   for (const c of candidates) {
     const base = c.toLowerCase().split("-")[0];

@@ -24,15 +24,9 @@ import { isOnlineAvailable } from "@/lib/supabaseClient";
 import { getCoins, addCoins } from "@/lib/coins";
 import { getFriends, getMyCode, isSent, type FriendPresence } from "@/lib/friends";
 import Icon from "@/components/Icon";
+import { useT } from "@/lib/i18n";
 
 type Mode = "choose" | "host" | "join";
-
-// (ROOM_COST lib/online.ts'ten import edilir; yerel tanım yok)
-const DIFFS: { key: RaceDiff; label: string; desc: string }[] = [
-  { key: "kolay", label: "Kolay", desc: "az/yavaş gelin" },
-  { key: "orta", label: "Orta", desc: "dengeli" },
-  { key: "zor", label: "Zor", desc: "çok/hızlı/zeki gelin" },
-];
 
 const NAME_KEY = "blackout_name";
 
@@ -51,6 +45,13 @@ export default function OnlineLobby({
   publicRoom?: boolean;
   initialHost?: boolean;
 }) {
+  const t = useT();
+  // (ROOM_COST lib/online.ts'ten import edilir; yerel tanım yok)
+  const DIFFS: { key: RaceDiff; label: string; desc: string }[] = [
+    { key: "kolay", label: t("online.lobby.diff.easy"), desc: t("online.lobby.diff.easy.d") },
+    { key: "orta", label: t("online.lobby.diff.normal"), desc: t("online.lobby.diff.normal.d") },
+    { key: "zor", label: t("online.lobby.diff.hard"), desc: t("online.lobby.diff.hard.d") },
+  ];
   const [mode, setMode] = useState<Mode>("choose");
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
@@ -102,7 +103,7 @@ export default function OnlineLobby({
   // Çevrimiçi arkadaş durumunu tazele (davet paneli için)
   const [, setTick] = useState(0);
   useEffect(() => {
-    const iv = window.setInterval(() => setTick((t) => t + 1), 2500);
+    const iv = window.setInterval(() => setTick((n) => n + 1), 2500);
     return () => window.clearInterval(iv);
   }, []);
   // Odadaki oyuncu listesi + her birine "+ Arkadaş" (kendisi/zaten arkadaş hariç; istek kalıcı)
@@ -116,23 +117,23 @@ export default function OnlineLobby({
           const canAdd = !me && !!p.code && p.code !== getMyCode() && !friendCodes.has(p.code);
           return (
             <div key={p.id} className="how" style={{ padding: "8px 12px", margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-              <b style={{ flex: 1, textAlign: "left", color: me ? "#6ee7ff" : "#7dffb0" }}>{(p.name && p.name.trim()) || p.code || "Oyuncu"}{me ? " (sen)" : ""}</b>
+              <b style={{ flex: 1, textAlign: "left", color: me ? "#6ee7ff" : "#7dffb0" }}>{(p.name && p.name.trim()) || p.code || t("online.lobby.player")}{me ? ` (${t("online.you")})` : ""}</b>
               {canAdd &&
                 (isSent(p.code!) ? (
-                  <span style={{ fontSize: 12, color: "#ffd75a" }}>istek ⏳</span>
+                  <span style={{ fontSize: 12, color: "#ffd75a" }}>{t("online.lobby.reqPending")}</span>
                 ) : (
                   <button
                     className="btn"
                     style={{ padding: "5px 9px", display: "inline-flex", alignItems: "center", gap: 3 }}
-                    title="Arkadaş ekle"
-                    aria-label="Arkadaş ekle"
+                    title={t("online.friends.add.btn")}
+                    aria-label={t("online.friends.add.btn")}
                     onClick={() => {
                       const r = presence?.sendRequest(p.code!);
                       if (!r?.ok) {
-                        setNotice(r?.reason ?? "İstek gönderilemedi");
+                        setNotice(t(r?.reason ?? "online.friends.err.failed"));
                         window.setTimeout(() => setNotice(""), 4000);
                       }
-                      setTick((t) => t + 1);
+                      setTick((n) => n + 1);
                     }}
                   >
                     <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>+</span>
@@ -166,8 +167,8 @@ export default function OnlineLobby({
   // Yalnız gerçekten yazılmış ismi sakla — kod ASLA isim olarak kaydedilmez.
   function saveName(n: string) {
     try {
-      const t = n.trim();
-      if (t) localStorage.setItem(NAME_KEY, t);
+      const v = n.trim();
+      if (v) localStorage.setItem(NAME_KEY, v);
     } catch {
       /* geç */
     }
@@ -178,8 +179,8 @@ export default function OnlineLobby({
   // katıl). Orada `name` state'i HENÜZ boş — setName asenkron. State'e güvenilirse
   // isim yerine hep kod gönderilir. Bu yüzden kaynak localStorage.
   function resolveName(typed: string): string {
-    const t = typed.trim();
-    if (t) return t;
+    const v = typed.trim();
+    if (v) return v;
     try {
       const s = (localStorage.getItem(NAME_KEY) || "").trim();
       if (s && s !== "Ev sahibi" && s !== "Oyuncu") return s;
@@ -224,7 +225,7 @@ export default function OnlineLobby({
     // başlangıç altını 0 → ücret alınsaydı yeni oyuncu arkadaşıyla HİÇ oynayamazdı.
     const cost = publicRoom ? ROOM_COST : 0;
     if (getCoins() < cost) {
-      setNotice(`Oda kurmak için ${cost} altın gerekli (elinde ${getCoins()}). Oynayıp altın kazan.`);
+      setNotice(t("online.lobby.needGold", { cost, have: getCoins() }));
       window.setTimeout(() => setNotice(""), 4000);
       return;
     }
@@ -285,8 +286,8 @@ export default function OnlineLobby({
     return (
       <div className="scr">
         <div className="scr-head">
-          <h2 className="scr-title" style={{ color: "#ff6b6b" }}>ONLINE KULLANILAMIYOR</h2>
-          <p className="scr-sub">Supabase ayarları eksik (.env.local). Tek kişilik oynayabilirsin.</p>
+          <h2 className="scr-title" style={{ color: "#ff6b6b" }}>{t("online.lobby.offline.title")}</h2>
+          <p className="scr-sub">{t("online.lobby.offline.sub")}</p>
         </div>
       </div>
     );
@@ -307,21 +308,17 @@ export default function OnlineLobby({
   return (
     <div className="scr lobby">
       <div className="scr-head">
-        <div className="scr-eyebrow">{mode === "host" ? "Bekleme Lobisi" : mode === "join" ? "Odaya Katıl" : "Çok Oyunculu"}</div>
-        <h2 className="scr-title">ÖLÜM KOŞUSU</h2>
+        <div className="scr-eyebrow">{mode === "host" ? t("online.lobby.eyebrow.host") : mode === "join" ? t("online.lobby.eyebrow.join") : t("online.lobby.eyebrow.choose")}</div>
+        <h2 className="scr-title">{t("online.lobby.title")}</h2>
       </div>
 
       {mode === "choose" && (
         <>
-          <div className="subtitle">
-            2-6 kişi aynı karanlığa hapis. Gelinler hepinizin peşinde — ilk
-            kaçan hayatta kalır, ötekiler geride kalır. Oda kur ve kodu paylaş,
-            ya da bir arkadaşının koduyla karanlığa katıl.
-          </div>
-          <div className="subtitle" style={{ marginBottom: 2 }}>Oyuncu adın:</div>
+          <div className="subtitle">{t("online.lobby.intro")}</div>
+          <div className="subtitle" style={{ marginBottom: 2 }}>{t("online.lobby.yourName")}</div>
           {nameInput}
           <div className="subtitle" style={{ margin: "2px 0", fontSize: 15, display: "inline-flex", alignItems: "center", gap: 6, flexWrap: "wrap", justifyContent: "center" }}>
-            Cüzdan <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</b>
+            {t("online.lobby.wallet")} <b style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon name="coin" size={13} /> {coins}</b>
           </div>
           {notice && (
             <div className="subtitle" style={{ color: "#ff9a3c", fontSize: 14, maxWidth: 420 }}>{notice}</div>
@@ -332,15 +329,15 @@ export default function OnlineLobby({
               onClick={host}
               disabled={publicRoom ? coins < ROOM_COST : false}
               style={{ opacity: publicRoom && coins < ROOM_COST ? 0.5 : 1 }}
-              title={publicRoom && coins < ROOM_COST ? `${ROOM_COST} altın gerekli` : "Oda kur"}
+              title={publicRoom && coins < ROOM_COST ? t("online.lobby.needGold.short", { cost: ROOM_COST }) : t("online.lobby.host.tip")}
             >
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                <Icon name="home" size={15} /> Oda Kur
+                <Icon name="home" size={15} /> {t("online.lobby.host")}
                 {publicRoom && <>({ROOM_COST} <Icon name="coin" size={12} />)</>}
               </span>
             </button>
             <button className="btn" onClick={() => setMode("join")}>
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="key" size={15} /> Odaya Katıl</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="key" size={15} /> {t("online.lobby.join")}</span>
             </button>
           </div>
         </>
@@ -348,7 +345,7 @@ export default function OnlineLobby({
 
       {mode === "host" && (
         <>
-          <div className="subtitle">Bu kodu arkadaşlarına ver:</div>
+          <div className="subtitle">{t("online.lobby.shareCode")}</div>
           <div
             style={{
               fontSize: "clamp(48px,14vw,110px)",
@@ -362,7 +359,8 @@ export default function OnlineLobby({
           </div>
 
           <div className="subtitle" style={{ margin: "4px 0" }}>
-            Oyuncular ({count}/{MAX_PLAYERS}){count < 2 ? " — en az 2 oyuncu gerekli" : ""}
+            {t("online.lobby.players", { n: count, max: MAX_PLAYERS })}
+            {count < 2 ? ` ${t("online.lobby.need2")}` : ""}
           </div>
           {rosterList()}
 
@@ -376,11 +374,11 @@ export default function OnlineLobby({
             return (
               <div className="how" style={{ maxWidth: 420, width: "100%", padding: 14 }}>
                 <div style={{ fontWeight: 800, color: "#7dffb0", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon name="people" size={15} /> Arkadaşını çağır
+                  <Icon name="people" size={15} /> {t("online.lobby.inviteTitle")}
                 </div>
                 {onlineFriends.length === 0 ? (
                   <div style={{ fontSize: 13, color: "var(--muted)" }}>
-                    Davet edilebilecek çevrimiçi arkadaşın yok.
+                    {t("online.lobby.noFriendsOnline")}
                   </div>
                 ) : (
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -390,7 +388,7 @@ export default function OnlineLobby({
                         <span style={{ flex: 1, fontWeight: 700 }}>{f.name}</span>
                         {invited.has(f.code) ? (
                           <span style={{ fontSize: 12, color: "#7dffb0", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                            <Icon name="check" size={13} /> Davet edildi
+                            <Icon name="check" size={13} /> {t("online.lobby.invited")}
                           </span>
                         ) : (
                           <button
@@ -398,7 +396,7 @@ export default function OnlineLobby({
                             style={{ padding: "5px 12px" }}
                             onClick={() => inviteFriend(f.code)}
                           >
-                            Davet Et
+                            {t("online.lobby.invite")}
                           </button>
                         )}
                       </div>
@@ -412,7 +410,7 @@ export default function OnlineLobby({
           {/* Zorluk: Tek Kişilik brifingiyle AYNI 3'lü segment → daima yan yana
               (eski hâli flex-wrap'liydi, dar ekranda alt alta yığılıyordu) */}
           <div style={{ margin: "6px 0", width: "100%", maxWidth: 420 }}>
-            <div className="seg-label" style={{ marginTop: 0 }}>Zorluk</div>
+            <div className="seg-label" style={{ marginTop: 0 }}>{t("online.lobby.diff")}</div>
             <div className="seg seg-3">
               {DIFFS.map((d) => (
                 <button
@@ -433,11 +431,11 @@ export default function OnlineLobby({
               className={"btn" + (arena ? " btn-primary" : "")}
               onClick={() => setArena((v) => !v)}
               style={{ opacity: arena ? 1 : 0.75 }}
-              title="Açıkça: labirent yerine açık arena; çıkış yok, dalga dalga gelen gelinlere karşı hayatta kal"
+              title={t("online.lobby.arena.tip")}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> Arena Modu: {arena ? "AÇIK" : "KAPALI"}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> {t("online.lobby.arena", { v: arena ? t("online.on") : t("online.off") })}</span>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
-                Açık alan · çıkış yok · dalga hayatta kalma (skor = süre)
+                {t("online.lobby.arena.d")}
               </span>
             </button>
           </div>
@@ -448,11 +446,11 @@ export default function OnlineLobby({
               className={"btn" + (pvp ? " btn-primary" : "")}
               onClick={() => setPvp((v) => !v)}
               style={{ opacity: pvp ? 1 : 0.75 }}
-              title="Açıkça: oyuncular birbirine de mermi işletir (her isabet %10 can)"
+              title={t("online.lobby.pvp.tip")}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> Oyuncular Birbirini Vurabilsin: {pvp ? "AÇIK" : "KAPALI"}</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="swords" size={14} /> {t("online.lobby.pvp", { v: pvp ? t("online.on") : t("online.off") })}</span>
               <span style={{ display: "block", fontSize: 12, opacity: 0.75, fontWeight: 400 }}>
-                Mermi rakibe de değer — her isabet canının %10'u
+                {t("online.lobby.pvp.d")}
               </span>
             </button>
           </div>
@@ -464,15 +462,15 @@ export default function OnlineLobby({
               disabled={count < 2}
               style={{ opacity: count < 2 ? 0.5 : 1 }}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="play" size={13} fill /> Başlat ({count})</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="play" size={13} fill /> {t("online.lobby.start", { n: count })}</span>
             </button>
             <button className="btn" onClick={back}>
-              ← İptal
+              ← {t("online.lobby.cancel")}
             </button>
           </div>
           {status === "error" && (
             <div className="subtitle" style={{ color: "#ff6b6b" }}>
-              Bağlantı hatası. Tekrar dene.
+              {t("online.lobby.err.retry")}
             </div>
           )}
         </>
@@ -481,9 +479,9 @@ export default function OnlineLobby({
       {/* Katılım: bağlanmadan önce kod gir */}
       {mode === "join" && status !== "connected" && (
         <>
-          <div className="subtitle" style={{ marginBottom: 2 }}>Adın:</div>
+          <div className="subtitle" style={{ marginBottom: 2 }}>{t("online.lobby.yourNameShort")}</div>
           {nameInput}
-          <div className="subtitle">Ev sahibinin verdiği 4 haneli kodu gir:</div>
+          <div className="subtitle">{t("online.lobby.enterCode")}</div>
           <input
             className="codeinput"
             value={code}
@@ -501,11 +499,11 @@ export default function OnlineLobby({
           />
           <div className="subtitle" style={{ minHeight: 22 }}>
             {status === "connecting"
-              ? "Bağlanıyor…"
+              ? t("online.lobby.connecting")
               : status === "error"
-              ? "Bağlantı hatası. Kodu kontrol et."
+              ? t("online.lobby.err.code")
               : status === "left"
-              ? "Ev sahibi ayrıldı."
+              ? t("online.lobby.hostLeft")
               : ""}
           </div>
           <div style={{ display: "flex", gap: 12 }}>
@@ -514,10 +512,10 @@ export default function OnlineLobby({
               onClick={join}
               disabled={code.length < 4}
             >
-              Katıl →
+              {t("online.lobby.joinGo")} →
             </button>
             <button className="btn" onClick={back}>
-              ← Geri
+              ← {t("common.back")}
             </button>
           </div>
         </>
@@ -526,7 +524,7 @@ export default function OnlineLobby({
       {/* Katıldıktan sonra: İZLEYİCİ lobisi — host'la aynı ekran ama zorluk/başlat PASİF */}
       {mode === "join" && status === "connected" && (
         <>
-          <div className="subtitle" style={{ color: "#7dffb0" }}>Odaya katıldın — ev sahibi başlatınca oyun başlar.</div>
+          <div className="subtitle" style={{ color: "#7dffb0" }}>{t("online.lobby.joined")}</div>
           <div
             style={{
               fontSize: "clamp(40px,12vw,90px)", fontWeight: 900, letterSpacing: "0.2em",
@@ -536,13 +534,13 @@ export default function OnlineLobby({
             {code}
           </div>
           <div className="subtitle" style={{ margin: "4px 0" }}>
-            Oyuncular ({count}/{MAX_PLAYERS})
+            {t("online.lobby.players", { n: count, max: MAX_PLAYERS })}
           </div>
           {rosterList()}
 
           {/* Katılan: zorluğu göremez ama aynı düzende görsün (ev sahibi seçer) */}
           <div style={{ margin: "4px 0", opacity: 0.55, width: "100%", maxWidth: 420 }}>
-            <div className="seg-label" style={{ marginTop: 0 }}>Zorluk <span style={{ letterSpacing: 0 }}>(ev sahibi seçer)</span></div>
+            <div className="seg-label" style={{ marginTop: 0 }}>{t("online.lobby.diff")} <span style={{ letterSpacing: 0 }}>{t("online.lobby.diff.hostPicks")}</span></div>
             <div className="seg seg-3">
               {DIFFS.map((d) => (
                 <button key={d.key} className="seg-item" disabled style={{ cursor: "not-allowed" }}>
@@ -553,12 +551,12 @@ export default function OnlineLobby({
           </div>
 
           <button className="btn btn-primary" disabled style={{ opacity: 0.4, cursor: "not-allowed" }}>
-            Ev sahibi başlatır…
+            {t("online.lobby.waitHost")}
           </button>
 
           {/* Odada kod girme alanı KALDIRILDI: roster'daki her oyuncunun yanında zaten
               "+" ile istek gönderiliyor; kodu elle yazdırmak gereksizdi. */}
-          <button className="btn" onClick={back}>← Ayrıl</button>
+          <button className="btn" onClick={back}>← {t("online.lobby.leave")}</button>
         </>
       )}
     </div>

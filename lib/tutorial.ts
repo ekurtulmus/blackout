@@ -4,6 +4,7 @@
 // "gerisi labirent"). Motor bu senaryoyu (beats) yol ilerlemesine göre işletir.
 import type { Vec } from "./types";
 import type { Maze } from "./maze";
+import type { DictKey } from "./i18n/dict";
 
 // Kıvrımlı koridor (boustrophedon): tek genişlikte yılan yol; başka her yer duvar.
 // Döner: maze + başlangıçtan çıkışa SIRALI yol hücreleri (path[0]=başlangıç, son=çıkış).
@@ -55,22 +56,24 @@ export type TutAction =
   | "shop" // altın kazanıldı → dükkânı işaret et
   | "openexit"; // "gerisi labirent" → çıkış açılır
 
-export type TutBeat = { at: number; hint: string; action: TutAction };
+// `hint` artık METİN DEĞİL, sözlük ANAHTARI (lib/i18n/dict/parts/game.ts). Motor React
+// olmadığı için çeviremez; anahtarı Game.tsx `t(...)` ile ekrana basar.
+export type TutBeat = { at: number; hint: DictKey; action: TutAction };
 
 // Sıra ÖNEMLİ (yol boyunca artan `at`). Motor bunları path index'e çevirir.
 // NOT: Gelinler 1. bölümde de SALDIRIR ve can götürür; can barı baştan görünür.
 export const TUTORIAL_BEATS: TutBeat[] = [
-  { at: 0.0, hint: "Karanlıktasın. Fenerin baktığın yeri aydınlatır — ilerle.", action: "start" },
-  { at: 0.09, hint: "Yerde bir KILIÇ! Aldın, artık elinde. Yaklaşan geline saldır.", action: "sword" },
-  { at: 0.17, hint: "Bir gelin! Üstüne git ve SALDIR — sana dokunursa CANIN gider.", action: "bride" },
-  { at: 0.29, hint: "TABANCA + mermi! Aldın, artık elinde. Uzaktan ATEŞ edebilirsin.", action: "gun" },
-  { at: 0.37, hint: "Bu gelini uzaktan vur — ATEŞ et! (Sol tık / ATEŞ)", action: "bride" },
-  { at: 0.48, hint: "Sıkışınca KOŞARAK kaç (nefesin tükenir, sonra dolar).", action: "sprint" },
-  { at: 0.57, hint: "Bir gelin daha — dilediğin silahla indir.", action: "bride" },
-  { at: 0.67, hint: "DUVAK aldın — birkaç saniye GÖRÜNMEZ oldun.", action: "veil" },
-  { at: 0.75, hint: "Görünmezken gelin seni fark etmez… ama duvak bitince saldırır!", action: "brideVeil" },
-  { at: 0.86, hint: "Gelini indirince ALTIN kazandın! Bölüm sonunda dükkâna uğrayabilirsin.", action: "shop" },
-  { at: 0.93, hint: "Bundan sonrası gerçek LABİRENT. Çıkışa ulaş ve maceraya başla!", action: "openexit" },
+  { at: 0.0, hint: "game.tut.start", action: "start" },
+  { at: 0.09, hint: "game.tut.sword", action: "sword" },
+  { at: 0.17, hint: "game.tut.bride1", action: "bride" },
+  { at: 0.29, hint: "game.tut.gun", action: "gun" },
+  { at: 0.37, hint: "game.tut.bride2", action: "bride" },
+  { at: 0.48, hint: "game.tut.sprint", action: "sprint" },
+  { at: 0.57, hint: "game.tut.bride3", action: "bride" },
+  { at: 0.67, hint: "game.tut.veil", action: "veil" },
+  { at: 0.75, hint: "game.tut.brideveil", action: "brideVeil" },
+  { at: 0.86, hint: "game.tut.shop", action: "shop" },
+  { at: 0.93, hint: "game.tut.openexit", action: "openexit" },
 ];
 
 // Beat'lerin path index karşılıkları (artan, benzersiz). Motor kurulumda bir kez üretir.

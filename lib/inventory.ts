@@ -3,6 +3,7 @@
 // kimi KALICI upgrade (her bölüm +mermi, +can hakkı, kişiselleştirme).
 // Kalıcı (localStorage). SSR/test'te bellek yedeğiyle güvenli.
 import { getCoins, addCoins } from "./coins";
+import type { DictKey } from "@/lib/i18n/dict";
 
 export type Inventory = {
   shields: number; // kalkan — oyunda istediğin an 3 sn dokunulmazlık (tüketilir)
@@ -111,8 +112,9 @@ export const SKIN_RINGS: Record<string, string | undefined> = {
 // --- Dükkân eşya tanımları ---
 export type ShopItem = {
   id: string;
-  title: string;
-  desc: string;
+  // Metin DEĞİL, SÖZLÜK ANAHTARI (lib/i18n/dict/parts/shop.ts). Shop.tsx t(it.title) ile basar.
+  title: DictKey;
+  desc: DictKey;
   icon: string;
   price: number;
   kind: "consumable" | "perm" | "cosmetic";
@@ -128,8 +130,8 @@ export type ShopItem = {
 export const SHOP_ITEMS: ShopItem[] = [
   {
     id: "veil",
-    title: "Duvak (x2)",
-    desc: "Oyunda kullan — birkaç sn görünmez ol; gelinler seni göremez (ateş edersen bozulur). 2 adet.",
+    title: "shop.item.veil.title",
+    desc: "shop.item.veil.desc",
     icon: "🕊️",
     price: 44,
     kind: "consumable",
@@ -138,8 +140,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "permAmmo",
-    title: "Sürekli Cephane",
-    desc: "KALICI: her bölüme +3 mermiyle başla.",
+    title: "shop.item.permAmmo.title",
+    desc: "shop.item.permAmmo.desc",
     icon: "🔫✨",
     price: 270,
     kind: "perm",
@@ -148,8 +150,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "soldier",
-    title: "Asker Müttefiki",
-    desc: "Yanında savaşan bir asker: seni takip eder, gelinlere ateş eder (senin renk çerçeven + ismin). Bir kez alınır; ölene dek yanında kalır (sen ölünce gider, tekrar alınabilir). Çok oyunculuda da geçerli.",
+    title: "shop.item.soldier.title",
+    desc: "shop.item.soldier.desc",
     icon: "🪖",
     price: 360,
     kind: "perm",
@@ -159,8 +161,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   // --- Kılıç renkleri (kılıç TEMEL silahtır; renk yalnız görünüm) ---
   {
     id: "sword_ember",
-    title: "Kılıç: Köz",
-    desc: "Kişiselleştirme — köz gibi yanan turuncu kılıç.",
+    title: "shop.item.sword_ember.title",
+    desc: "shop.item.sword_ember.desc",
     icon: "⚔",
     price: 120,
     kind: "cosmetic",
@@ -170,8 +172,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "sword_void",
-    title: "Kılıç: Boşluk",
-    desc: "Kişiselleştirme — mor boşluk ışığı saçan kılıç.",
+    title: "shop.item.sword_void.title",
+    desc: "shop.item.sword_void.desc",
     icon: "⚔",
     price: 120,
     kind: "cosmetic",
@@ -181,8 +183,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "sword_frost",
-    title: "Kılıç: Ayaz",
-    desc: "Kişiselleştirme — buz mavisi, soğuk parıltılı kılıç.",
+    title: "shop.item.sword_frost.title",
+    desc: "shop.item.sword_frost.desc",
     icon: "⚔",
     price: 120,
     kind: "cosmetic",
@@ -192,8 +194,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "flash_crimson",
-    title: "Fener: Kızıl",
-    desc: "Kişiselleştirme — tekinsiz kızıl fener ışığı.",
+    title: "shop.item.flash_crimson.title",
+    desc: "shop.item.flash_crimson.desc",
     icon: "💡",
     price: 90,
     kind: "cosmetic",
@@ -203,8 +205,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "skin_gold",
-    title: "Görünüm: Altın Halka",
-    desc: "Kişiselleştirme — oyuncu altın halkayla parlar.",
+    title: "shop.item.skin_gold.title",
+    desc: "shop.item.skin_gold.desc",
     icon: "🩸",
     price: 120,
     kind: "cosmetic",
@@ -214,8 +216,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "skin_violet",
-    title: "Görünüm: Mor Halka",
-    desc: "Kişiselleştirme — oyuncu mor halkayla parlar.",
+    title: "shop.item.skin_violet.title",
+    desc: "shop.item.skin_violet.desc",
     icon: "🩸",
     price: 120,
     kind: "cosmetic",
@@ -226,8 +228,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   // --- Bol kişiselleştirme: ek fener renkleri ---
   {
     id: "flash_toxic",
-    title: "Fener: Zehir Yeşili",
-    desc: "Kişiselleştirme — hastalıklı zehir yeşili fener ışığı.",
+    title: "shop.item.flash_toxic.title",
+    desc: "shop.item.flash_toxic.desc",
     icon: "💡",
     price: 90,
     kind: "cosmetic",
@@ -237,8 +239,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "flash_violet",
-    title: "Fener: Mor",
-    desc: "Kişiselleştirme — tekinsiz mor fener ışığı.",
+    title: "shop.item.flash_violet.title",
+    desc: "shop.item.flash_violet.desc",
     icon: "💡",
     price: 105,
     kind: "cosmetic",
@@ -248,8 +250,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "flash_gold",
-    title: "Fener: Altın",
-    desc: "Kişiselleştirme — sıcak altın sarısı fener ışığı.",
+    title: "shop.item.flash_gold.title",
+    desc: "shop.item.flash_gold.desc",
     icon: "💡",
     price: 135,
     kind: "cosmetic",
@@ -260,8 +262,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   // --- Bol kişiselleştirme: ek görünüm (halka) renkleri ---
   {
     id: "skin_emerald",
-    title: "Görünüm: Zümrüt Halka",
-    desc: "Kişiselleştirme — oyuncu zümrüt yeşili halkayla parlar.",
+    title: "shop.item.skin_emerald.title",
+    desc: "shop.item.skin_emerald.desc",
     icon: "🩸",
     price: 135,
     kind: "cosmetic",
@@ -271,8 +273,8 @@ export const SHOP_ITEMS: ShopItem[] = [
   },
   {
     id: "skin_crimson",
-    title: "Görünüm: Kızıl Halka",
-    desc: "Kişiselleştirme — oyuncu kızıl halkayla parlar.",
+    title: "shop.item.skin_crimson.title",
+    desc: "shop.item.skin_crimson.desc",
     icon: "🩸",
     price: 150,
     kind: "cosmetic",

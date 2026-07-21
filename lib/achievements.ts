@@ -2,61 +2,71 @@
 // açılanlar localStorage'da saklanır. Menüde rozet vitrini + açılınca sonuç ekranında bildirim.
 // Her başarımın ZORLUĞUNA göre bir ALTIN ödülü var; açılınca "Ödülü Al" ile bir kez alınır.
 import { addCoins, getCoins } from "./coins";
+import type { DictKey } from "@/lib/i18n/dict";
 
 export type AchTier = "kolay" | "orta" | "zor";
-export type Achievement = { id: string; title: string; desc: string; icon: string; reward: number; tier: AchTier };
+// title/desc ÇEVİRİ ANAHTARIDIR (metin değil): ekrana basan bileşen t(a.title) / t(a.desc) çağırır.
+// Metinler: lib/i18n/dict/parts/missions.ts → "ach.<id>.title" / "ach.<id>.desc"
+export type Achievement = { id: string; title: DictKey; desc: DictKey; icon: string; reward: number; tier: AchTier };
+
+// Zorluk rozetinin etiketi de anahtardır (t(ACH_TIER_LABEL[a.tier])).
+export const ACH_TIER_LABEL: Record<AchTier, DictKey> = {
+  kolay: "ach.tier.kolay",
+  orta: "ach.tier.orta",
+  zor: "ach.tier.zor",
+};
 
 // 50 başarım — 10 KOLAY, 30 ORTA, 10 ZOR. Ödül zorlukla artar.
 export const ACHIEVEMENTS: Achievement[] = [
   // --- KOLAY (10) ---
-  { id: "first_kill", title: "İlk Kan", desc: "İlk gelini yok et.", icon: "🩸", reward: 10, tier: "kolay" },
-  { id: "reach3", title: "Derinlere", desc: "3. bölüme ulaş.", icon: "🕳", reward: 12, tier: "kolay" },
-  { id: "first_coin", title: "İlk Ganimet", desc: "10 altın biriktir.", icon: "🪙", reward: 10, tier: "kolay" },
-  { id: "shopper", title: "Müşteri", desc: "Dükkândan ilk alışverişini yap.", icon: "🛒", reward: 10, tier: "kolay" },
-  { id: "collector", title: "Arşivci", desc: "İlk günlük sayfasını bul.", icon: "📖", reward: 12, tier: "kolay" },
-  { id: "taste_dark", title: "Karanlığın Tadı", desc: "İlk kez öl (herkes ölür).", icon: "💀", reward: 10, tier: "kolay" },
-  { id: "kills10", title: "Avcı Çırağı", desc: "Toplam 10 gelin öldür.", icon: "🗡", reward: 15, tier: "kolay" },
+  { id: "first_kill", title: "ach.first_kill.title", desc: "ach.first_kill.desc", icon: "🩸", reward: 10, tier: "kolay" },
+  { id: "reach3", title: "ach.reach3.title", desc: "ach.reach3.desc", icon: "🕳", reward: 12, tier: "kolay" },
+  { id: "first_coin", title: "ach.first_coin.title", desc: "ach.first_coin.desc", icon: "🪙", reward: 10, tier: "kolay" },
+  { id: "shopper", title: "ach.shopper.title", desc: "ach.shopper.desc", icon: "🛒", reward: 10, tier: "kolay" },
+  { id: "collector", title: "ach.collector.title", desc: "ach.collector.desc", icon: "📖", reward: 12, tier: "kolay" },
+  { id: "taste_dark", title: "ach.taste_dark.title", desc: "ach.taste_dark.desc", icon: "💀", reward: 10, tier: "kolay" },
+  { id: "kills10", title: "ach.kills10.title", desc: "ach.kills10.desc", icon: "🗡", reward: 15, tier: "kolay" },
   // --- ORTA (30) ---
-  { id: "reach5", title: "Yarı Yol", desc: "5. bölüme ulaş.", icon: "🗺️", reward: 25, tier: "orta" },
-  { id: "reach8", title: "Cesur", desc: "8. bölüme ulaş.", icon: "🔥", reward: 40, tier: "orta" },
-  { id: "flawless", title: "Hayalet Gibi", desc: "Bir bölümü hiç hasar almadan bitir.", icon: "✨", reward: 35, tier: "orta" },
-  { id: "queenslayer", title: "Kraliçe Avcısı", desc: "Bir gelin kraliçesini öldür.", icon: "👑", reward: 45, tier: "orta" },
-  { id: "savior", title: "Kurtarıcı", desc: "Zincirli bir askeri kurtar.", icon: "🤝", reward: 40, tier: "orta" },
-  { id: "escapist", title: "Kıl Payı", desc: "Çöken bir çıkıştan sağ çık.", icon: "🧨", reward: 40, tier: "orta" },
-  { id: "rich", title: "Karanlık Zengini", desc: "100 altın biriktir.", icon: "🪙", reward: 20, tier: "orta" },
-  { id: "kills50", title: "Avcı", desc: "Toplam 50 gelin öldür.", icon: "🗡", reward: 25, tier: "orta" },
-  { id: "kills100", title: "Kâbus Avcısı", desc: "Toplam 100 gelin öldür.", icon: "🗡", reward: 35, tier: "orta" },
-  { id: "deaths5", title: "Ölümle Dost", desc: "5 kez öl.", icon: "💀", reward: 20, tier: "orta" },
-  { id: "games10", title: "Israrcı", desc: "10 oyun oyna (biten koşu).", icon: "♾", reward: 20, tier: "orta" },
-  { id: "clears20", title: "Koridor Ustası", desc: "Toplam 20 bölüm geç.", icon: "🗺️", reward: 30, tier: "orta" },
-  { id: "coins500", title: "Altın Avı", desc: "500 altın biriktir.", icon: "🪙", reward: 30, tier: "orta" },
-  { id: "coins1500", title: "Kasa", desc: "1500 altın biriktir.", icon: "🪙", reward: 40, tier: "orta" },
-  { id: "journal7", title: "Yarım Hikâye", desc: "7 günlük sayfası bul.", icon: "📖", reward: 25, tier: "orta" },
-  { id: "secrets6", title: "Sırdaş", desc: "6 sır aç.", icon: "🖼", reward: 30, tier: "orta" },
-  { id: "missions3", title: "Görevli", desc: "3 görev tamamla.", icon: "🎯", reward: 25, tier: "orta" },
-  { id: "missions6", title: "Kıdemli", desc: "6 görev tamamla.", icon: "🎯", reward: 35, tier: "orta" },
-  { id: "endless60", title: "Dayanıklı", desc: "Bitmeyen Gece'de 60 sn dayan.", icon: "♾", reward: 25, tier: "orta" },
-  { id: "endless180", title: "Uzun Gece", desc: "Bitmeyen Gece'de 180 sn dayan.", icon: "♾", reward: 40, tier: "orta" },
-  { id: "arena5", title: "Arenacı", desc: "Arena'da 5. dalgaya ulaş.", icon: "⚔", reward: 30, tier: "orta" },
-  { id: "arena10", title: "Gladyatör", desc: "Arena'da 10. dalgaya ulaş.", icon: "⚔", reward: 40, tier: "orta" },
-  { id: "kor60", title: "Kör Cesaret", desc: "Kör Gece'de 60 sn dayan.", icon: "🌑", reward: 30, tier: "orta" },
-  { id: "horde5", title: "Sürü Kırıcı", desc: "Sürü Gecesi'nde 5. dalgaya ulaş.", icon: "🐝", reward: 35, tier: "orta" },
-  { id: "use_veil", title: "Duvağın Altında", desc: "Bir kez duvak (görünmezlik) kullan.", icon: "👰", reward: 20, tier: "orta" },
-  { id: "flawless3", title: "Üç Kez Hayalet", desc: "3 bölümü hasarsız bitir.", icon: "✨", reward: 40, tier: "orta" },
-  { id: "queen3", title: "Taç Kırıcı", desc: "3 kraliçe öldür.", icon: "👑", reward: 40, tier: "orta" },
-  { id: "escapes3", title: "Kaçış Sanatı", desc: "3 çöken çıkıştan kaç.", icon: "🧨", reward: 35, tier: "orta" },
-  { id: "buy_perm", title: "Silahlı", desc: "Sürekli cephane geliştirmesini al.", icon: "🔫", reward: 25, tier: "orta" },
+  { id: "reach5", title: "ach.reach5.title", desc: "ach.reach5.desc", icon: "🗺️", reward: 25, tier: "orta" },
+  { id: "reach8", title: "ach.reach8.title", desc: "ach.reach8.desc", icon: "🔥", reward: 40, tier: "orta" },
+  { id: "flawless", title: "ach.flawless.title", desc: "ach.flawless.desc", icon: "✨", reward: 35, tier: "orta" },
+  { id: "queenslayer", title: "ach.queenslayer.title", desc: "ach.queenslayer.desc", icon: "👑", reward: 45, tier: "orta" },
+  { id: "savior", title: "ach.savior.title", desc: "ach.savior.desc", icon: "🤝", reward: 40, tier: "orta" },
+  { id: "escapist", title: "ach.escapist.title", desc: "ach.escapist.desc", icon: "🧨", reward: 40, tier: "orta" },
+  { id: "rich", title: "ach.rich.title", desc: "ach.rich.desc", icon: "🪙", reward: 20, tier: "orta" },
+  { id: "kills50", title: "ach.kills50.title", desc: "ach.kills50.desc", icon: "🗡", reward: 25, tier: "orta" },
+  { id: "kills100", title: "ach.kills100.title", desc: "ach.kills100.desc", icon: "🗡", reward: 35, tier: "orta" },
+  { id: "deaths5", title: "ach.deaths5.title", desc: "ach.deaths5.desc", icon: "💀", reward: 20, tier: "orta" },
+  { id: "games10", title: "ach.games10.title", desc: "ach.games10.desc", icon: "♾", reward: 20, tier: "orta" },
+  { id: "clears20", title: "ach.clears20.title", desc: "ach.clears20.desc", icon: "🗺️", reward: 30, tier: "orta" },
+  { id: "coins500", title: "ach.coins500.title", desc: "ach.coins500.desc", icon: "🪙", reward: 30, tier: "orta" },
+  { id: "coins1500", title: "ach.coins1500.title", desc: "ach.coins1500.desc", icon: "🪙", reward: 40, tier: "orta" },
+  { id: "journal7", title: "ach.journal7.title", desc: "ach.journal7.desc", icon: "📖", reward: 25, tier: "orta" },
+  { id: "secrets6", title: "ach.secrets6.title", desc: "ach.secrets6.desc", icon: "🖼", reward: 30, tier: "orta" },
+  { id: "missions3", title: "ach.missions3.title", desc: "ach.missions3.desc", icon: "🎯", reward: 25, tier: "orta" },
+  { id: "missions6", title: "ach.missions6.title", desc: "ach.missions6.desc", icon: "🎯", reward: 35, tier: "orta" },
+  { id: "endless60", title: "ach.endless60.title", desc: "ach.endless60.desc", icon: "♾", reward: 25, tier: "orta" },
+  { id: "endless180", title: "ach.endless180.title", desc: "ach.endless180.desc", icon: "♾", reward: 40, tier: "orta" },
+  { id: "arena5", title: "ach.arena5.title", desc: "ach.arena5.desc", icon: "⚔", reward: 30, tier: "orta" },
+  { id: "arena10", title: "ach.arena10.title", desc: "ach.arena10.desc", icon: "⚔", reward: 40, tier: "orta" },
+  { id: "kor60", title: "ach.kor60.title", desc: "ach.kor60.desc", icon: "🌑", reward: 30, tier: "orta" },
+  { id: "horde5", title: "ach.horde5.title", desc: "ach.horde5.desc", icon: "🐝", reward: 35, tier: "orta" },
+  { id: "use_veil", title: "ach.use_veil.title", desc: "ach.use_veil.desc", icon: "👰", reward: 20, tier: "orta" },
+  { id: "flawless3", title: "ach.flawless3.title", desc: "ach.flawless3.desc", icon: "✨", reward: 40, tier: "orta" },
+  { id: "queen3", title: "ach.queen3.title", desc: "ach.queen3.desc", icon: "👑", reward: 40, tier: "orta" },
+  { id: "escapes3", title: "ach.escapes3.title", desc: "ach.escapes3.desc", icon: "🧨", reward: 35, tier: "orta" },
+  { id: "buy_perm", title: "ach.buy_perm.title", desc: "ach.buy_perm.desc", icon: "🔫", reward: 25, tier: "orta" },
   // --- ZOR (10) ---
-  { id: "win", title: "Gün Ağardı", desc: "10 bölümün hepsinden sağ çık.", icon: "🌅", reward: 80, tier: "zor" },
-  { id: "win_hard", title: "Karanlığın Efendisi", desc: "Zor'da 10 bölümü bitir.", icon: "👑", reward: 120, tier: "zor" },
-  { id: "kills300", title: "Katliam", desc: "Toplam 300 gelin öldür.", icon: "🗡", reward: 70, tier: "zor" },
-  { id: "missions_all", title: "Görev Ustası", desc: "12 görevin hepsini bitir.", icon: "🎯", reward: 90, tier: "zor" },
-  { id: "secrets_all", title: "Kâhin", desc: "12 sırrın hepsini aç.", icon: "🖼", reward: 90, tier: "zor" },
-  { id: "journal_all", title: "Tarihçi", desc: "14 günlük sayfasının hepsini bul.", icon: "📖", reward: 70, tier: "zor" },
-  { id: "endless300", title: "Ölümsüz", desc: "Bitmeyen Gece'de 300 sn dayan.", icon: "♾", reward: 90, tier: "zor" },
-  { id: "arena20", title: "Arena Kralı", desc: "Arena'da 20. dalgaya ulaş.", icon: "⚔", reward: 100, tier: "zor" },
-  { id: "queen5", title: "Kraliçe Kâbusu", desc: "5 kraliçe öldür.", icon: "👑", reward: 70, tier: "zor" },
-  { id: "rich5000", title: "Karanlık Hazinedarı", desc: "5000 altın biriktir.", icon: "🪙", reward: 80, tier: "zor" },
+  { id: "win", title: "ach.win.title", desc: "ach.win.desc", icon: "🌅", reward: 80, tier: "zor" },
+  { id: "win_hard", title: "ach.win_hard.title", desc: "ach.win_hard.desc", icon: "👑", reward: 120, tier: "zor" },
+  { id: "kills300", title: "ach.kills300.title", desc: "ach.kills300.desc", icon: "🗡", reward: 70, tier: "zor" },
+  { id: "missions_all", title: "ach.missions_all.title", desc: "ach.missions_all.desc", icon: "🎯", reward: 90, tier: "zor" },
+  { id: "secrets_all", title: "ach.secrets_all.title", desc: "ach.secrets_all.desc", icon: "🖼", reward: 90, tier: "zor" },
+  { id: "journal_all", title: "ach.journal_all.title", desc: "ach.journal_all.desc", icon: "📖", reward: 70, tier: "zor" },
+  { id: "endless300", title: "ach.endless300.title", desc: "ach.endless300.desc", icon: "♾", reward: 90, tier: "zor" },
+  { id: "arena20", title: "ach.arena20.title", desc: "ach.arena20.desc", icon: "⚔", reward: 100, tier: "zor" },
+  { id: "queen5", title: "ach.queen5.title", desc: "ach.queen5.desc", icon: "👑", reward: 70, tier: "zor" },
+  { id: "rich5000", title: "ach.rich5000.title", desc: "ach.rich5000.desc", icon: "🪙", reward: 80, tier: "zor" },
 ];
 
 const KEY = "blackout_achievements";

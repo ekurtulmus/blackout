@@ -34,6 +34,11 @@ import {
 import { ScareDirector, type ScareKind } from "./scares";
 import { JOURNAL, getCollected } from "./journal";
 import { buildTutorialCorridor, tutorialBeatIndices, TUTORIAL_BEATS, type TutItemKind } from "./tutorial";
+import type { DictKey } from "./i18n/dict";
+
+// EKRANA BASILAN METİN. Motor React değil → çeviremez; bu yüzden metin yerine
+// ANAHTAR (+ varsa değişkenler) döndürür. Game.tsx bunu `t(k, v)` ile çevirir.
+export type Txt = { k: DictKey; v?: Record<string, string | number> };
 
 // --- Sabitler ---
 export const PLAYER_SPEED = TUNING.playerSpeed; // hücre/saniye (config'ten)
@@ -133,9 +138,9 @@ export class GameEngine {
   miniQuest: MQPlan | null = null;
   mqDef: MQDef | null = null;
   mqDone = false;
-  mqRewardMsg = ""; // tamamlanınca gösterilecek toast (Game okuyup temizler)
+  mqRewardMsg: DictKey | "" = ""; // tamamlanınca gösterilecek toast ANAHTARI (Game çevirip temizler)
   private mqMirrorNear = 0; // ayna: yanında kesintisiz geçirilen süre (sn)
-  mqHintDir = ""; // ayna kehaneti: çıkışın bulunduğu yön ("Sağ/Sol/Yukarı/Aşağı")
+  mqHintDir: DictKey | "" = ""; // ayna kehaneti: çıkış yönü ANAHTARI (game.dir.*)
   private mqHintUntil = 0; // yön ipucunun HUD'da kalacağı ana kadar (sn)
   radarUntil = 0; // radar oku: bu ana kadar ekranda ok gösterilir (sn)
   radarAngle = 0; // radar oku yönü (radyan)
@@ -196,7 +201,7 @@ export class GameEngine {
 
   // --- Rehberli 1. Bölüm (tutorial): kampanya level 1 && !mission ---
   tutorial = false;
-  tutHint = ""; // ekranda gösterilen rehber ipucu (Game okur)
+  tutHint: DictKey | "" = ""; // ekranda gösterilen rehber ipucunun ANAHTARI (Game çevirir)
   tutHealthShown = false; // can barı görünür mü (tutorial'da baştan true)
   tutPointShop = false; // dükkânı işaret et
   tutEquip: "" | "sword" | "gun" = ""; // senaryo silahı ELE kuşandırır (Game okur+uygular)
@@ -1368,13 +1373,13 @@ export class GameEngine {
     );
   }
 
-  // Mutlak açı → en yakın 4 yön etiketi ("Sağ/Aşağı/Sol/Yukarı").
-  private dirLabelFromAngle(a: number): string {
+  // Mutlak açı → en yakın 4 yön ANAHTARI (Sağ/Aşağı/Sol/Yukarı).
+  private dirLabelFromAngle(a: number): DictKey {
     const deg = (a * 180) / Math.PI;
-    if (deg >= -45 && deg < 45) return "Sağ";
-    if (deg >= 45 && deg < 135) return "Aşağı";
-    if (deg >= -135 && deg < -45) return "Yukarı";
-    return "Sol";
+    if (deg >= -45 && deg < 45) return "game.dir.right";
+    if (deg >= 45 && deg < 135) return "game.dir.down";
+    if (deg >= -135 && deg < -45) return "game.dir.up";
+    return "game.dir.left";
   }
 
   private grantMQReward() {
@@ -1391,41 +1396,42 @@ export class GameEngine {
   }
 
   // HUD için mini-görev metni (aktifken). Emoji YOK — HUD çipi kendi line-icon'unu çizer.
-  miniQuestText(): string {
+  // null = gösterilecek bir şey yok.
+  miniQuestText(): Txt | null {
     const q = this.miniQuest;
     const d = this.mqDef;
-    if (!q || !d || this.mqDone) return "";
+    if (!q || !d || this.mqDone) return null;
     switch (q.kind) {
       case "candles": {
         const lit = q.markers.filter((m) => m.litUntil && m.litUntil > this.time).length;
-        return `${d.hud} ${lit}/${q.markers.length}`;
+        return { k: "game.mq.candles.prog", v: { a: lit, b: q.markers.length } };
       }
       case "mirror":
         return this.mqMirrorNear > 0.2
-          ? `Bekle... ${Math.max(0, Math.ceil(5 - this.mqMirrorNear))}s`
-          : d.hud;
+          ? { k: "game.mq.mirror.wait", v: { n: Math.max(0, Math.ceil(5 - this.mqMirrorNear)) } }
+          : { k: d.hud };
       default:
-        return d.hud;
+        return { k: d.hud };
     }
   }
 
-  // Ayna kehaneti aktifse HUD'da gösterilecek yön metni ("" = yok)
-  exitHintText(): string {
-    if (this.mqHintDir && this.time < this.mqHintUntil) {
-      return `Çıkış: ${this.mqHintDir}`;
-    }
+  // Ayna kehaneti aktifse gösterilecek YÖN anahtarı ("" = kehanet yok).
+  // Çerçeve metnini ("Çıkış: {d}") Game.tsx kurar.
+  exitHintText(): DictKey | "" {
+    if (this.mqHintDir && this.time < this.mqHintUntil) return this.mqHintDir;
     return "";
   }
 
-  // Çıkış neden kilitli? (HUD'da çıkış yazısına tıklayınca gösterilir)
-  exitLockReason(): string {
-    if (this.exitOpen) return "";
+  // Çıkış neden kilitli? (HUD'da çıkış ikonuna tıklayınca gösterilir; null = kilitli değil)
+  exitLockReason(): Txt | null {
+    if (this.exitOpen) return null;
     if (this.miniQuest?.kind === "markedkill" && !this.mqDone && this.miniQuest.zone) {
-      return "Çıkış kilitli: işaretli ÇEMBERİN içinde bir gelin öldürmelisin.";
+      return { k: "game.exit.circle" };
     }
-    if (this.mission?.collectTarget) return `Çıkış kilitli: ${this.mission.collectTarget} parça topla.`;
-    const need = this.mission?.killTarget ?? 1;
-    return `Çıkış kilitli: önce ${need} gelini yok et.`;
+    if (this.mission?.collectTarget) {
+      return { k: "game.exit.pieces", v: { n: this.mission.collectTarget } };
+    }
+    return { k: "game.exit.kills", v: { n: this.mission?.killTarget ?? 1 } };
   }
 
   // Asker: kilitliyken yakınına gelip (başka escort yoksa) kurtar → seni takip eder
@@ -1640,30 +1646,40 @@ export class GameEngine {
     }
   }
 
-  // HUD için görev hedefi metni
-  objectiveText(): string {
+  // HUD için görev hedefi: parça parça ANAHTAR listesi (Game çevirip " · " ile birleştirir)
+  objectiveText(): Txt[] {
     const m = this.mission;
-    if (!m) return "";
+    if (!m) return [];
     if (m.arena) {
-      return `Dalga ${this.wave} · ${this.zombiesKilled % 6}/6`;
+      return [{ k: "game.obj.wave", v: { n: this.wave, k: this.zombiesKilled % 6 } }];
     }
     if (m.endless) {
-      return `Süre ${Math.floor(this.time)}s`;
+      return [{ k: "game.obj.time", v: { n: Math.floor(this.time) } }];
     }
     if (m.surviveTime) {
-      return `Dayan ${Math.max(0, Math.ceil(m.surviveTime - this.time))}s`;
+      return [{ k: "game.obj.survive", v: { n: Math.max(0, Math.ceil(m.surviveTime - this.time)) } }];
     }
-    const parts: string[] = [];
+    const parts: Txt[] = [];
     if (m.escort) {
-      parts.push(this.hasEscort ? "Askeri çıkışa götür" : "Askeri bul ve kurtar");
+      parts.push({ k: this.hasEscort ? "game.obj.escort.take" : "game.obj.escort.find" });
     } else if (m.killTarget) {
-      parts.push(this.exitOpen ? "Çıkışa git" : `Gelin ${this.zombiesKilled}/${m.killTarget}`);
+      parts.push(
+        this.exitOpen
+          ? { k: "game.obj.goexit" }
+          : { k: "game.obj.brides", v: { a: this.zombiesKilled, b: m.killTarget } }
+      );
     } else if (m.collectTarget) {
-      parts.push(this.exitOpen ? "Çıkışa git" : `Parça ${this.collected}/${m.collectTarget}`);
+      parts.push(
+        this.exitOpen
+          ? { k: "game.obj.goexit" }
+          : { k: "game.obj.pieces", v: { a: this.collected, b: m.collectTarget } }
+      );
     } else {
-      parts.push("Çıkışa ulaş");
+      parts.push({ k: "game.obj.reachexit" });
     }
-    if (m.timeLimit) parts.push(`${Math.max(0, Math.ceil(m.timeLimit - this.time))}s`);
-    return parts.join(" · ");
+    if (m.timeLimit) {
+      parts.push({ k: "game.obj.secs", v: { n: Math.max(0, Math.ceil(m.timeLimit - this.time)) } });
+    }
+    return parts;
   }
 }

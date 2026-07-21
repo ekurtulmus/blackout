@@ -7,11 +7,13 @@
 // siluet ışığa yürür → "GÜN AĞARDI".
 // Dokununca atlanır; süre dolunca kendiliğinden biter. prefers-reduced-motion desteklenir.
 import { useEffect, useRef } from "react";
+import { useT } from "@/lib/i18n";
 
 const FULL_MS = 18400; // tam sahne (globals.css'teki fin-* gecikmeleriyle uyumlu)
 const REDUCED_MS = 5200; // hareket azaltma açıkken her şey sabit görünür → kısa dursun
 
 export default function Finale({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const done = useRef(false);
   const finish = () => {
     if (done.current) return;
@@ -28,7 +30,7 @@ export default function Finale({ onDone }: { onDone: () => void }) {
   }, []);
 
   return (
-    <div className="fin-stage" onClick={finish} role="button" aria-label="Finali geç">
+    <div className="fin-stage" onClick={finish} role="button" aria-label={t("chrome.fin.skip.aria")}>
       <div className="splash-vignette" />
 
       <svg
@@ -100,25 +102,25 @@ export default function Finale({ onDone }: { onDone: () => void }) {
 
       {/* Kapanış anlatısı — üç satır sırayla belirip solar (aynı yerde, sayfa zıplamaz) */}
       <div className="fin-lines">
-        <p className="fin-line fin-l1">Son gelin sustuğunda, düğün marşı da sustu.</p>
-        <p className="fin-line fin-l2">Fenerin son kez titredi ve söndü — artık ona ihtiyacın yoktu.</p>
-        <p className="fin-line fin-l3">Taşın ardında gri bir aralık. Sabah.</p>
+        <p className="fin-line fin-l1">{t("chrome.fin.line1")}</p>
+        <p className="fin-line fin-l2">{t("chrome.fin.line2")}</p>
+        <p className="fin-line fin-l3">{t("chrome.fin.line3")}</p>
       </div>
 
       <div style={{ textAlign: "center", position: "relative" }}>
-        <div className="fin-title">GÜN AĞARDI</div>
+        <div className="fin-title">{t("chrome.fin.title")}</div>
         <div className="fin-hook">
           <span className="splash-rule" />
-          <span>Karanlık geride kaldı.</span>
+          <span>{t("chrome.fin.hook")}</span>
           <span className="splash-rule" />
         </div>
       </div>
 
       {/* Kapanış: sahne tamamen kararır, sonra TEK kelime kalır — asıl kanca burada. */}
       <div className="fin-dark" />
-      <div className="fin-last">Şimdilik.</div>
+      <div className="fin-last">{t("chrome.fin.last")}</div>
 
-      <div className="fin-skip">dokun · geç</div>
+      <div className="fin-skip">{t("chrome.fin.skip")}</div>
     </div>
   );
 }

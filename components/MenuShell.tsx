@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
+import { useT } from "@/lib/i18n";
 
 // BLACKOUT — ORTAK EKRAN KABUĞU (tasarım handoff).
 // Sabit arka plan (z sırası): labirent canvas → radyal scrim → film taneciği → vinyet (nabız).
@@ -32,6 +33,7 @@ export default function MenuShell({
   friendsOnline?: number;
   children: React.ReactNode;
 }) {
+  const t = useT();
   const gameRef = useRef<HTMLCanvasElement | null>(null);
   const grainRef = useRef<HTMLCanvasElement | null>(null);
   // Tema, canvas döngüsüne REF ile verilir: döngü mount'ta bir kez kurulur (bağımlılık []),
@@ -370,13 +372,17 @@ export default function MenuShell({
 
       {/* Sol üst: menüde cüzdan çipi, diğer ekranlarda TEK geri butonu */}
       {menu ? (
-        <div className="shell-wallet">
+        <div
+          className="shell-wallet"
+          title={t("chrome.shell.wallet")}
+          aria-label={t("chrome.shell.wallet.aria", { n: coins })}
+        >
           <Icon name="coin" size={20} />
           {coins}
         </div>
       ) : (
         onBack && (
-          <button className="shell-icon shell-back" onClick={onBack} title="Geri" aria-label="Geri">
+          <button className="shell-icon shell-back" onClick={onBack} title={t("chrome.shell.back")} aria-label={t("chrome.shell.back")}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M15 18l-6-6 6-6" />
             </svg>
@@ -388,7 +394,7 @@ export default function MenuShell({
       {menu && (
         <div className="shell-top-right">
           {onHelp && (
-            <button className="shell-icon" onClick={onHelp} title="Nasıl Oynanır" aria-label="Nasıl Oynanır">
+            <button className="shell-icon" onClick={onHelp} title={t("chrome.shell.help")} aria-label={t("chrome.shell.help")}>
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" />
                 <path d="M9.4 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.4 2.2-2.4 3.7" />
@@ -396,13 +402,13 @@ export default function MenuShell({
               </svg>
             </button>
           )}
-          <button className="shell-icon" onClick={onSettings} title="Ayarlar" aria-label="Ayarlar">
+          <button className="shell-icon" onClick={onSettings} title={t("chrome.shell.settings")} aria-label={t("chrome.shell.settings")}>
             <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="3.2" />
               <path d="M12 2.6l1 2.2a1.4 1.4 0 0 0 1.9.8l2.2-1 1.3 1.3-1 2.2a1.4 1.4 0 0 0 .8 1.9l2.2 1v1.8l-2.2 1a1.4 1.4 0 0 0-.8 1.9l1 2.2-1.3 1.3-2.2-1a1.4 1.4 0 0 0-1.9.8l-1 2.2h-1.8l-1-2.2a1.4 1.4 0 0 0-1.9-.8l-2.2 1-1.3-1.3 1-2.2a1.4 1.4 0 0 0-.8-1.9l-2.2-1v-1.8l2.2-1a1.4 1.4 0 0 0 .8-1.9l-1-2.2 1.3-1.3 2.2 1a1.4 1.4 0 0 0 1.9-.8z" />
             </svg>
           </button>
-          <button className="shell-icon" onClick={onFriends} title="Arkadaşlarım" aria-label="Arkadaşlarım" style={{ position: "relative" }}>
+          <button className="shell-icon" onClick={onFriends} title={t("chrome.shell.friends")} aria-label={t("chrome.shell.friends")} style={{ position: "relative" }}>
             <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="9" cy="8" r="3.2" />
               <path d="M3.5 19a5.5 5.5 0 0 1 11 0" />
@@ -420,8 +426,8 @@ export default function MenuShell({
           <button
             className="shell-icon"
             onClick={toggleFullscreen}
-            title={isFs ? "Tam ekrandan çık" : "Tam ekran oyna"}
-            aria-label={isFs ? "Tam ekrandan çık" : "Tam ekran oyna"}
+            title={isFs ? t("chrome.shell.fullscreen.exit") : t("chrome.shell.fullscreen")}
+            aria-label={isFs ? t("chrome.shell.fullscreen.exit") : t("chrome.shell.fullscreen")}
           >
             {isFs ? (
               <svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

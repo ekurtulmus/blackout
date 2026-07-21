@@ -4,8 +4,10 @@
 // sonra menüye geçer. Dokununca atlanır; ~4 sn sonra otomatik kapanır.
 // Tasarım: karanlık sahne + fenerini tutan oyuncu + kıvrılan J + "JILTED" başlığı.
 import { useEffect, useRef } from "react";
+import { useT } from "@/lib/i18n";
 
 export default function Splash({ onDone }: { onDone: () => void }) {
+  const t = useT();
   const done = useRef(false);
   const finish = () => {
     if (done.current) return;
@@ -19,7 +21,7 @@ export default function Splash({ onDone }: { onDone: () => void }) {
   }, []);
 
   return (
-    <div className="splash-stage" onClick={finish} role="button" aria-label="Girişi atla">
+    <div className="splash-stage" onClick={finish} role="button" aria-label={t("chrome.splash.skip.aria")}>
       <div className="splash-vignette" />
 
       <svg viewBox="0 0 156 168" width="230" height="248" style={{ position: "relative", maxWidth: "60vw" }} aria-hidden="true">
@@ -50,7 +52,7 @@ export default function Splash({ onDone }: { onDone: () => void }) {
         <div className="splash-title">JILTED</div>
         <div className="splash-sub">
           <span className="splash-rule" />
-          <span>Karanlıkta Kaçış</span>
+          <span>{t("chrome.splash.sub")}</span>
           <span className="splash-rule" />
         </div>
       </div>

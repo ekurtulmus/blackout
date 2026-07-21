@@ -11,7 +11,10 @@ import {
   PLAYER_MAX_HP,
   type Input,
   type Diff,
+  type Txt,
 } from "@/lib/engine";
+import { useT } from "@/lib/i18n";
+import type { DictKey } from "@/lib/i18n/dict";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, drawSword, grime } from "@/lib/sprites";
 import { themeFor } from "@/lib/themes";
@@ -41,6 +44,10 @@ export type EndResult = {
   wasEscape?: boolean;
   crushed?: boolean; // ölüm sebebi: kaçış süresi doldu, çıkış çöktü ("seni buldular" değil)
 };
+
+// Motorun döndürdüğü ANAHTAR+değişken paketini çevirir ("" = gösterilecek bir şey yok).
+type TFn = (k: DictKey, v?: Record<string, string | number>) => string;
+const txt = (tf: TFn, m: Txt | null | undefined) => (m ? tf(m.k, m.v) : "");
 
 type Hud = {
   level: number;
@@ -81,6 +88,13 @@ export default function Game({
   onFragment?: () => void;
   onNote?: (id: number) => void;
 }) {
+  const t = useT();
+  // Oyun döngüsü/aralık mount kapanışında donar → çeviriciyi ref üzerinden oku
+  // (dil değişirse bir sonraki HUD tikinde doğru dile geçer).
+  const tRef = useRef<TFn>(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
@@ -98,7 +112,7 @@ export default function Game({
   const mqReportedRef = useRef(false);
   const [coins, setCoins] = useState(0); // para (kalıcı; mount'ta yüklenir)
   const [exitHint, setExitHint] = useState(""); // ayna kehaneti: çıkış yönü
-  const [levelNotice, setLevelNotice] = useState(""); // bu bölümün özel uyarısı ("" = yok)
+  const [levelNotice, setLevelNotice] = useState<DictKey | "">(""); // bu bölümün özel uyarı ANAHTARI ("" = yok)
   const [helpOpen, setHelpOpen] = useState(false); // hazırlık/yardım ekranı (oyunu duraklatır)
   const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
   const [escapeSec, setEscapeSec] = useState(""); // Faz E: kaçış geri sayımı
@@ -106,7 +120,11 @@ export default function Game({
   const [hpBlink, setHpBlink] = useState(false); // can azalınca bar yanıp söner
   const prevHpRef = useRef(PLAYER_MAX_HP);
   // Rehberli 1. bölüm (tutorial) — motordan okunan durum
-  const [tut, setTut] = useState({ on: false, hint: "", healthShown: false });
+  const [tut, setTut] = useState<{ on: boolean; hint: DictKey | ""; healthShown: boolean }>({
+    on: false,
+    hint: "",
+    healthShown: false,
+  });
   const [actionsOpen, setActionsOpen] = useState(false); // sağ üst: ? / ses / duraklat menüsü açık mı
   const engineRef = useRef<GameEngine | null>(null);
   const coinSyncRef = useRef(0); // engine.coinsEarned'den kalıcı cüzdana işlenen son değer
@@ -126,7 +144,11 @@ export default function Game({
   const flashColorRef = useRef<[number, number, number]>([200, 220, 255]);
   const skinRingRef = useRef<string | undefined>(undefined);
   const swordColorRef = useRef(SWORD_COLORS.default); // kuşanılan kılıç rengi
-  const [objective, setObjective] = useState(mission?.objectiveHint ?? "");
+  // mission metinleri (title/brief/objectiveHint) lib/missions.ts'te ANAHTARDIR ve sözlük
+  // parçası da orada (parts/missions.ts) — burada yalnız t() ile çeviriyoruz.
+  const [objective, setObjective] = useState(
+    mission ? t(mission.objectiveHint as DictKey) : ""
+  );
   const [brief, setBrief] = useState(!!mission); // görev başında brifing göster
   const briefRef = useRef<boolean>(!!mission); // brifing açıkken oyun donar
   const [paused, setPaused] = useState(false);
@@ -178,7 +200,7 @@ export default function Game({
     engineRef.current = engine;
     // Kiralık asker çizimi için: senin görünüm halka rengin + ismin (çerçeve + üstünde yazı)
     const mySoldierRing = SKIN_RINGS[getInventory().skin] ?? "#7dffb0";
-    let mySoldierName = "SEN";
+    let mySoldierName = tRef.current("game.soldier.you");
     try { const n = localStorage.getItem("blackout_name"); if (n && n.trim()) mySoldierName = n.trim().slice(0, 10); } catch { /* geç */ }
     setCoins(getCoins()); // kalıcı parayı yükle
     // Envanter (Faz B): başlangıç eşyaları. Eskiden `!mission` idi → Arena/Bitmeyen
@@ -195,13 +217,13 @@ export default function Game({
       setInvCounts({ veils: inv.veils });
     }
     // Bu bölümün özel uyarısı (çember / kaçış / asker) — BÖLÜM BAŞLAMADAN gösterilir
-    let notice = "";
+    let notice: DictKey | "" = "";
     if (engine.escape) {
-      notice = "ÇIKIŞ ÇÖKÜYOR! Çıkış baştan açık — geri sayım bitmeden gizli kapıya ulaş, yoksa altında kalırsın.";
+      notice = "game.notice.escape";
     } else if (engine.soldiers.length > 0) {
-      notice = "Karanlıkta zincirli asker(ler) var. Yanına git, zincirini çöz — arkanda gelir ve gelinlere ateş eder. Ölürse başka yerde doğar.";
+      notice = "game.notice.soldier";
     } else if (!mission && engine.miniQuest?.kind === "markedkill") {
-      notice = "⊚ Çıkış KİLİTLİ: işaretli çemberin içinde bir gelin öldürünce açılır.";
+      notice = "game.notice.markedkill";
     }
     setLevelNotice(notice);
     // Normal bölümde özel uyarı varsa oyunu başlatmadan brifing göster (loop briefRef ile durur)
@@ -729,7 +751,9 @@ export default function Game({
             ctx!.stroke();
           } else if (q.kind === "mirror") {
             // AYNA: SAPLI el aynası → yuvarlak cam + altta sap (duvak/yüzükten ayrışsın)
-            const armed = engine.miniQuestText().includes("Uzaklaş");
+            // Eski "Uzaklaş" aşaması kaldırıldı (HUD metni artık anahtar) → bu bayrak
+            // pratikte hep kapalıydı; davranışı aynen korumak için sabit false.
+            const armed = false;
             ctx!.strokeStyle = "#8a6a3a"; // sap
             ctx!.lineWidth = TS * 0.06;
             ctx!.lineCap = "round";
@@ -1282,7 +1306,9 @@ export default function Game({
         warn: engine.warnTimer > 0,
         veil: engine.veiled ? Math.max(0, Math.ceil(engine.veilUntil - engine.time)) : 0,
       });
-      if (mission) setObjective(engine.objectiveText());
+      if (mission) {
+        setObjective(engine.objectiveText().map((p) => txt(tRef.current, p)).join(" · "));
+      }
       if (engine.tutorial) {
         setTut({ on: true, hint: engine.tutHint, healthShown: engine.tutHealthShown });
         // Senaryo silahı ELE kuşandırır (kılıç/tabanca bulunca kullanıma hazır)
@@ -1307,24 +1333,31 @@ export default function Game({
         setCoins(addCoins(gained));
       }
       // Mini-görev (Faz 4): aktif hedef metni + ayna kehaneti yönü
-      setMq(engine.miniQuestText());
-      setExitHint(engine.exitHintText());
+      setMq(txt(tRef.current, engine.miniQuestText()));
+      const dirKey = engine.exitHintText();
+      setExitHint(dirKey ? tRef.current("game.hud.exitdir", { d: tRef.current(dirKey) }) : "");
       // Faz E: kaçış geri sayımı + asker durumu
       setEscapeSec(engine.escapeText());
       setSoldierState(
         engine.soldiers.length === 0 ? "none" : engine.hasEscort ? "escort" : "rescue"
       );
-      if (engine.mqRewardMsg && !mqReportedRef.current) {
+      const rewardKey = engine.mqRewardMsg; // görev adı ANAHTARI ("" = ödül yok)
+      if (rewardKey && !mqReportedRef.current) {
         mqReportedRef.current = true;
+        const tt = tRef.current;
         const d = engine.mqDef;
         const bits: string[] = [];
-        if (d?.reward.coins) bits.push(`+${d.reward.coins} para`);
-        if (d?.reward.ammo) bits.push(`+${d.reward.ammo} mermi`);
-        if (d?.reward.health) bits.push(`+${d.reward.health} can`);
-        if (d?.reward.score) bits.push(`+${d.reward.score} puan`);
+        if (d?.reward.coins) bits.push(tt("game.reward.gold", { n: d.reward.coins }));
+        if (d?.reward.ammo) bits.push(tt("game.reward.ammo", { n: d.reward.ammo }));
+        if (d?.reward.health) bits.push(tt("game.reward.health", { n: d.reward.health }));
+        if (d?.reward.score) bits.push(tt("game.reward.score", { n: d.reward.score }));
         // Ayna: maddi ödül yok; kehanet yönünü göster
-        const suffix = engine.miniQuest?.kind === "mirror" ? `Çıkış → ${engine.mqHintDir}` : bits.join(", ");
-        setMqToast(`${engine.mqRewardMsg}${suffix ? " — " + suffix : ""}`);
+        const dir = engine.mqHintDir;
+        const suffix =
+          engine.miniQuest?.kind === "mirror"
+            ? tt("game.hud.exitarrow", { d: dir ? tt(dir) : "" })
+            : bits.join(", ");
+        setMqToast(`${tt(rewardKey)}${suffix ? " — " + suffix : ""}`);
         window.setTimeout(() => setMqToast(""), 3500);
       }
       // gizli fotoğraf parçası toplandıysa bir kez bildir
@@ -1336,7 +1369,7 @@ export default function Game({
       if (engine.noteTaken && !noteReported) {
         noteReported = true;
         onNote?.(engine.noteId);
-        setMqToast("Günlük sayfası bulundu — menüden okuyabilirsin");
+        setMqToast(tRef.current("game.toast.journal"));
         window.setTimeout(() => setMqToast(""), 3500);
       }
     }, 100);
@@ -1445,7 +1478,7 @@ export default function Game({
             </div>
           </div>
           {!mission && (
-            <div className="chip" title="Bölüm">
+            <div className="chip" title={t("game.hud.chapter")}>
               <span className="lbl"><Icon name="layers" size={14} /></span>
               <span className="val">{hud.level}</span>
             </div>
@@ -1459,7 +1492,7 @@ export default function Game({
           {mission && (
             // Bitmeyen Gece/Kör Gece'de süre = SKORUN (uzun dayanmak iyidir) → ayrıca vurgula
             <div className="chip" style={mission.endless ? { borderColor: "rgba(125,255,176,0.6)" } : surviveCountdown ? { borderColor: "rgba(255,150,150,0.6)" } : undefined}>
-              <span className="lbl">{mission.endless ? "Dayandığın süre" : surviveCountdown ? "Kalan" : "Süre"}</span>
+              <span className="lbl">{mission.endless ? t("game.hud.survived") : surviveCountdown ? t("game.hud.left") : t("game.hud.time")}</span>
               <span className="val" style={mission.endless ? { color: "#7dffb0" } : surviveCountdown ? { color: "#ff9a9a" } : undefined}>
                 {mm}:{ss}
               </span>
@@ -1478,14 +1511,14 @@ export default function Game({
             className="chip is-btn is-icononly"
             style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)", color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}
             onClick={() => {
-              const r = engineRef.current?.exitLockReason() ?? "";
+              const r = txt(t, engineRef.current?.exitLockReason());
               if (r) {
                 setExitMsg(r);
                 window.setTimeout(() => setExitMsg(""), 4000);
               }
             }}
-            title={hud.exitOpen ? "Çıkış açık" : "Çıkış kilitli — neden?"}
-            aria-label={hud.exitOpen ? "Çıkış açık" : "Çıkış kilitli"}
+            title={hud.exitOpen ? t("game.hud.exit.open") : t("game.hud.exit.why")}
+            aria-label={hud.exitOpen ? t("game.hud.exit.open") : t("game.hud.exit.locked")}
           >
             <Icon name={hud.exitOpen ? "lockOpen" : "lock"} size={17} />
           </button>
@@ -1493,30 +1526,30 @@ export default function Game({
           {/* Endless'ta hedef metni zaten "Süre Xs" → üstteki süre çipiyle aynı, tekrar etme */}
           {mission && !mission.endless && (
             <div className="chip" style={{ borderColor: "rgba(110,231,255,0.6)" }}>
-              <span className="lbl"><Icon name="target" size={12} /> Görev</span>
+              <span className="lbl"><Icon name="target" size={12} /> {t("game.hud.mission")}</span>
               <span className="val" style={{ color: "#8be9ff" }}>{objective}</span>
             </div>
           )}
           {exitHint && (
             <div className="chip" style={{ borderColor: "rgba(180,220,255,0.6)" }}>
-              <span className="lbl"><Icon name="map" size={12} /> Kehanet</span>
+              <span className="lbl"><Icon name="map" size={12} /> {t("game.hud.omen")}</span>
               <span className="val" style={{ color: "#bfe0ff" }}>{exitHint}</span>
             </div>
           )}
           {escapeSec && (
             <div className="chip" style={{ borderColor: "rgba(255,90,90,0.8)" }}>
-              <span className="lbl"><Icon name="bomb" size={12} /> Çöküyor</span>
+              <span className="lbl"><Icon name="bomb" size={12} /> {t("game.hud.collapsing")}</span>
               <span className="val" style={{ color: "#ff6b6b", fontWeight: 900 }}>{escapeSec}</span>
             </div>
           )}
           {hud.veil > 0 && (
             <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
-              <span className="lbl"><Icon name="veil" size={12} /> Görünmez</span>
+              <span className="lbl"><Icon name="veil" size={12} /> {t("game.hud.invisible")}</span>
               <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
             </div>
           )}
           {mq && !mission && (
-            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title="Fırsat görevi">
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title={t("game.hud.sidequest")}>
               <span className="lbl"><Icon name="flame" size={14} /></span>
               <span className="val" style={{ color: "#ffd75a" }}>{mq}</span>
             </div>
@@ -1529,8 +1562,8 @@ export default function Game({
           <button
             className="chip mutebtn"
             onClick={() => setActionsOpen((o) => !o)}
-            title="Menü"
-            aria-label="Menü"
+            title={t("game.hud.menu")}
+            aria-label={t("game.hud.menu")}
             style={levelNotice && !actionsOpen ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
           >
             <Icon name={actionsOpen ? "chevronUp" : "chevronDown"} size={18} />
@@ -1540,7 +1573,7 @@ export default function Game({
               <button
                 className="chip mutebtn"
                 onClick={() => { openHelp(); setActionsOpen(false); }}
-                title="Hedef / kontroller / uyarı"
+                title={t("game.hud.help")}
                 style={levelNotice ? { borderColor: "rgba(255,200,90,0.7)" } : undefined}
               >
                 <Icon name="help" size={17} />
@@ -1552,11 +1585,11 @@ export default function Game({
                   sound.setMuted(m);
                   setMuted(m);
                 }}
-                title={muted ? "Sesi aç" : "Sesi kapat"}
+                title={muted ? t("game.hud.soundon") : t("game.hud.soundoff")}
               >
                 <Icon name={muted ? "mute" : "music"} size={17} />
               </button>
-              <button className="chip mutebtn" onClick={() => { togglePause(); setActionsOpen(false); }} title={paused ? "Devam et" : "Duraklat"}>
+              <button className="chip mutebtn" onClick={() => { togglePause(); setActionsOpen(false); }} title={paused ? t("game.hud.resume") : t("game.hud.pause")}>
                 <Icon name={paused ? "play" : "pause"} size={17} fill />
               </button>
             </div>
@@ -1571,10 +1604,10 @@ export default function Game({
           onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}
         >
           <div className="invcard">
-            <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
+            <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> {t("game.inv.title")}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>{t("game.inv.hint")}</div>
             {([
-              { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
+              { kind: "veil", icon: "veil" as IconName, name: t("game.item.veil"), n: invCounts.veils, desc: t("game.item.veil.desc") },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -1589,17 +1622,17 @@ export default function Game({
               >
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Icon name={it.icon} size={16} /> {it.name} ({it.n}) — {it.desc}
-                  {equipped === it.kind ? <><Icon name="check" size={14} /> kuşanıldı</> : ""}
+                  {equipped === it.kind ? <><Icon name="check" size={14} /> {t("game.inv.equipped")}</> : ""}
                 </span>
               </button>
             ))}
             {invCounts.veils <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Boş — dükkândan alabilirsin.
+                {t("game.inv.empty")}
               </div>
             )}
             <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
-              Kapat
+              {t("game.inv.close")}
             </button>
           </div>
         </div>
@@ -1607,12 +1640,12 @@ export default function Game({
 
       {/* Rehberli 1. bölüm: alt-ortada büyük ipucu bandı (adım adım öğretir) */}
       {tut.on && tut.hint && (
-        <div className="tut-hint">{tut.hint}</div>
+        <div className="tut-hint">{t(tut.hint)}</div>
       )}
 
       {(hud.warn || exitMsg) && (
         <div className="warn">
-          {exitMsg || engineRef.current?.exitLockReason() || "Çıkış kilitli — önce en az 1 gelini yok et!"}
+          {exitMsg || txt(t, engineRef.current?.exitLockReason()) || t("game.exit.warn")}
         </div>
       )}
 
@@ -1633,22 +1666,22 @@ export default function Game({
 
       {helpOpen && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="scr-eyebrow">Hazırlık</div>
-          <h2 className="scr-title" style={{ fontSize: "clamp(28px,6vw,44px)" }}>BÖLÜM {hud.level}</h2>
+          <div className="scr-eyebrow">{t("game.prep.eyebrow")}</div>
+          <h2 className="scr-title" style={{ fontSize: "clamp(28px,6vw,44px)" }}>{t("game.prep.chapter", { n: hud.level })}</h2>
           <div className={"panel" + (levelNotice ? " panel-gold" : "")} style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
             <p className="panel-p" style={{ fontStyle: "normal", color: levelNotice ? "#ffe9a8" : undefined }}>
-              {levelNotice || "Gelinleri yok et, gizli çıkışı bul. Karanlıkta hızlı ol."}
+              {levelNotice ? t(levelNotice) : t("game.prep.desc")}
             </p>
             <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.8 }}>
-              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>Kontroller</span>
+              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>{t("game.prep.controls")}</span>
               <div style={{ marginTop: 5 }}>
-                WASD/ok hareket · Boşluk ya da sol tık ateş · <kbd>F</kbd>/sağ tık silah değiştir ·{" "}
-                <kbd>Shift</kbd> koş · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> envanter (Duvak)
+                {t("game.ctrl.move")} · {t("game.ctrl.fire")} · <kbd>F</kbd>{t("game.ctrl.swap")} ·{" "}
+                <kbd>Shift</kbd> {t("game.ctrl.run")} · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> {t("game.ctrl.inv")}
               </div>
             </div>
           </div>
           <button className="btn-primary-x" onClick={closeHelp}>
-            {hud.time > 0.1 ? "Devam →" : "Başla →"}
+            {hud.time > 0.1 ? t("game.btn.continue") : t("game.btn.start")}
           </button>
         </div>
       )}
@@ -1657,26 +1690,26 @@ export default function Game({
         <div className="screen" style={{ background: "rgba(0,0,0,0.86)" }}>
           {/* Geri: diğer TÜM ekranlarla aynı — sol üst, 46px, yalnız ok ikonu */}
           {onQuit && (
-            <button className="shell-icon shell-back" onClick={onQuit} title="Geri" aria-label="Geri">
+            <button className="shell-icon shell-back" onClick={onQuit} title={t("common.back")} aria-label={t("common.back")}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
           )}
           <div className="scr-eyebrow">
-            {mission.endless || mission.arena ? "MOD" : `GÖREV ${mission.id}`}
+            {mission.endless || mission.arena ? t("game.brief.mode") : t("game.brief.mission", { n: mission.id })}
           </div>
           <h2 className="scr-title" style={{ fontSize: "clamp(30px,7vw,52px)" }}>
-            {mission.title}
+            {t(mission.title as DictKey)}
           </h2>
           <div className="panel panel-blood" style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
-            <p className="panel-p" style={{ fontStyle: "normal" }}>{mission.brief}</p>
+            <p className="panel-p" style={{ fontStyle: "normal" }}>{t(mission.brief as DictKey)}</p>
             <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 15 }}>
-              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>Hedef</span>
-              <div style={{ marginTop: 5, color: "var(--ink-body)" }}>{mission.objectiveHint}</div>
+              <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>{t("game.brief.objective")}</span>
+              <div style={{ marginTop: 5, color: "var(--ink-body)" }}>{t(mission.objectiveHint as DictKey)}</div>
             </div>
           </div>
-          <button className="btn-primary-x" onClick={startMission}>Başla →</button>
+          <button className="btn-primary-x" onClick={startMission}>{t("game.btn.start")}</button>
         </div>
       )}
 
@@ -1684,16 +1717,16 @@ export default function Game({
         <div className="screen" style={{ background: "rgba(0,0,0,0.82)" }}>
           {/* Geri: sol üst, 46px ikon (tüm ekranlarla aynı) */}
           {onQuit && (
-            <button className="shell-icon shell-back" onClick={onQuit} title="Geri" aria-label="Geri">
+            <button className="shell-icon shell-back" onClick={onQuit} title={t("common.back")} aria-label={t("common.back")}>
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
           )}
-          <div className="pause-glyph" aria-label="Duraklatıldı"><Icon name="pause" size={54} fill /></div>
+          <div className="pause-glyph" aria-label={t("game.pause.title")}><Icon name="pause" size={54} fill /></div>
           <button className="btn-primary-x" onClick={togglePause}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-            Devam Et
+            {t("game.pause.resume")}
           </button>
         </div>
       )}
@@ -1725,7 +1758,7 @@ export default function Game({
             onPointerLeave={() => setFlag("fire", false)}
             onPointerCancel={() => setFlag("fire", false)}
           >
-            {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
+            {weapon === "sword" ? t("game.btn.sword") : t("game.btn.fire")}
           </button>
         )}
         {/* Ateşin ÜSTÜNDEKİ eylem satırı: silah değiştir + koş YAN YANA.
@@ -1735,8 +1768,8 @@ export default function Game({
           <button
             className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
-            title={weapon === "sword" ? "Silaha geç (F / sağ tık)" : "Kılıca geç (F / sağ tık)"}
-            aria-label="Silah değiştir"
+            title={weapon === "sword" ? t("game.btn.togun") : t("game.btn.tosword")}
+            aria-label={t("game.btn.swap")}
           >
             {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
           </button>
@@ -1747,7 +1780,7 @@ export default function Game({
             onPointerLeave={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
             onPointerCancel={() => { const i = inputExternal.current; if (i) i.sprint = false; }}
           >
-            KOŞ
+            {t("game.btn.run")}
           </button>
         </div>
       </div>
@@ -1762,7 +1795,7 @@ export default function Game({
             setInvCounts({ veils: inv.veils });
             setInvOpen(true);
           }}
-          title="Envanter"
+          title={t("game.inv.open")}
         >
           <Icon name="box" size={18} /> {invCounts.veils}
         </button>
@@ -1775,7 +1808,7 @@ export default function Game({
           // onPointerDown ile tetikle → joystick basılıyken (2. parmak) da çalışır;
           // onClick mobilde aktif dokunuş varken güvenilir tetiklenmiyordu (hareket+özellik aynı anda).
           onPointerDown={(e) => { e.preventDefault(); useEquipped(); }}
-          title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
+          title={equipped ? t("game.slot.use") : t("game.slot.open")}
         >
           {equipped ? (
             <>

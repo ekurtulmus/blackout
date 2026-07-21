@@ -8,6 +8,7 @@
 // online'da yerel/kişisel). Diğerleri (gezme/toplama/gelin tetikleyen) yalnız tek kişilik.
 
 import type { Vec } from "./types";
+import type { DictKey } from "./i18n/dict";
 
 export type MQKind =
   | "candles" // Üç mumu yak — 3 mumu ziyaret et (uzun, tek)
@@ -21,10 +22,12 @@ export type MQKind =
 export type MQTag = "kisa" | "orta" | "uzun";
 export type MQReward = { ammo?: number; health?: number; score?: number; coins?: number };
 
+// `title` ve `hud` artık METİN DEĞİL, sözlük ANAHTARI (lib/i18n/dict/parts/game.ts).
+// Bu dosya React değil → çeviremez; anahtarı ekrana basan taraf `t(...)` ile çevirir.
 export type MQDef = {
   kind: MQKind;
-  title: string; // görev adı (toast/HUD)
-  hud: string; // HUD kısa etiketi (ilerleme öncesi)
+  title: DictKey; // görev adı (toast/HUD) — çeviri anahtarı
+  hud: DictKey; // HUD kısa etiketi (ilerleme öncesi) — çeviri anahtarı
   icon: string; // HUD/emoji ipucu
   tag: MQTag;
   online: boolean; // online yarışta çıkabilir mi (yalnız kisa + yerel + gelin-nötr)
@@ -32,14 +35,14 @@ export type MQDef = {
 };
 
 export const MQ_DEFS: Record<MQKind, MQDef> = {
-  candles: { kind: "candles", title: "Üç Mumu Yak", hud: "Mumlar", icon: "🕯", tag: "uzun", online: false, reward: { ammo: 3, score: 150 } },
-  ring: { kind: "ring", title: "Yüzüğü Bul", hud: "Yüzüğü bul", icon: "💍", tag: "orta", online: false, reward: { coins: 2, score: 60 } },
-  markedkill: { kind: "markedkill", title: "İşaretli İnfaz", hud: "Çemberde gelin öldür", icon: "⊚", tag: "uzun", online: false, reward: { ammo: 2, health: 30, score: 160 } },
-  bell: { kind: "bell", title: "Çanı Çal", hud: "Çanı çal (gelinleri oyala)", icon: "🔔", tag: "orta", online: false, reward: { ammo: 3, score: 120 } },
-  bloodtrail: { kind: "bloodtrail", title: "Kanı Takip Et", hud: "Kanı takip et", icon: "🩸", tag: "kisa", online: true, reward: { ammo: 2, score: 90 } },
-  darkhall: { kind: "darkhall", title: "Fenersiz Koridor", hud: "Koridorun sonuna ulaş", icon: "🕳", tag: "uzun", online: false, reward: { health: 45, score: 120 } },
+  candles: { kind: "candles", title: "game.mq.candles.title", hud: "game.mq.candles.hud", icon: "🕯", tag: "uzun", online: false, reward: { ammo: 3, score: 150 } },
+  ring: { kind: "ring", title: "game.mq.ring.title", hud: "game.mq.ring.hud", icon: "💍", tag: "orta", online: false, reward: { coins: 2, score: 60 } },
+  markedkill: { kind: "markedkill", title: "game.mq.markedkill.title", hud: "game.mq.markedkill.hud", icon: "⊚", tag: "uzun", online: false, reward: { ammo: 2, health: 30, score: 160 } },
+  bell: { kind: "bell", title: "game.mq.bell.title", hud: "game.mq.bell.hud", icon: "🔔", tag: "orta", online: false, reward: { ammo: 3, score: 120 } },
+  bloodtrail: { kind: "bloodtrail", title: "game.mq.bloodtrail.title", hud: "game.mq.bloodtrail.hud", icon: "🩸", tag: "kisa", online: true, reward: { ammo: 2, score: 90 } },
+  darkhall: { kind: "darkhall", title: "game.mq.darkhall.title", hud: "game.mq.darkhall.hud", icon: "🕳", tag: "uzun", online: false, reward: { health: 45, score: 120 } },
   // Ayna: maddi ödül yok; yanında beklersen çıkış yönünü gösterir (hint aşağıda özel)
-  mirror: { kind: "mirror", title: "Ayna Kehaneti", hud: "Aynanın yanında bekle", icon: "🪞", tag: "kisa", online: false, reward: {} },
+  mirror: { kind: "mirror", title: "game.mq.mirror.title", hud: "game.mq.mirror.hud", icon: "🪞", tag: "kisa", online: false, reward: {} },
 };
 
 // Tek kişilik havuzu (hepsi) ve online havuzu (yalnız güvenli olanlar)

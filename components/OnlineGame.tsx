@@ -42,6 +42,7 @@ import type { Vec, Zombie } from "@/lib/types";
 import { MQ_DEFS, MQ_KINDS_ONLINE, mulberry32, planMiniQuest, type MQPlan } from "@/lib/miniquests";
 import { ScareDirector, type ScareFx } from "@/lib/scares";
 import Icon, { type IconName } from "@/components/Icon";
+import { useT } from "@/lib/i18n";
 
 const RESPAWN_MS = 10000; // toplanan mermi bu sürede haritada geri doğar
 const PVP_DMG = PLAYER_MAX_HP * 0.1; // PvP: her isabet canın %10'u (çok az)
@@ -94,6 +95,13 @@ export default function OnlineGame({
   info: StartInfo;
   onExit: () => void;
 }) {
+  const t = useT();
+  // Oyun döngüsü/canvas TEK SEFER kurulur ([] bağımlılık) → çevirici oradan REF ile okunur,
+  // yoksa dil değişince kapanan eski `t` kalırdı.
+  const tRef = useRef(t);
+  useEffect(() => {
+    tRef.current = t;
+  }, [t]);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const input = useRef({ up: false, down: false, left: false, right: false, ax: 0, ay: 0, fire: false, place: false, trap: false });
   const [phase, setPhase] = useState<Phase>("playing");
@@ -126,7 +134,7 @@ export default function OnlineGame({
   // Görünen ad — TEK etiket: isim varsa İSİM, yoksa arkadaş KODU (lobi kodu isim
   // alanında taşır), o da yoksa "Oyuncu N". İsim ve kod ASLA birlikte yazılmaz.
   const nameOf = (seat: number) =>
-    (info.names[seat] || "").trim() || `Oyuncu ${seat + 1}`;
+    (info.names[seat] || "").trim() || tRef.current("online.game.playerN", { n: seat + 1 });
 
   // Sen ölünce dükkan askeri gider (yeniden satın alınabilir)
   const loseHiredSoldier = () => {
@@ -433,7 +441,7 @@ export default function OnlineGame({
         let maxId = brideIdCounter.current;
         for (const z of hostBrides.current) if (z.id > maxId) maxId = z.id;
         brideIdCounter.current = maxId;
-        flash("Ev sahibi ayrıldı — kontrolü sen devraldın");
+        flash(tRef.current("online.game.hostMigrated"));
       }
       amHost.current = nowHost;
     }
@@ -446,7 +454,7 @@ export default function OnlineGame({
       goneIds.current.add(id);
       if (explicit) explicitLeftIds.current.add(id);
       others.current.delete(id);
-      flash(`${o ? o.name : "Bir oyuncu"} oyundan ayrıldı`);
+      flash(tRef.current("online.game.left", { name: o ? o.name : tRef.current("online.game.someone") }));
       updateHost();
       // Maçı YALNIZ gerçekten çıkıldıysa ({t:left}) anında bitir.
       // Zaman aşımı (explicit=false) geçici olabilir — telefon kilitlenir, sekme arka
@@ -463,7 +471,7 @@ export default function OnlineGame({
       aloneSince.current = 0; // geri döndü → "tek kaldın" sayacı iptal
       setAlone(false);
       const s = order.indexOf(id);
-      flash(`${nameOf(s)} yeniden bağlandı`);
+      flash(tRef.current("online.game.rejoined", { name: nameOf(s) }));
       updateHost();
     }
 
@@ -1188,7 +1196,9 @@ export default function OnlineGame({
           const def = MQ_DEFS[mqp.kind];
           if (def.reward.ammo) ammoCount.current += def.reward.ammo;
           sound.play("secret");
-          setMqToast(`${def.title} — +${def.reward.ammo ?? 0} mermi`);
+          // def.title bir ÇEVİRİ ANAHTARI (lib/miniquests.ts) → önce ONU çevir, sonra cümleye göm.
+          // Sarılmazsa ekranda ham anahtar ("game.mq.…") görünür.
+          setMqToast(tRef.current("online.game.mqReward", { title: tRef.current(def.title), n: def.reward.ammo ?? 0 }));
           window.setTimeout(() => setMqToast(""), 3000);
         }
       }
@@ -1715,7 +1725,7 @@ export default function OnlineGame({
         ctx!.font = `800 ${Math.round(TS * 0.5)}px 'Cinzel', serif`;
         ctx!.textAlign = "center";
         ctx!.shadowColor = "#000"; ctx!.shadowBlur = 6;
-        ctx!.fillText(`ÖLDÜN · ${sec}`, cx, cy - TS * 0.95);
+        ctx!.fillText(tRef.current("online.game.dead", { n: sec }), cx, cy - TS * 0.95);
         ctx!.restore();
       }
       // Madde 8: görünmezken titreşen tül halkası
@@ -1877,7 +1887,8 @@ export default function OnlineGame({
             brides: amHost.current ? hostBrides.current.length : guestBrides.current.size,
             board,
           });
-          setMqHud(miniQuest.current && !mqDone.current ? MQ_DEFS[miniQuest.current.kind].hud : "");
+          // .hud da ÇEVİRİ ANAHTARI → t() ile çöz, yoksa HUD çipinde ham anahtar çıkar
+          setMqHud(miniQuest.current && !mqDone.current ? tRef.current(MQ_DEFS[miniQuest.current.kind].hud) : "");
         }
         render();
       }
@@ -1972,21 +1983,21 @@ export default function OnlineGame({
             <span className="val">{hud.ammo}</span>
           </div>
           <div className="chip">
-            <span className="lbl"><Icon name="box" size={12} /> Bariyer</span>
+            <span className="lbl"><Icon name="box" size={12} /> {t("online.game.barrier")}</span>
             <span className="val">{hud.barriers}</span>
           </div>
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.6)" }}>
             <span className="lbl"><Icon name="coin" size={14} /></span>
             <span className="val" style={{ color: "#ffd75a" }}>{coins}</span>
           </div>
-          <div className="chip" title="Bölüm">
+          <div className="chip" title={t("online.game.chapter")}>
             <span className="lbl"><Icon name="layers" size={14} /></span>
             <span className="val">{hud.level}</span>
           </div>
           {info.pvp && (
             <div className="chip" style={{ borderColor: "rgba(255,120,120,0.6)" }}>
               <span className="lbl"><Icon name="swords" size={12} /> PvP</span>
-              <span className="val" style={{ color: "#ff9a9a" }}>açık</span>
+              <span className="val" style={{ color: "#ff9a9a" }}>{t("online.game.on.low")}</span>
             </div>
           )}
           {arenaMode ? (
@@ -1994,27 +2005,27 @@ export default function OnlineGame({
             // (aşağıda .arena-banner). Burada yalnız tur ve puan kalır.
             <>
               <div className="chip" style={{ borderColor: "rgba(255,170,90,0.6)" }}>
-                <span className="lbl"><Icon name="swords" size={12} /> Tur</span>
+                <span className="lbl"><Icon name="swords" size={12} /> {t("online.game.round")}</span>
                 <span className="val" style={{ color: "#ffb45a" }}>{hud.wave}</span>
               </div>
               <div className="chip" style={{ borderColor: "rgba(125,255,176,0.5)" }}>
-                <span className="lbl">Puanın</span>
+                <span className="lbl">{t("online.game.yourScore")}</span>
                 <span className="val" style={{ color: "#7dffb0" }}>{hud.scores[mySeat] ?? 0}/{ARENA_WIN_POINTS}</span>
               </div>
             </>
           ) : (
-            <div className="chip is-icononly" title={hud.exitOpen ? "Çıkışın açık" : "Çıkışın kilitli"} style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)", color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
+            <div className="chip is-icononly" title={hud.exitOpen ? t("online.game.exitOpen") : t("online.game.exitLocked")} style={{ borderColor: hud.exitOpen ? "rgba(125,255,176,0.5)" : "rgba(255,150,150,0.5)", color: hud.exitOpen ? "var(--hp)" : "var(--muted)" }}>
               <Icon name={hud.exitOpen ? "lockOpen" : "lock"} size={17} />
             </div>
           )}
           {hud.veil > 0 && (
             <div className="chip" style={{ borderColor: "rgba(215,228,255,0.6)" }}>
-              <span className="lbl"><Icon name="veil" size={12} /> Görünmez</span>
+              <span className="lbl"><Icon name="veil" size={12} /> {t("online.game.invisible")}</span>
               <span className="val" style={{ color: "#d7e4ff" }}>{hud.veil}s</span>
             </div>
           )}
           {mqHud && (
-            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title="Fırsat görevi">
+            <div className="chip" style={{ borderColor: "rgba(255,200,90,0.6)" }} title={t("online.game.sideQuest")}>
               <span className="lbl"><Icon name="flame" size={14} /></span>
               <span className="val" style={{ color: "#ffd75a" }}>{mqHud}</span>
             </div>
@@ -2022,7 +2033,7 @@ export default function OnlineGame({
           {/* CANLI SKOR TABLOSU — kimin önde olduğu her an ekranda (yarış: tur galibiyeti, arena: puan) */}
           <div className="chip" style={{ borderColor: "rgba(255,205,80,0.55)" }}>
             <span className="lbl">
-              <Icon name="trophy" size={12} /> {arenaMode ? `Puan (ilk ${ARENA_WIN_POINTS})` : "Skor"}
+              <Icon name="trophy" size={12} /> {arenaMode ? t("online.game.points", { n: ARENA_WIN_POINTS }) : t("online.game.score")}
             </span>
             <span className="val" style={{ display: "inline-flex", gap: 7, flexWrap: "wrap" }}>
               {hud.scores.map((s, seat) => {
@@ -2031,7 +2042,7 @@ export default function OnlineGame({
                 return (
                   <span
                     key={seat}
-                    title={me ? `${nameOf(seat)} (sen)` : nameOf(seat)}
+                    title={me ? `${nameOf(seat)} (${t("online.you")})` : nameOf(seat)}
                     style={{
                       color: SEAT_COLORS[seat % SEAT_COLORS.length],
                       fontWeight: lead ? 900 : 700,
@@ -2051,15 +2062,15 @@ export default function OnlineGame({
         {/* Sağ üst: yardım · dükkân · çıkış (hep yan yana) */}
         <div className="hud-actions">
           {arenaMode && (
-            <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title="Arena kuralları">
+            <button className="chip mutebtn" onClick={() => setRulesOpen(true)} title={t("online.game.rules.tip")}>
               <Icon name="help" size={17} />
             </button>
           )}
-          <button className="chip mutebtn" onClick={openShop} title="Dükkân — altınla eşya al">
+          <button className="chip mutebtn" onClick={openShop} title={t("online.game.shop.tip")}>
             <Icon name="cart" size={17} />
           </button>
           {/* Yanlışlıkla basınca oyun gitmesin → önce onay sor */}
-          <button className="chip mutebtn" onClick={() => setConfirmQuit(true)} title="Menüye dön">
+          <button className="chip mutebtn" onClick={() => setConfirmQuit(true)} title={t("online.game.menu.tip")}>
             <Icon name="exit" size={17} />
           </button>
         </div>
@@ -2069,13 +2080,13 @@ export default function OnlineGame({
       {confirmQuit && (
         <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setConfirmQuit(false); }}>
           <div className="invcard" style={{ maxWidth: 360, textAlign: "center" }}>
-            <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink-title)" }}>Oyundan çıkılsın mı?</div>
+            <div style={{ fontWeight: 800, fontSize: 16, color: "var(--ink-title)" }}>{t("online.game.quit.title")}</div>
             <div style={{ fontSize: 13.5, color: "var(--muted)", marginTop: 6, lineHeight: 1.5 }}>
-              Menüye dönersen bu maçtan ayrılırsın.
+              {t("online.game.quit.desc")}
             </div>
             <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "center", flexWrap: "wrap" }}>
-              <button className="btn btn-primary" onClick={() => setConfirmQuit(false)}>Oyuna Devam Et</button>
-              <button className="danger-btn" onClick={quit}>Menüye Dön</button>
+              <button className="btn btn-primary" onClick={() => setConfirmQuit(false)}>{t("online.game.quit.stay")}</button>
+              <button className="danger-btn" onClick={quit}>{t("online.game.quit.yes")}</button>
             </div>
           </div>
         </div>
@@ -2086,14 +2097,14 @@ export default function OnlineGame({
       {arenaMode && (
         <div className="arena-banner">
           <div className={"ab-item" + (hud.surv <= 10 ? " is-urgent" : "")}>
-            <span className="ab-lbl">SÜRE</span>
+            <span className="ab-lbl">{t("online.game.time")}</span>
             <span className="ab-val">
               {Math.floor(hud.surv / 60)}:{String(hud.surv % 60).padStart(2, "0")}
             </span>
           </div>
           <span className="ab-sep" />
           <div className="ab-item is-brides">
-            <span className="ab-lbl">GELİN</span>
+            <span className="ab-lbl">{t("online.game.brides")}</span>
             <span className="ab-val">{hud.brides}</span>
           </div>
         </div>
@@ -2118,10 +2129,10 @@ export default function OnlineGame({
       {invOpen && (
         <div className="invbackdrop" onClick={(e) => { if (e.target === e.currentTarget) setInvOpen(false); }}>
           <div className="invcard">
-            <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> ENVANTER</div>
-            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>Kuşan → sonra ateşin yanındaki kutucukla kullan.</div>
+            <div style={{ fontWeight: 800, color: "#e0a24a", letterSpacing: "0.14em", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}><Icon name="box" size={18} /> {t("online.game.inv")}</div>
+            <div style={{ fontSize: 12, color: "var(--muted)", marginTop: -4 }}>{t("online.game.inv.desc")}</div>
             {([
-              { kind: "veil", icon: "veil" as IconName, name: "Duvak", n: invCounts.veils, desc: "birkaç sn görünmez ol" },
+              { kind: "veil", icon: "veil" as IconName, name: t("online.game.veil"), n: invCounts.veils, desc: t("online.game.veil.d") },
             ] as const).map((it) => (
               <button
                 key={it.kind}
@@ -2135,17 +2146,17 @@ export default function OnlineGame({
                 }}
               >
                 <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon name={it.icon} size={16} /> {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? <><Icon name="check" size={14} /> kuşanıldı</> : ""}
+                  <Icon name={it.icon} size={16} /> {it.name} ({it.n}) — {it.desc}{equipped === it.kind ? <><Icon name="check" size={14} /> {t("online.game.equipped")}</> : ""}
                 </span>
               </button>
             ))}
             {invCounts.veils <= 0 && (
               <div style={{ fontSize: 12, color: "var(--muted)" }}>
-                Boş — menüdeki dükkândan alabilirsin.
+                {t("online.game.inv.empty")}
               </div>
             )}
             <button className="btn" onClick={() => setInvOpen(false)} style={{ opacity: 0.7 }}>
-              Kapat
+              {t("online.game.close")}
             </button>
           </div>
         </div>
@@ -2171,16 +2182,16 @@ export default function OnlineGame({
 
       {alone && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="big" style={{ color: "#ff9a3c" }}>Oda kapandı</div>
-          <div className="subtitle">Odada 2 kişiden az kaldı — yarış sona erdi.</div>
-          <button className="btn btn-primary" onClick={quit}>← Geri</button>
+          <div className="big" style={{ color: "#ff9a3c" }}>{t("online.game.roomClosed")}</div>
+          <div className="subtitle">{t("online.game.roomClosed.d")}</div>
+          <button className="btn btn-primary" onClick={quit}>← {t("common.back")}</button>
         </div>
       )}
 
       {phase === "left" && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="big" style={{ color: "#ff6b6b" }}>Bağlantı koptu</div>
-          <button className="btn btn-primary" onClick={quit}>← Geri</button>
+          <div className="big" style={{ color: "#ff6b6b" }}>{t("online.game.disconnected")}</div>
+          <button className="btn btn-primary" onClick={quit}>← {t("common.back")}</button>
         </div>
       )}
 
@@ -2191,8 +2202,8 @@ export default function OnlineGame({
             style={{ color: overlay.winnerSeat === mySeat ? "#7dffb0" : "#ff6b6b" }}
           >
             {overlay.winnerSeat === mySeat
-              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>Bu bölümü KAZANDIN! <Icon name="trophy" size={26} /></span>
-              : `${nameOf(overlay.winnerSeat)} kazandı`}
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{t("online.game.wonChapter")} <Icon name="trophy" size={26} /></span>
+              : t("online.game.won", { name: nameOf(overlay.winnerSeat) })}
           </div>
           <div className="scorelist">
             {overlay.scores
@@ -2206,9 +2217,9 @@ export default function OnlineGame({
                 </div>
               ))}
           </div>
-          <div className="subtitle">Sonraki bölüm ~5 sn içinde — dükkâna uğrayabilirsin.</div>
+          <div className="subtitle">{t("online.game.next")}</div>
           <button className="btn" onClick={openShop} style={{ borderColor: "rgba(255,205,80,0.6)", display: "inline-flex", alignItems: "center", gap: 6, justifyContent: "center" }}>
-            <Icon name="cart" size={16} /> Dükkâna Uğra ({coins} <Icon name="coin" size={13} />)
+            <Icon name="cart" size={16} /> {t("online.game.visitShop")} ({coins} <Icon name="coin" size={13} />)
           </button>
         </div>
       )}
@@ -2217,18 +2228,18 @@ export default function OnlineGame({
       {arenaMode && rulesOpen && !arenaOver && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.88)", zIndex: 28 }}>
           <div className="big" style={{ color: "#ffb45a", display: "inline-flex", alignItems: "center", gap: 10 }}>
-            <Icon name="swords" size={28} /> ARENA KURALLARI
+            <Icon name="swords" size={28} /> {t("online.game.rules.title")}
           </div>
           <div className="how" style={{ textAlign: "left", maxWidth: 480 }}>
-            <p style={{ margin: 0 }}><b>Amaç:</b> Turu <b>en çok gelin öldüren</b> kazanır (+1 puan).</p>
-            <p style={{ margin: "10px 0 0" }}><b>Kazanma:</b> İlk <b>{ARENA_WIN_POINTS} puana</b> ulaşan maçı alır.</p>
-            <p style={{ margin: "10px 0 0" }}><b>Tur süresi:</b> 2 dakika. Süre bitince tur sonuçlanır.</p>
-            <p style={{ margin: "10px 0 0" }}><b>Çıkış yok:</b> Açık arenada dalga dalga gelin gelir; turlar ilerledikçe artar.</p>
-            <p style={{ margin: "10px 0 0" }}><b>Ölüm:</b> Ölürsen <b>3 sn</b> yerinde beklersin (kill süresinden kaybedersin), sonra doğarsın.</p>
-            <p style={{ margin: "10px 0 0" }}><b>Can:</b> Arenada can paketi seyrektir — dikkatli oyna.</p>
-            <p style={{ margin: "10px 0 0", color: "#8f8776", fontStyle: "italic" }}>Bu ekranı oyun içinde <b>?</b> düğmesiyle tekrar açabilirsin.</p>
+            <p style={{ margin: 0 }}><b>{t("online.game.rules.goal")}</b> {t("online.game.rules.goal.a")} <b>{t("online.game.rules.goal.b")}</b> {t("online.game.rules.goal.c")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.win")}</b> {t("online.game.rules.win.a")} <b>{t("online.game.rules.win.b", { n: ARENA_WIN_POINTS })}</b> {t("online.game.rules.win.c")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.time")}</b> {t("online.game.rules.time.d")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.noexit")}</b> {t("online.game.rules.noexit.d")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.death")}</b> {t("online.game.rules.death.a")} <b>{t("online.game.rules.death.b")}</b> {t("online.game.rules.death.c")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.hp")}</b> {t("online.game.rules.hp.d")}</p>
+            <p style={{ margin: "10px 0 0", color: "#8f8776", fontStyle: "italic" }}>{t("online.game.rules.again.a")} <b>?</b> {t("online.game.rules.again.b")}</p>
           </div>
-          <button className="btn btn-primary" onClick={() => setRulesOpen(false)}>Anladım</button>
+          <button className="btn btn-primary" onClick={() => setRulesOpen(false)}>{t("online.game.gotIt")}</button>
         </div>
       )}
 
@@ -2237,8 +2248,8 @@ export default function OnlineGame({
         <div className="screen" style={{ background: "rgba(0,0,0,0.86)", zIndex: 29 }}>
           <div className="big" style={{ color: roundInfo.winner === mySeat ? "#7dffb0" : "#ffb45a" }}>
             {roundInfo.winner === mySeat
-              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>TURU SEN KAZANDIN! <Icon name="trophy" size={26} /></span>
-              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={24} /> {nameOf(roundInfo.winner)} turu kazandı</span>}
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{t("online.game.roundWon")} <Icon name="trophy" size={26} /></span>
+              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={24} /> {t("online.game.roundWonBy", { name: nameOf(roundInfo.winner) })}</span>}
           </div>
           {/* TURUN SIRALAMASI — sıra · isim · öldürme · toplam puan (sade) */}
           <div className="scorelist">
@@ -2246,12 +2257,12 @@ export default function OnlineGame({
               <div key={p.seat} className="scorerow">
                 <span className="sr-rank">{i + 1}.</span>
                 <b className="sr-name" style={{ color: SEAT_COLORS[p.seat % SEAT_COLORS.length] }}>{nameOf(p.seat)}</b>
-                <span className="sr-sub">{p.k} gelin</span>
-                <b className="sr-total">{roundInfo.scores[p.seat] ?? 0} puan</b>
+                <span className="sr-sub">{t("online.game.brideCount", { n: p.k })}</span>
+                <b className="sr-total">{t("online.game.pts", { n: roundInfo.scores[p.seat] ?? 0 })}</b>
               </div>
             ))}
           </div>
-          <div className="subtitle" style={{ color: "#8f8776" }}>Yeni tur başlıyor…</div>
+          <div className="subtitle" style={{ color: "#8f8776" }}>{t("online.game.newRound")}</div>
         </div>
       )}
 
@@ -2260,8 +2271,8 @@ export default function OnlineGame({
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)", zIndex: 30 }}>
           <div className="big" style={{ color: arenaOver.winner === mySeat ? "#7dffb0" : "#ff6b6b" }}>
             {arenaOver.winner === mySeat
-              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>ARENA ŞAMPİYONU SENSİN! <Icon name="trophy" size={28} /></span>
-              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={26} /> {nameOf(arenaOver.winner)} kazandı</span>}
+              ? <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>{t("online.game.arenaChamp")} <Icon name="trophy" size={28} /></span>
+              : <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon name="trophy" size={26} /> {t("online.game.won", { name: nameOf(arenaOver.winner) })}</span>}
           </div>
           <div className="scorelist">
             {arenaOver.scores
@@ -2271,19 +2282,19 @@ export default function OnlineGame({
                 <div key={r.seat} className="scorerow">
                   <span className="sr-rank">{i + 1}.</span>
                   <b className="sr-name" style={{ color: SEAT_COLORS[r.seat % SEAT_COLORS.length] }}>{nameOf(r.seat)}</b>
-                  <b className="sr-total">{r.s} puan</b>
+                  <b className="sr-total">{t("online.game.pts", { n: r.s })}</b>
                 </div>
               ))}
           </div>
           <button className="btn btn-primary" onClick={onExit} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-            ← Menüye Dön
+            ← {t("online.game.quit.yes")}
           </button>
         </div>
       )}
 
       {/* Oyun-içi dükkân (market) — tam ekran overlay; alttaki oyun sürer */}
       {shopOpen && (
-        <Shop title="DÜKKÂN" onBack={closeShop} standalone />
+        <Shop title={t("online.game.shop.title")} onBack={closeShop} standalone />
       )}
 
 
@@ -2296,7 +2307,7 @@ export default function OnlineGame({
           onPointerLeave={() => (input.current.place = false)}
           onPointerCancel={() => (input.current.place = false)}
         >
-          BARİYER
+          {t("online.game.barrier.btn")}
         </button>
         <button
           className={"fire" + (weapon === "sword" ? " is-sword" : "")}
@@ -2305,7 +2316,7 @@ export default function OnlineGame({
           onPointerLeave={() => (input.current.fire = false)}
           onPointerCancel={() => (input.current.fire = false)}
         >
-          {weapon === "sword" ? "KILIÇ" : "ATEŞ"}
+          {weapon === "sword" ? t("online.game.sword") : t("online.game.fire")}
         </button>
         {/* Ateşin ÜSTÜNDEKİ eylem satırı (tekli oyunla aynı düzen) — sabit sağ-alt
             konum yerine satır: tuzak/bariyer butonlarıyla çakışmaz. */}
@@ -2313,8 +2324,8 @@ export default function OnlineGame({
           <button
             className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
-            title={weapon === "sword" ? "Silaha geç (F / sağ tık)" : "Kılıca geç (F / sağ tık)"}
-            aria-label="Silah değiştir"
+            title={weapon === "sword" ? t("online.game.toGun") : t("online.game.toSword")}
+            aria-label={t("online.game.swapWeapon")}
           >
             {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
           </button>
@@ -2326,7 +2337,7 @@ export default function OnlineGame({
         className="invbtn invbtn-mp"
         onPointerDown={(e) => e.preventDefault()}
         onClick={() => { const inv = getInventory(); setInvCounts({ veils: inv.veils }); setInvOpen(true); }}
-        title="Envanter"
+        title={t("online.game.inv.tip")}
       >
         <Icon name="box" size={18} /> {invCounts.veils}
       </button>
@@ -2336,7 +2347,7 @@ export default function OnlineGame({
         className="slotbtn slotbtn-mp"
         // onPointerDown → joystick basılıyken (2. parmak) da kullanılabilir (bkz. Game.tsx)
         onPointerDown={(e) => { e.preventDefault(); useEquippedOnline(); }}
-        title={equipped ? "Kuşanılan eşyayı kullan" : "Envanteri aç"}
+        title={equipped ? t("online.game.useEquipped") : t("online.game.openInv")}
       >
         {equipped ? (
           <>

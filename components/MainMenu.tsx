@@ -74,84 +74,84 @@ export default function MainMenu({
   const helpTopics: { key: string; title: string; items: { k?: string; t: string }[] }[] = [
     {
       key: "kontrol",
-      title: "Kontroller",
+      title: t("menu.help.controls.title"),
       items: isTouch
         ? [
-            { k: "Hareket", t: "Sol alttaki joystick'i sürükle — çektiğin yöne yürürsün." },
-            { k: "Ateş / Kılıç", t: "Sağ alttaki büyük düğme kuşandığın silahı kullanır." },
-            { k: "Silah değiştir", t: "Ateşin yanındaki düğmeyle mermi ↔ kılıç arası geç." },
+            { k: t("menu.help.controls.move"), t: t("menu.help.controls.move.touch") },
+            { k: t("menu.help.controls.fire"), t: t("menu.help.controls.fire.touch") },
+            { k: t("menu.help.controls.swap"), t: t("menu.help.controls.swap.touch") },
           ]
         : [
-            { k: "Hareket", t: "WASD veya ok tuşları · Shift ile koş (nefes barı tükenir)." },
-            { k: "Ateş / Kılıç", t: "Boşluk ya da SOL TIK — kuşandığın silahı kullanır." },
-            { k: "Silah değiştir", t: "F tuşu veya SAĞ TIK — mermi ↔ kılıç." },
+            { k: t("menu.help.controls.move"), t: t("menu.help.controls.move.key") },
+            { k: t("menu.help.controls.fire"), t: t("menu.help.controls.fire.key") },
+            { k: t("menu.help.controls.swap"), t: t("menu.help.controls.swap.key") },
           ],
     },
     {
       key: "amac",
-      title: "Amaç & Bölüm",
+      title: t("menu.help.goal.title"),
       items: [
-        { t: "Kapkaranlık labirentte fenerinle yolunu bul." },
-        { k: "Çıkış kilidi", t: "Çıkış önce KİLİTLİ. En az 1 gelini yok edince açılır." },
-        { k: "Bölüm geç", t: "Yeşil parlayan kapıya ulaş → sonraki bölüm. Yalnız Kaçış'ta 10 bölüm." },
+        { t: t("menu.help.goal.body") },
+        { k: t("menu.help.goal.lock"), t: t("menu.help.goal.lock.body") },
+        { k: t("menu.help.goal.next"), t: t("menu.help.goal.next.body") },
       ],
     },
     {
       key: "gelinler",
-      title: "Kanlı Gelinler",
+      title: t("menu.help.brides.title"),
       items: [
-        { k: "Kanlı Gelin", t: "Klasik avcı. Görünce koşar, asla vazgeçmez; bölümle zekileşir." },
-        { k: "Kraliçe Gelin", t: "Dev boss, birkaç bölümde bir. Taçlı, kızıl auralı, çok tehlikeli." },
-        { t: "Karanlıkta hızlanan, bölünen, çağıran, duvar aşan türler de var — oynadıkça tanırsın." },
+        { k: t("menu.help.brides.classic"), t: t("menu.help.brides.classic.body") },
+        { k: t("menu.help.brides.queen"), t: t("menu.help.brides.queen.body") },
+        { t: t("menu.help.brides.others") },
       ],
     },
     {
       key: "can",
-      title: "Can & Ölüm",
+      title: t("menu.help.life.title"),
       items: [
-        { k: "3 can", t: "Gelin teması can barını düşürür. Bar bitince bir can gider." },
-        { k: "Yeniden doğuş", t: "Ölünce bölüm başında kısa dokunulmazlıkla doğarsın." },
-        { k: "Kalp atışı", t: "Karanlıkta kalbin hızlanır — yakında gelin var demektir." },
+        { k: t("menu.help.life.lives"), t: t("menu.help.life.lives.body") },
+        { k: t("menu.help.life.respawn"), t: t("menu.help.life.respawn.body") },
+        { k: t("menu.help.life.heart"), t: t("menu.help.life.heart.body") },
       ],
     },
     {
       key: "mermi",
-      title: "Mermi & Ateş",
+      title: t("menu.help.ammo.title"),
       items: [
-        { k: "Sınırlı mermi", t: "Yerdeki parlayan mermileri topla; boşa harcama." },
-        { k: "Ses çeker", t: "Ateş sesi gelinleri üstüne çeker." },
-        { k: "Geri doğar", t: "Toplanan mermi 10 sn sonra yerinde geri belirir." },
+        { k: t("menu.help.ammo.limited"), t: t("menu.help.ammo.limited.body") },
+        { k: t("menu.help.ammo.noise"), t: t("menu.help.ammo.noise.body") },
+        { k: t("menu.help.ammo.respawn"), t: t("menu.help.ammo.respawn.body") },
       ],
     },
     {
       key: "para",
-      title: "Dükkân & Altın",
+      title: t("menu.help.gold.title"),
       items: [
-        { k: "Altın kazan", t: "Gelin öldürünce ve bölüm geçince altın kazanırsın." },
-        { k: "Dükkân", t: "Kalıcı geliştirmeler (sürekli cephane, asker müttefiki) ve kozmetik (fener/kılıç/görünüm renkleri) al." },
-        { k: "Her yerde geçerli", t: "Aldığın her şey tüm modlarda ve bölümlerde geçerlidir." },
+        { k: t("menu.help.gold.earn"), t: t("menu.help.gold.earn.body") },
+        { k: t("menu.help.gold.shop"), t: t("menu.help.gold.shop.body") },
+        { k: t("menu.help.gold.forever"), t: t("menu.help.gold.forever.body") },
       ],
     },
     {
       key: "esya",
-      title: "Duvak & Fırsatlar",
+      title: t("menu.help.veil.title"),
       items: [
-        { k: "Duvak", t: "Yerde bulup kuşan; tetikleyince birkaç sn görünmez olursun (ateş/saldırı bozar)." },
-        { t: "Bölümlerde ara sıra opsiyonel 'Fırsat' hedefleri çıkar; çıkışı geciktirmez." },
-        { k: "Yüzük", t: "Ekstra altın verir — ama bir gelini çıldırtıp hızlandırır." },
-        { k: "Ayna", t: "Kehanet: birkaç sn beklersen çıkışın yönünü gösterir." },
-        { k: "Çan", t: "Tüm gelinleri çana çeker — hepsini bir noktada toplar." },
-        { k: "Mumlar / Kan izi", t: "Mumları yak ya da doğru kan izini takip et → ödül." },
+        { k: t("menu.help.veil.veil"), t: t("menu.help.veil.veil.body") },
+        { t: t("menu.help.veil.chances") },
+        { k: t("menu.help.veil.ring"), t: t("menu.help.veil.ring.body") },
+        { k: t("menu.help.veil.mirror"), t: t("menu.help.veil.mirror.body") },
+        { k: t("menu.help.veil.bell"), t: t("menu.help.veil.bell.body") },
+        { k: t("menu.help.veil.candles"), t: t("menu.help.veil.candles.body") },
       ],
     },
     {
       key: "yaris",
-      title: "Ölüm Koşusu (Online)",
+      title: t("menu.help.race.title"),
       items: [
-        { t: "2-6 kişi aynı labirentte yarışır; ilk çıkan bölümü kazanır, puan birikir." },
-        { k: "Bariyer", t: "Bölüm başına 3 hakkın var; koyduğun bariyer rakibin yolunu kapar, bir atışla yıkılır." },
-        { k: "Dükkân", t: "Turlar arası dükkândan kazandığın altınla eşya al." },
-        { k: "Ölüm", t: "Can barın bitince 3 sn bekleyip başta güvenle doğarsın; yarış sürer." },
+        { t: t("menu.help.race.body") },
+        { k: t("menu.help.race.barrier"), t: t("menu.help.race.barrier.body") },
+        { k: t("menu.help.race.shop"), t: t("menu.help.race.shop.body") },
+        { k: t("menu.help.race.death"), t: t("menu.help.race.death.body") },
       ],
     },
   ];
@@ -159,27 +159,27 @@ export default function MainMenu({
 
   const boxes: { label: string; onClick: () => void; icon: React.ReactNode }[] = [
     {
-      label: "Görevler", onClick: onMissions,
+      label: t("menu.box.missions"), onClick: onMissions,
       icon: <><circle cx="12" cy="12" r="8" /><circle cx="12" cy="12" r="3.4" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3" /></>,
     },
     {
-      label: "Modlar", onClick: onModes,
+      label: t("menu.box.modes"), onClick: onModes,
       icon: <><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z" /><path d="M12 3v18M4 7.5l8 4.5 8-4.5" /></>,
     },
     {
-      label: "Dükkân", onClick: onShop,
+      label: t("menu.box.shop"), onClick: onShop,
       icon: <><path d="M4 5h2l2 11h9l2-7H7" /><circle cx="9.5" cy="20" r="1.3" /><circle cx="17" cy="20" r="1.3" /></>,
     },
     {
-      label: "Başarım", onClick: onAchievements,
+      label: t("menu.box.achievements"), onClick: onAchievements,
       icon: <><path d="M7 8a5 5 0 0 1 10 0v2h1l-1 8H7l-1-8h1z" /><path d="M9.5 12v2M14.5 12v2" /></>,
     },
     {
-      label: "Günlük", onClick: onJournal,
+      label: t("menu.box.journal"), onClick: onJournal,
       icon: <path d="M4 5.5A2 2 0 0 1 6 4h5v15H6a2 2 0 0 0-2 1.5zM20 5.5A2 2 0 0 0 18 4h-5v15h5a2 2 0 0 1 2 1.5z" />,
     },
     {
-      label: "Sırlar", onClick: onSecrets,
+      label: t("menu.box.secrets"), onClick: onSecrets,
       icon: <><circle cx="8.5" cy="8.5" r="4.5" /><path d="M11.7 11.7L20 20M17 17l-2 2 2 2 2-2z" /></>,
     },
   ];
@@ -192,19 +192,19 @@ export default function MainMenu({
 
       <div className="mm-eyebrow" style={fx("0.75s")}>
         <span className="mm-rule mm-rule-l" />
-        <span>Karanlıkta Kaçış</span>
+        <span>{t("menu.eyebrow")}</span>
         <span className="mm-rule mm-rule-r" />
       </div>
 
       <p className="mm-lore" style={fx("1s")}>
-        Bir düğün vardı; kimse ondan sağ dönmedi.{" "}
-        <span className="mm-r">Kanlı gelinler</span> hâlâ damadını arıyor.
+        {t("menu.lore.a")}{" "}
+        <span className="mm-r">{t("menu.lore.brides")}</span> {t("menu.lore.b")}
       </p>
 
       {continueLabel && (
         <button className="mm-continue" onClick={onContinue} style={fx("1.15s")}>
           <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-          Devam Et · {continueLabel}
+          {t("menu.continue")} · {continueLabel}
         </button>
       )}
 
@@ -256,7 +256,7 @@ export default function MainMenu({
           <div className="mm-modal-card">
             {openTopic ? (
               <>
-                <button className="mm-ghost mm-help-back" onClick={() => setTopic(null)}>← Geri</button>
+                <button className="mm-ghost mm-help-back" onClick={() => setTopic(null)}>← {t("common.back")}</button>
                 <h2 className="mm-modal-title">{openTopic.title}</h2>
                 <ul className="mm-help">
                   {openTopic.items.map((it, i) => (
@@ -266,8 +266,8 @@ export default function MainMenu({
               </>
             ) : (
               <>
-                <h2 className="mm-modal-title">Nasıl Oynanır</h2>
-                <p className="mm-help-lead">Merak ettiğin konuya dokun:</p>
+                <h2 className="mm-modal-title">{t("menu.help.title")}</h2>
+                <p className="mm-help-lead">{t("menu.help.lead")}</p>
                 <div className="mm-help-grid">
                   {helpTopics.map((h) => (
                     <button key={h.key} className="mm-help-topic" onClick={() => setTopic(h.key)}>
@@ -277,7 +277,7 @@ export default function MainMenu({
                 </div>
               </>
             )}
-            <button className="mm-modal-close" onClick={closeHelp}>Kapat</button>
+            <button className="mm-modal-close" onClick={closeHelp}>{t("menu.help.close")}</button>
           </div>
         </div>
       )}

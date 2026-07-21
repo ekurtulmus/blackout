@@ -17,6 +17,8 @@ import {
   type ShopItem,
 } from "@/lib/inventory";
 import { unlock } from "@/lib/achievements";
+import { useT } from "@/lib/i18n";
+import type { DictKey } from "@/lib/i18n/dict";
 
 // Dükkân eşya id → ince ikon (tutarlı çizgi-ikon seti). Yalnız MEVCUT eşyalar
 // (kalkan/radar/tuzak/can-paketi/ekstra-can kaldırıldı).
@@ -24,15 +26,19 @@ const ITEM_ICON: Record<string, IconName> = {
   veil: "veil", permAmmo: "ammo", soldier: "people",
 };
 
-// Kozmetik değer → görünen ad (tasarım: swatch altında kısa isim)
-const FLASH_NAME: Record<string, string> = {
-  default: "Soğuk Beyaz", crimson: "Kızıl", toxic: "Zehir Yeşili", violet: "Mor", gold: "Altın",
+// Kozmetik değer → görünen ad (tasarım: swatch altında kısa isim).
+// Değerler METİN DEĞİL sözlük anahtarıdır; t() ile basılır.
+const FLASH_NAME: Record<string, DictKey> = {
+  default: "shop.color.flash.default", crimson: "shop.color.flash.crimson",
+  toxic: "shop.color.flash.toxic", violet: "shop.color.flash.violet", gold: "shop.color.flash.gold",
 };
-const SKIN_NAME: Record<string, string> = {
-  default: "Halkasız", gold: "Altın", violet: "Mor", emerald: "Zümrüt", crimson: "Kızıl",
+const SKIN_NAME: Record<string, DictKey> = {
+  default: "shop.color.skin.default", gold: "shop.color.skin.gold",
+  violet: "shop.color.skin.violet", emerald: "shop.color.skin.emerald", crimson: "shop.color.skin.crimson",
 };
-const SWORD_NAME: Record<string, string> = {
-  default: "Paslı Çelik", ember: "Köz", void: "Boşluk", frost: "Ayaz",
+const SWORD_NAME: Record<string, DictKey> = {
+  default: "shop.color.sword.default", ember: "shop.color.sword.ember",
+  void: "shop.color.sword.void", frost: "shop.color.sword.frost",
 };
 
 // NOT: "Altın Satın Al" bandı KALDIRILDI (kullanıcı isteği) — altın YALNIZ oynayarak
@@ -75,13 +81,15 @@ const SwordSwatch = ({ v }: { v: string }) => {
 // standalone=true  → OnlineGame overlay'i (kendi zemini + kapat butonu)
 export default function Shop({
   onBack,
-  title = "DÜKKÂN",
+  title,
   standalone = false,
 }: {
   onBack: () => void;
+  /** HAZIR ÇEVRİLMİŞ başlık (ör. t("shop.title.interlude")). Boşsa "shop.title" kullanılır. */
   title?: string;
   standalone?: boolean;
 }) {
+  const t = useT();
   const [coins, setCoins] = useState(() => getCoins());
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
@@ -97,9 +105,9 @@ export default function Shop({
     setInv(getInventory());
     if (r.ok) {
       unlock("shopper");
-      flash(`${it.title} alındı`);
+      flash(t("shop.bought", { name: t(it.title) }));
     } else {
-      flash(r.reason === "yetersiz para" ? "Yetersiz altın" : "Zaten sahipsin");
+      flash(r.reason === "yetersiz para" ? t("shop.notEnough") : t("shop.alreadyOwned"));
     }
   }
   // Ücretsiz varsayılan kozmetiğe dön (dükkân eşyası yok)
@@ -110,17 +118,17 @@ export default function Shop({
     else i.sword = "default";
     saveInventory(i);
     setInv(getInventory());
-    flash("Seçildi");
+    flash(t("shop.selected"));
   }
 
   // Elindeki adet (tüketilebilir — yalnız Duvak kaldı)
   function ownedText(it: ShopItem): string {
-    if (it.id === "veil") return `Elinde: ${inv.veils}`;
+    if (it.id === "veil") return t("shop.owned", { n: inv.veils });
     return "";
   }
 
-  const invStrip: { label: string; n: number | string; icon: IconName }[] = [
-    { label: "Duvak", n: inv.veils, icon: "veil" },
+  const invStrip: { label: DictKey; n: number | string; icon: IconName }[] = [
+    { label: "shop.strip.veil", n: inv.veils, icon: "veil" },
   ];
 
   const body = (
@@ -129,8 +137,8 @@ export default function Shop({
         {/* Başlık + cüzdan */}
         <div className="shop-head">
           <div>
-            <div className="scr-eyebrow">Kuşan ve Güçlen</div>
-            <h2 className="scr-title">{title}</h2>
+            <div className="scr-eyebrow">{t("shop.eyebrow")}</div>
+            <h2 className="scr-title">{title ?? t("shop.title")}</h2>
           </div>
           <div className="wallet-lg">
             <Coin size={18} /> {coins}
@@ -143,13 +151,13 @@ export default function Shop({
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <path d="M12 3l7 3v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V6z" />
             </svg>
-            Özellikler
+            {t("shop.tab.features")}
           </button>
           <button className={"tab" + (tab === "cos" ? " is-on" : "")} onClick={() => setTab("cos")}>
             <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="12" r="4" /><circle cx="12" cy="12" r="9" />
             </svg>
-            Kişiselleştirme
+            {t("shop.tab.cosmetics")}
           </button>
         </div>
 
@@ -159,14 +167,14 @@ export default function Shop({
           <div style={{ marginTop: 10 }}>
             {/* Envanter özeti */}
             <div className="inv-strip">
-              <span className="inv-strip-t">Envanterin</span>
+              <span className="inv-strip-t">{t("shop.inventory")}</span>
               {invStrip.map((s) => (
                 <span key={s.label} className={"inv-item" + (Number(s.n) > 0 ? " has" : "")}>
-                  <Icon name={s.icon} size={15} /> {s.label} {s.n}
+                  <Icon name={s.icon} size={15} /> {t(s.label)} {s.n}
                 </span>
               ))}
-              {inv.permAmmo && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Sürekli cephane</span>}
-              {inv.hiredSoldier && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>Asker</span>}
+              {inv.permAmmo && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>{t("shop.strip.permAmmo")}</span>}
+              {inv.hiredSoldier && <span className="inv-item has" style={{ color: "var(--ok-text)" }}>{t("shop.strip.soldier")}</span>}
             </div>
 
             {/* Eşya ızgarası */}
@@ -178,21 +186,21 @@ export default function Shop({
                 const own = ownedText(it);
                 return (
                   <div key={it.id} className={"item-card" + (perm ? " is-perm" : "")}>
-                    {perm && <span className="perm-badge">KALICI</span>}
+                    {perm && <span className="perm-badge">{t("shop.badge.perm")}</span>}
                     {/* Eşya adı ikonun ALTINDA değil YANINDA */}
                     <div className="card-head">
                       <div className="item-ico"><Icon name={ITEM_ICON[it.id] ?? "box"} size={22} stroke={1.6} /></div>
-                      <div className="item-name">{it.title}</div>
+                      <div className="item-name">{t(it.title)}</div>
                     </div>
-                    <div className="item-desc">{it.desc}</div>
+                    <div className="item-desc">{t(it.desc)}</div>
                     {own && <div className="item-own">{own}</div>}
                     {can ? (
-                      <button className="buy-btn" disabled={!afford} onClick={() => handleBuy(it)} title={afford ? "Satın al" : "Yetersiz altın"}>
+                      <button className="buy-btn" disabled={!afford} onClick={() => handleBuy(it)} title={afford ? t("shop.buy") : t("shop.notEnough")}>
                         <Coin /> {it.price}
                       </button>
                     ) : (
                       <button className="buy-btn is-owned" disabled>
-                        <Icon name="check" size={13} /> Sahipsin
+                        <Icon name="check" size={13} /> {t("shop.owned.btn")}
                       </button>
                     )}
                   </div>
@@ -203,7 +211,7 @@ export default function Shop({
         ) : (
           <div style={{ marginTop: 10 }}>
             {/* Fener rengi */}
-            <div className="cos-label">Fener Rengi</div>
+            <div className="cos-label">{t("shop.cos.flash")}</div>
             <div className="swatch-grid">
               {/* Varsayılan (ücretsiz) */}
               <button
@@ -211,8 +219,8 @@ export default function Shop({
                 onClick={() => selectDefault("flash")}
               >
                 <span className="swatch-dot" style={{ background: `rgb(${FLASH_COLORS.default.join(",")})`, boxShadow: `0 0 16px 2px rgb(${FLASH_COLORS.default.join(",")})` }} />
-                <span className="swatch-name">{FLASH_NAME.default}</span>
-                {inv.flashColor === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+                <span className="swatch-name">{t(FLASH_NAME.default)}</span>
+                {inv.flashColor === "default" ? <span className="swatch-sel">{t("shop.equipped")}</span> : <span className="swatch-meta">{t("shop.free")}</span>}
               </button>
               {flashItems.map((it) => {
                 const v = it.cosmetic!.value;
@@ -222,9 +230,9 @@ export default function Shop({
                 return (
                   <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
                     <span className="swatch-dot" style={{ background: `rgb(${rgb})`, boxShadow: `0 0 16px 2px rgb(${rgb})` }} />
-                    <span className="swatch-name">{FLASH_NAME[v] ?? it.title}</span>
-                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
-                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                    <span className="swatch-name">{t(FLASH_NAME[v] ?? it.title)}</span>
+                    {eq ? <span className="swatch-sel">{t("shop.equipped")}</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>{t("shop.use")}</span>
                       : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
                   </button>
                 );
@@ -232,15 +240,15 @@ export default function Shop({
             </div>
 
             {/* Görünüm halkası */}
-            <div className="cos-label" style={{ margin: "24px 0 12px" }}>Görünüm Halkası</div>
+            <div className="cos-label" style={{ margin: "24px 0 12px" }}>{t("shop.cos.skin")}</div>
             <div className="swatch-grid">
               <button
                 className={"swatch" + (inv.skin === "default" ? " is-on" : "")}
                 onClick={() => selectDefault("skin")}
               >
                 <span className="swatch-ring" style={{ borderColor: "#6f695d", boxShadow: "none" }} />
-                <span className="swatch-name">{SKIN_NAME.default}</span>
-                {inv.skin === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+                <span className="swatch-name">{t(SKIN_NAME.default)}</span>
+                {inv.skin === "default" ? <span className="swatch-sel">{t("shop.equipped")}</span> : <span className="swatch-meta">{t("shop.free")}</span>}
               </button>
               {skinItems.map((it) => {
                 const v = it.cosmetic!.value;
@@ -250,9 +258,9 @@ export default function Shop({
                 return (
                   <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
                     <span className="swatch-ring" style={{ borderColor: col, boxShadow: `0 0 12px ${col}` }} />
-                    <span className="swatch-name">{SKIN_NAME[v] ?? it.title}</span>
-                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
-                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                    <span className="swatch-name">{t(SKIN_NAME[v] ?? it.title)}</span>
+                    {eq ? <span className="swatch-sel">{t("shop.equipped")}</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>{t("shop.use")}</span>
                       : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
                   </button>
                 );
@@ -260,15 +268,15 @@ export default function Shop({
             </div>
 
             {/* Kılıç rengi — kılıç TEMEL silah, renk yalnız görünüm */}
-            <div className="cos-label" style={{ margin: "24px 0 12px" }}>Kılıç Rengi</div>
+            <div className="cos-label" style={{ margin: "24px 0 12px" }}>{t("shop.cos.sword")}</div>
             <div className="swatch-grid">
               <button
                 className={"swatch" + (inv.sword === "default" ? " is-on" : "")}
                 onClick={() => selectDefault("sword")}
               >
                 <SwordSwatch v="default" />
-                <span className="swatch-name">{SWORD_NAME.default}</span>
-                {inv.sword === "default" ? <span className="swatch-sel">SEÇİLİ</span> : <span className="swatch-meta">Ücretsiz</span>}
+                <span className="swatch-name">{t(SWORD_NAME.default)}</span>
+                {inv.sword === "default" ? <span className="swatch-sel">{t("shop.equipped")}</span> : <span className="swatch-meta">{t("shop.free")}</span>}
               </button>
               {swordItems.map((it) => {
                 const v = it.cosmetic!.value;
@@ -277,9 +285,9 @@ export default function Shop({
                 return (
                   <button key={it.id} className={"swatch" + (eq ? " is-on" : "")} onClick={() => handleBuy(it)} disabled={eq}>
                     <SwordSwatch v={v} />
-                    <span className="swatch-name">{SWORD_NAME[v] ?? it.title}</span>
-                    {eq ? <span className="swatch-sel">SEÇİLİ</span>
-                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>Kullan</span>
+                    <span className="swatch-name">{t(SWORD_NAME[v] ?? it.title)}</span>
+                    {eq ? <span className="swatch-sel">{t("shop.equipped")}</span>
+                      : own ? <span className="swatch-meta" style={{ color: "var(--ok-text)" }}>{t("shop.use")}</span>
                       : <span className="swatch-meta"><Coin size={11} /> {it.price}</span>}
                   </button>
                 );
@@ -295,7 +303,7 @@ export default function Shop({
   if (standalone) {
     return (
       <div className="shop-standalone">
-        <button className="shell-icon shell-back" onClick={onBack} title="Kapat" aria-label="Kapat">
+        <button className="shell-icon shell-back" onClick={onBack} title={t("shop.close")} aria-label={t("shop.close")}>
           <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
             <path d="M15 18l-6-6 6-6" />
           </svg>

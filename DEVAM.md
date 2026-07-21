@@ -91,6 +91,46 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-21 #27 — OYUNUN TAMAMI İNGİLİZCE (i18n bitti) · diğer 4 dil kaldırıldı
+Doğrulama: `tsc` TEMİZ · `next build` TEMİZ · tarayıcıda İngilizce ekran ekran gezildi ·
+360px taşma ölçümü yapıldı. **~790 anahtar, tr = kaynak, en = tam.**
+- ✅ **DİLLER: tr + en.** Rusça/İspanyolca/Hintçe/Çince KALDIRILDI (kullanıcı isteği — önce oyunun
+  tamamı İngilizce olsun). `LANG_FONTS` mekanizması DURUYOR ama boş: iki dil de Latin olduğu için
+  ek font indirmesi YOK. Diller geri gelirse `langs.ts`'e font eklemek yeter.
+- ✅ **SÖZLÜK PARÇALARA BÖLÜNDÜ** (`lib/i18n/dict/parts/*.ts`, `definePart` + `dict/index.ts` birleştirir).
+  NEDEN: tek dosya olsaydı 8 iş kolu aynı anda çalışamazdı. Her parça TÜM dilleri içerir → çakışma yok.
+  Parçalar: core 33 · menu 77 · screens 100 · game 106 · online 178 · lore 71 · missions 143 · shop 66 · chrome 18.
+- ✅ **`lib/*.ts` (React DEĞİL) DESENİ:** metin alanları artık **`DictKey`** tipinde ANAHTAR tutuyor,
+  ekrana basan bileşen `t(x.title)` diyor. Böylece veri dosyaları kancasız çevrilebiliyor.
+  Uygulandığı yerler: achievements (`ach.<id>.*`) · missions (`mis.<id>.title/desc/hint`) ·
+  secrets (`secret.<id>.*`) · journal (`journal.<id>.*`, **id 0-tabanlı**) · story · tutorial ·
+  miniquests · inventory (`shop.item.<id>.*`) · friends (hata sebepleri).
+  `lib/engine.ts` yeni `Txt = { k: DictKey; v?: {...} }` tipi: değişkenli metinleri motor
+  ANAHTAR+DEĞER olarak döndürüyor, cümleyi ekran kuruyor (sayılar İngilizcede doğru yere oturuyor).
+- ✅ **Düzeltilen gerçek hatalar (çeviri sırasında çıktı):**
+  · Arena sonuç başlığı `toLocaleUpperCase("tr")` ile SABİTLENMİŞTİ → "Blind Night" İngilizcede
+    "BLİND NİGHT" oluyordu; artık aktif dile göre.
+  · Arkadaş bildirimi HAZIR CÜMLE olarak state'e yazılıyordu → dil değişince eski dilde takılı
+    kalıyordu; artık anahtar+isim saklanıp ekranda çevriliyor.
+  · `OnlineGame` mini-görev HUD'ı ve ödül bildirimi ham anahtar basıyordu (`t()` eksikti) — SARILDI.
+    ⚠️ **DERS: `DictKey` bir `string` olduğu için `t()` unutmayı TypeScript YAKALAMAZ.** Ekranda ham
+    anahtar (`game.mq.…`) görünür. Yeni anahtar alanı eklerken basıldığı yeri gözle kontrol et.
+  · `lib/friends.ts` hata mesajları Türkçe METİN döndürüyordu (ekranda görünüyorlardı) → `DictKey`.
+- ✅ **YERLEŞİM (ölçülerek):** Final başlığı sorun değil ("GÜN AĞARDI" 10 → "DAYBREAK" 8 karakter).
+  · **Açılış alt satırı:** 360px'te TR 332px ama EN **TAM 360px** (sıfır pay) → `.splash-stage`
+    `overflow:hidden` yüzünden altın çizgiler kırpılacaktı. `@media (max-width:430px)` eklendi → EN 253px.
+  · **Dükkân sekmeleri:** 360px'te taşıyordu — **ESKİDEN BERİ, çeviriden bağımsız** (TR 390px daha
+    kötüydü, EN 370px). Dar ekran kuralı eklendi → TR 346px, EN 296px, ikisi de sığıyor.
+- ✅ **Kalıntı taraması:** sözlük dışı dosyalarda kullanıcıya görünen Türkçe metin KALMADI.
+  Bilerek Türkçe bırakılanlar (metin DEĞİL, veri): `OnlineLobby`/`Settings` `"Ev sahibi"`/`"Oyuncu"`
+  (eski localStorage isim karşılaştırması) · `lib/inventory.ts` `reason` iç kodları ·
+  `lib/themes.ts` tema adları (`hud.themeName`'e yazılıyor ama HİÇ render edilmiyor) ·
+  `components/Icon.tsx` (SVG path verisi) · tüm kod YORUMLARI.
+- ⚠️ **AÇIK:** `app/gizlilik/page.tsx` yalnız Türkçe. Oyun İngilizce yayınlanacaksa gizlilik
+  politikasının İngilizcesi de gerekir (Play mağaza kaydı için).
+- ⚠️ **Bulundu, DÜZELTİLMEDİ (içerik hatası):** Arena kurallar ekranı "Tur süresi: 2 dakika" diyor
+  ama `ARENA_ROUND_MS = 50000` (50 sn). Çeviri Türkçesine sadık kaldı; sayı düzeltilmeli.
+
 ## OTURUM 2026-07-21 #26 — ÇOK DİLLİLİK (i18n) ALTYAPISI — 6 dil · İLK DİLİM
 Doğrulama: `tsc` TEMİZ · tarayıcıda 6 dil geçişi + font değişimi ölçüldü.
 **ÖLÇÜM (işin gerçek boyutu):** kullanıcıya görünen **771 ayrı metin · ~4100 kelime · 33 dosya**
