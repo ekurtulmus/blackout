@@ -91,6 +91,44 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
 
+## OTURUM 2026-07-21 #25 — PLAY STORE HAZIRLIĞI: PWA temeli (manifest + ikonlar + service worker)
+Doğrulama: `tsc` + `next build` TEMİZ · üretim derlemesiyle (localhost:3008) uçtan uca test ·
+canlıda teyit edildi. Canlı commit `30354c3`.
+**YOL HARİTASI:** Oyun Play Store'a **TWA (Trusted Web Activity)** ile çıkacak — mevcut site bir
+Android kabuğuna sarılır, oyun BAŞTAN YAZILMAZ. Bunun ön şartı sitenin "kurulabilir uygulama"
+olması. Bu oturumda o ön şart tamamlandı.
+- ✅ **`app/manifest.ts` (YENİ):** Next.js `/manifest.webmanifest` olarak yayınlıyor. Bubblewrap
+  uygulama adını/ikonları/açılış rengini/başlangıç adresini BURADAN okur.
+  ⚠️ **`id` ve `start_url` yayınlandıktan sonra DEĞİŞTİRİLEMEZ** (kurulu uygulama bunlarla eşleşir).
+  `orientation` BİLEREK yok — oyun hem dikey hem yatay çalışıyor, kilitlemedik.
+- ✅ **İkonlar `scripts/gen-icons.mjs` → `public/icons/`:** 192/512 normal, 192/512 **MASKELİ**,
+  180 apple-touch. Öncesinde yalnız `app/icon.svg` (favicon) vardı.
+  **MASKELİ NEDEN AYRI:** Android ikonu daire/damla/kare gibi şekillere KIRPAR (kenardan ~%10).
+  Normal ikonu maskeli diye verirsen J'nin kenarları kesilir. Maskelide arka plan kenardan kenara
+  dolu, sanat ~%62'ye küçültülüp ortalandı. Logo değişirse scripti tekrar çalıştır (`sharp` kullanır).
+- ✅ **Service worker `public/sw.js` + `components/SWRegister.tsx`:** kurulabilirlik şartı +
+  internet kesikken `public/offline.html` ("FENER SÖNDÜ") çıkar. İncelemede uçak modunda
+  beyaz/hata ekranı görülmesi RET sebebi olabiliyor.
+  ⚠️ **SW KALICIDIR** — hatalı sürüm kullanıcının tarayıcısında takılı kalır. Bu yüzden BİLEREK
+  MİNİMAL: **HTML ASLA önbelleklenmez** (her deploy anında herkese ulaşır) · yalnız `/_next/static`
+  (içerik-hash'li) ve `/icons` önbelleklenir · farklı origin'lere (Supabase, Google Fonts) HİÇ
+  dokunulmaz · kayıt YALNIZ üretimde (dev'de HMR parçalarını önbelleğe alıp kafa karıştırıyordu).
+  Sürüm artırmak için `VERSION` sabitini değiştir (eski önbellek otomatik silinir).
+- ✅ **Doğrulandı:** manifest 200 + 4 ikon (2 maskeli) · SW "activated" + sayfayı kontrol ediyor ·
+  `jilted-v1` önbelleği oluştu · **sunucu KAPATILIP yeniden yüklendi → çevrimdışı sayfası çıktı.**
+- 📌 **KULLANICI KARARLARI:** Play geliştirici hesabı **VAR**. Paket adı **`app.jilted.game`**
+  (yayınlandıktan sonra DEĞİŞTİRİLEMEZ). Alan adı: **`jilted.xyz`** (Natro'dan alınacak),
+  kanonik adres **www'suz** olacak.
+- 🔜 **SIRADAKİ (bloke — kullanıcıdan bilgi bekliyor):**
+  1. `jilted.xyz` alınıp Vercel'e bağlanacak → sonra `start_url`/TWA host'u bu adrese geçer.
+  2. Play Console'dan **uygulama imzalama SHA-256 parmak izi** alınacak →
+     `/.well-known/assetlinks.json` yazılacak (bu olmadan uygulamada adres çubuğu görünür).
+  3. Bubblewrap ile TWA/AAB üretimi (JDK + Android SDK ister).
+  4. Gizlilik politikası sayfası (siteye eklenecek) — oyun isim/arkadaş kodu saklıyor ve
+     Supabase üzerinden yayınlıyor, ZORUNLU. **Analitik/reklam/izleyici YOK** (kod tarandı: gtag,
+     analytics, sentry, admob vb. sıfır sonuç) — politika metni buna göre yazılacak.
+  5. Mağaza görselleri + içerik derecelendirme anketi (kanlı/korku → yaş sınırı çıkacak).
+
 ## OTURUM 2026-07-21 #24 — Silahlar herkeste görünür + "Yakında" akışı + SES DÜĞÜM SIZINTISI
 Doğrulama: `tsc` + `next build` TEMİZ. Ses sızıntısı ve "Yakında" akışı tarayıcıda ÖLÇÜLDÜ.
 - ✅ **SİLAHLAR DİĞER OYUNCULARDA GÖRÜNMÜYORDU** (`OnlineGame.tsx`): diğer oyuncular yalnız
