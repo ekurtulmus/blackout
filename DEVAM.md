@@ -126,10 +126,14 @@ Doğrulama: `tsc` TEMİZ · `next build` TEMİZ · tarayıcıda İngilizce ekran
   (eski localStorage isim karşılaştırması) · `lib/inventory.ts` `reason` iç kodları ·
   `lib/themes.ts` tema adları (`hud.themeName`'e yazılıyor ama HİÇ render edilmiyor) ·
   `components/Icon.tsx` (SVG path verisi) · tüm kod YORUMLARI.
-- ⚠️ **AÇIK:** `app/gizlilik/page.tsx` yalnız Türkçe. Oyun İngilizce yayınlanacaksa gizlilik
-  politikasının İngilizcesi de gerekir (Play mağaza kaydı için).
-- ⚠️ **Bulundu, DÜZELTİLMEDİ (içerik hatası):** Arena kurallar ekranı "Tur süresi: 2 dakika" diyor
-  ama `ARENA_ROUND_MS = 50000` (50 sn). Çeviri Türkçesine sadık kaldı; sayı düzeltilmeli.
+- ✅ **GİZLİLİK POLİTİKASI ARTIK İKİ DİLLİ.** `app/gizlilik/page.tsx` (sunucu, yalnız `metadata`) +
+  **`app/gizlilik/PrivacyContent.tsx`** (istemci, aktif dile göre TR/EN gövde).
+  ⚠️ **Bu sayfa BİLEREK sözlük kullanmaz:** hukuki metin listeler/kalın vurgular içeriyor, onlarca
+  düz anahtara bölünürse okunmaz olur ve madde güncellerken parça kaçırma riski doğar.
+  **BİR DİLİ GÜNCELLERKEN DİĞERİNİ DE GÜNCELLE.**
+- ✅ **ARENA SÜRE HATASI DÜZELTİLDİ:** kurallar ekranı "2 dakika" diyordu, gerçek süre 50 sn
+  (`ARENA_ROUND_MS`; tur 120→50 sn yapılmış ama metin unutulmuştu). Metin artık `{n}` alıyor ve
+  sayı **koddan besleniyor** (`ARENA_ROUND_MS / 1000`) → bir daha kayamaz.
 
 ## OTURUM 2026-07-21 #26 — ÇOK DİLLİLİK (i18n) ALTYAPISI — 6 dil · İLK DİLİM
 Doğrulama: `tsc` TEMİZ · tarayıcıda 6 dil geçişi + font değişimi ölçüldü.

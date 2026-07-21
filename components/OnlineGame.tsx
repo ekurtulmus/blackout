@@ -2233,7 +2233,7 @@ export default function OnlineGame({
           <div className="how" style={{ textAlign: "left", maxWidth: 480 }}>
             <p style={{ margin: 0 }}><b>{t("online.game.rules.goal")}</b> {t("online.game.rules.goal.a")} <b>{t("online.game.rules.goal.b")}</b> {t("online.game.rules.goal.c")}</p>
             <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.win")}</b> {t("online.game.rules.win.a")} <b>{t("online.game.rules.win.b", { n: ARENA_WIN_POINTS })}</b> {t("online.game.rules.win.c")}</p>
-            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.time")}</b> {t("online.game.rules.time.d")}</p>
+            <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.time")}</b> {t("online.game.rules.time.d", { n: Math.round(ARENA_ROUND_MS / 1000) })}</p>
             <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.noexit")}</b> {t("online.game.rules.noexit.d")}</p>
             <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.death")}</b> {t("online.game.rules.death.a")} <b>{t("online.game.rules.death.b")}</b> {t("online.game.rules.death.c")}</p>
             <p style={{ margin: "10px 0 0" }}><b>{t("online.game.rules.hp")}</b> {t("online.game.rules.hp.d")}</p>

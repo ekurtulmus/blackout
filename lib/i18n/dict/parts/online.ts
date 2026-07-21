@@ -172,7 +172,9 @@ export const online = definePart({
     "online.game.rules.win.b": "{n} puana",
     "online.game.rules.win.c": "ulaşan maçı alır.",
     "online.game.rules.time": "Tur süresi:",
-    "online.game.rules.time.d": "2 dakika. Süre bitince tur sonuçlanır.",
+    // {n} = ARENA_ROUND_MS'ten HESAPLANIR. Eskiden "2 dakika" yazıyordu ama tur 120→50 sn
+    // olmuştu ve metin güncellenmemişti. Sayıyı koda bağlayınca bir daha kayamaz.
+    "online.game.rules.time.d": "{n} saniye. Süre bitince tur sonuçlanır.",
     "online.game.rules.noexit": "Çıkış yok:",
     "online.game.rules.noexit.d": "Açık arenada dalga dalga gelin gelir; turlar ilerledikçe artar.",
     "online.game.rules.death": "Ölüm:",
@@ -366,7 +368,7 @@ export const online = definePart({
     "online.game.rules.win.b": "{n} points",
     "online.game.rules.win.c": "takes the match.",
     "online.game.rules.time": "Round time:",
-    "online.game.rules.time.d": "2 minutes. When the time is up, the Round is scored.",
+    "online.game.rules.time.d": "{n} seconds. When the time is up, the Round is scored.",
     "online.game.rules.noexit": "No exit:",
     "online.game.rules.noexit.d": "Brides come in waves across the open Arena; each Round brings more.",
     "online.game.rules.death": "Death:",
