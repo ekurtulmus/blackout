@@ -128,6 +128,27 @@ olması. Bu oturumda o ön şart tamamlandı.
      Supabase üzerinden yayınlıyor, ZORUNLU. **Analitik/reklam/izleyici YOK** (kod tarandı: gtag,
      analytics, sentry, admob vb. sıfır sonuç) — politika metni buna göre yazılacak.
   5. Mağaza görselleri + içerik derecelendirme anketi (kanlı/korku → yaş sınırı çıkacak).
+- ✅ **ALAN ADI ALINDI:** **`jilted.vercel.app`** (Vercel projesine ikinci alan adı olarak eklendi;
+  proje adı `blackout` KORUNDU, `blackout-plum.vercel.app` de çalışıyor). Ücretsiz, DNS gerekmedi.
+  Kullanıcı `jilted.xyz` almaktan vazgeçti. **TWA bu adres üzerine kurulacak.**
+  Doğrulandı: `jilted.vercel.app` üzerinde manifest/ikonlar/sw/offline hepsi 200.
+- ✅ **GİZLİLİK POLİTİKASI CANLIDA:** `app/gizlilik/page.tsx` → https://jilted.vercel.app/gizlilik
+  (Play mağaza kaydına bu adres girilecek). **Metin KODA GÖRE yazıldı:** analitik/reklam/izleyici
+  taraması sıfır sonuç verdi, hesap yok, sunucuda veritabanı kaydı yok. İletişim adresi dosyanın
+  başındaki `ILETISIM` sabitinde (şu an `kriptoofis@gmail.com`).
+  ⚠️ **Oyuna reklam/analitik/oyuncu veritabanı eklenirse BU SAYFA GÜNCELLENMELİ** — yanlış gizlilik
+  beyanı Play'de uygulamanın kaldırılma sebebi.
+- ⚠️ **BU MAKİNEDE TOOLCHAIN YOK:** `java` yok, `JAVA_HOME`/`ANDROID_HOME` boş, Android SDK klasörü
+  yok, Bubblewrap kurulu değil. AAB üretmek için ya Bubblewrap + JDK17 + Android SDK (~1.5-2 GB
+  indirme) ya da PWABuilder (web, kurulum yok). Kullanıcı henüz seçmedi.
+- 🔴 **PLAY APP SIGNING TUZAĞI (yayın öncesi mutlaka oku):** AAB'yi hangi araç imzalarsa imzalasın,
+  Play yükledikten sonra uygulamayı **KENDİ anahtarıyla yeniden imzalar**. Bu yüzden
+  `assetlinks.json` içinde **Play Console → Uygulama bütünlüğü → Uygulama imzalama** altındaki
+  SHA-256 olmalı; yükleme (upload) anahtarının parmak izi TEK BAŞINA YETMEZ.
+  Yanlış parmak izi = uygulamada tarayıcı adres çubuğunun görünmesinin 1 numaralı sebebi.
+  **ÇÖZÜM: assetlinks.json'a HER İKİ parmak izini de yaz** (upload + Play imzalama) — dizi kabul eder.
+  Sıra: uygulamayı Play'de oluştur → bir AAB yükle → Play imzalama parmak izini al → assetlinks'i
+  yaz/deploy et → doğrulama oturur.
 
 ## OTURUM 2026-07-21 #24 — Silahlar herkeste görünür + "Yakında" akışı + SES DÜĞÜM SIZINTISI
 Doğrulama: `tsc` + `next build` TEMİZ. Ses sızıntısı ve "Yakında" akışı tarayıcıda ÖLÇÜLDÜ.
