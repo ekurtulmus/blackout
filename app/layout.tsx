@@ -1,11 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import SWRegister from "@/components/SWRegister";
 
 export const metadata: Metadata = {
   title: "JILTED — Karanlıkta Kaçış",
   description:
     "Karanlık labirentte el fenerinle yolunu keşfet, Kanlı Gelinlerden kaç, gizli çıkışı bul.",
   applicationName: "JILTED",
+  // PWA/TWA: manifest app/manifest.ts'ten üretilir. appleWebApp = iOS'ta ana ekrana
+  // eklenince tam ekran açılsın (Android tarafını manifest hallediyor).
+  manifest: "/manifest.webmanifest",
+  appleWebApp: { capable: true, title: "JILTED", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
@@ -40,7 +46,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body>{children}</body>
+      <body>
+        <SWRegister />
+        {children}
+      </body>
     </html>
   );
 }

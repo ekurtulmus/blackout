@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>JILTED — Bağlantı yok</title>
+<style>
+  /* Bilerek TEK dosya + dış kaynak YOK: bu sayfa tam olarak internet kesikken açılır,
+     font/CSS indirmeye çalışırsa boş görünür. */
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 18px; padding: 24px; text-align: center;
+    background: radial-gradient(130% 100% at 50% 44%, #171110 0%, #0a0706 46%, #040202 100%);
+    color: #cdc3ab; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  .j { width: 108px; height: 108px; }
+  h1 { margin: 0; font-size: clamp(24px, 7vw, 34px); letter-spacing: .16em; color: #efe7d6; font-weight: 800; }
+  p { margin: 0; max-width: 380px; line-height: 1.6; font-size: 15px; color: #b3aa93; }
+  button {
+    margin-top: 6px; padding: 12px 26px; font-size: 15px; font-weight: 600; cursor: pointer;
+    color: #efe7d6; background: rgba(224,162,74,.12);
+    border: 1px solid rgba(224,162,74,.45); border-radius: 10px;
+  }
+  button:active { background: rgba(224,162,74,.22); }
+</style>
+</head>
+<body>
+  <svg class="j" viewBox="0 0 168 168" aria-hidden="true">
+    <defs>
+      <radialGradient id="au" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#f7e6c2" stop-opacity=".95"/>
+        <stop offset="1" stop-color="#f7e6c2" stop-opacity="0"/>
+      </radialGradient>
+    </defs>
+    <g transform="translate(7,10)">
+      <path d="M46 28 H110 M94 28 V112 A30 30 0 0 1 52 130" fill="none" stroke="#6b5a3a"
+            stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="52" cy="130" r="14" fill="url(#au)" opacity=".45"/>
+      <circle cx="52" cy="123.5" r="4" fill="#fff7e6" opacity=".6"/>
+    </g>
+  </svg>
+  <h1>FENER SÖNDÜ</h1>
+  <p>İnternet bağlantısı yok. JILTED'in labirentleri sunucudan geliyor — bağlanınca kaldığın yerden devam edebilirsin.</p>
+  <button onclick="location.reload()">Tekrar Dene</button>
+</body>
+</html>
