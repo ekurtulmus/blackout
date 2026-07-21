@@ -463,9 +463,17 @@ export default function OnlineGame({
     }
 
     // Bir oyuncu açık çıkışa ulaştı → host bu bölümün kazananını belirler
-    function handleReach(who: string) {
+    function handleReach(who: string, atLevel?: number) {
       if (resultPending.current || !levelRef.current) return;
-      const seat = Math.max(0, order.indexOf(who));
+      // BAYAT VARIŞ KORUMASI (kritik): "result" yayını kayıpsız DEĞİL. Onu kaçıran oyuncu
+      // ESKİ bölümde oynamaya devam eder ve eski çıkışa varıp reachexit yollar (900ms'de bir
+      // tekrar). Host overlay bitip YENİ bölüme geçtiğinde resultPending false olur ve bu
+      // BAYAT mesaj yeni turu bitirirdi: puan yanlış kişiye yazılır, herkes bir bölüm atlar,
+      // akış dağılır (kullanıcı: "B kapıdan geçince oda kapanıyor"). Bölüm no'su tutmuyorsa YOK SAY.
+      if (atLevel != null && atLevel !== levelRef.current.level) return;
+      // Tanınmayan gönderen: eskiden Math.max(0, -1) = 0 idi → puan KOLTUK 0'a (host'a) yazılıyordu.
+      const seat = order.indexOf(who);
+      if (seat < 0) return;
       resultPending.current = true;
       scores.current = scores.current.slice();
       scores.current[seat] = (scores.current[seat] ?? 0) + 1;
@@ -622,8 +630,18 @@ export default function OnlineGame({
           if (hostLvl > myLvl && hostLvl > pendingLevelNum.current) requestLevelSync();
         }
       } else if (m.t === "needlevel") {
-        // Bir oyuncu geride kalmış → host isem güncel bölümü ona (herkese) yolla.
-        if (amHost.current && levelRef.current && (m.have as number) < levelRef.current.level) sendLevelSync();
+        // Bir oyuncu geride kalmış → host isem yetiştir.
+        if (amHost.current && levelRef.current) {
+          const have = m.have as number;
+          if (resultPending.current && lastResult.current) {
+            // Bölüm-sonu overlay'indeyiz: geride kalan "result"ı KAÇIRMIŞ demektir.
+            // sendLevelSync() burada İŞE YARAMAZ — o hâlâ ESKİ bölümü yollar. Sonucu yolla.
+            const lr = lastResult.current;
+            room.send({ t: "result", winnerSeat: lr.winnerSeat, scores: lr.scores, lvl: lr.lvl as never });
+          } else if (have < levelRef.current.level) {
+            sendLevelSync();
+          }
+        }
       } else if (m.t === "levelsync") {
         applyLevelSync(deserializeLevel(m.lvl as SerializedLevel), (m.scores as number[]) ?? scores.current);
       } else if (m.t === "brides" && !amHost.current) {
@@ -648,7 +666,7 @@ export default function OnlineGame({
       } else if (m.t === "kill") {
         applyKill(m.id as number, m.x as number, m.y as number, CODE_KIND[(m.k as number) ?? 0] ?? "normal", false);
       } else if (m.t === "reachexit") {
-        if (amHost.current) handleReach(fromId);
+        if (amHost.current) handleReach(fromId, m.lvl as number | undefined);
       } else if (m.t === "result") {
         scores.current = m.scores as number[];
         showResult(m.winnerSeat as number);
@@ -1237,7 +1255,7 @@ export default function OnlineGame({
         const scc = cellOf(selfPos.current);
         if (scc.x === lvl.exit.x && scc.y === lvl.exit.y) {
           if (amHost.current) {
-            handleReach(room.id);
+            handleReach(room.id, lvl.level);
           } else {
             // reachexit KAYBOLABİLİR (broadcast garantisiz). Eskiden tek sefer yollanıyordu →
             // düşerse host kazananı belirlemez, guest çıkışta KALICI takılırdı (softlock).
@@ -1247,7 +1265,8 @@ export default function OnlineGame({
             if (nowMs - lastReachSendAt.current > 900) {
               lastReachSendAt.current = nowMs;
               sentReach.current = true;
-              room.send({ t: "reachexit" });
+              // Hangi BÖLÜMÜN çıkışına vardığımızı da yolla → host bayat varışı ayırt etsin.
+              room.send({ t: "reachexit", lvl: lvl.level });
             }
           }
         }
@@ -1798,7 +1817,12 @@ export default function OnlineGame({
         posAcc += dt;
         if (posAcc >= 0.05) {
           posAcc = 0;
-          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current, lvl: amHost.current ? levelRef.current.level : undefined });
+          // lvl = host'un HEDEF bölümü. Overlay sırasında host hâlâ eski bölümdedir; eskiden
+          // burada mevcut bölüm duyuruluyordu → "result"ı kaçıran oyuncuda hostLvl === myLvl
+          // olduğu için self-healing o 5 saniye boyunca KÖR kalıyordu (oyuncu eski labirentte
+          // oynamaya devam ediyordu). Hedefi duyurunca geride kalan ANINDA fark edip istiyor.
+          const hostLvl = amHost.current ? (pendingLevelNum.current || levelRef.current.level) : undefined;
+          room.send({ t: "pos", x: selfPos.current.x, y: selfPos.current.y, dx: selfDir.current.x, dy: selfDir.current.y, sx: soldierPos.current?.x ?? null, sy: soldierPos.current?.y ?? null, dead: deadUntil.current > 0, rk: roundKills.current, lvl: hostLvl });
         }
         // #1: host, overlay boyunca "result"ı periyodik yeniden yayınlar (kayıp mesaj
         // sigortası — tek yayında düşerse ~1 sn içinde tekrar ulaşır).

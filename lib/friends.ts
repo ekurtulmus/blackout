@@ -194,8 +194,19 @@ export class FriendPresence {
       if (!d || d.code === this.code) return;
       const known = this.online.has(d.code);
       this.online.set(d.code, Date.now());
-      this.players.set(d.code, { name: d.name || d.code, t: Date.now() });
-      if (!known) this.onPresence();
+      const nm = d.name || d.code;
+      this.players.set(d.code, { name: nm, t: Date.now() });
+      // İSİM SENKRONU: arkadaş listesi (blackout_friends) ekleme anındaki ismin
+      // ANLIK GÖRÜNTÜSÜYDÜ ve bir daha güncellenmiyordu → karşı taraf adını
+      // değiştirince bizde ESKİ ad kalıyordu. Kalp atışı zaten güncel adı taşıyor;
+      // ekli bir arkadaşsa ve ad değiştiyse yerel kaydı da tazele.
+      let renamed = false;
+      const fr = getFriends().find((f) => f.code === d.code);
+      if (fr && fr.name !== nm) {
+        renameFriend(d.code, nm);
+        renamed = true;
+      }
+      if (!known || renamed) this.onPresence();
     });
 
     // "room": açık bir oyun odası duyurusu (host yayınlar)
@@ -316,14 +327,25 @@ export class FriendPresence {
     });
   }
 
-  // Arkadaşlık isteği gönder (karşı taraf çevrimiçiyse ulaşır). Kalıcı olarak "gönderildi" işaretle.
-  sendRequest(toCode: string) {
-    markSent(toCode);
-    this.ch?.send({
+  // Arkadaşlık isteği gönder. { ok, reason } döner.
+  // VERİTABANI YOK: bir kodun "var olup olmadığını" sorabileceğimiz bir yer yok —
+  // tek gerçek kaynak PRESENCE (kalp atışı yollayan çevrimiçi oyuncular). Eskiden
+  // kod doğrulanmadan yayın yapılıyordu: yanlış/olmayan koda istek "gönderildi"
+  // görünüp boşluğa gidiyordu (üstelik markSent yüzünden bir daha denenemiyordu).
+  // Artık çevrimiçi değilse GÖNDERMİYORUZ ve işaretlemiyoruz → kullanıcı tekrar deneyebilir.
+  sendRequest(toCode: string): { ok: boolean; reason?: string } {
+    const c = toCode.trim().toUpperCase();
+    if (!this.ch) return { ok: false, reason: "Bağlantı yok — internetini kontrol et" };
+    if (!this.isOnline(c)) {
+      return { ok: false, reason: "Bu kodda çevrimiçi kimse yok. Kodu kontrol et — arkadaşın oyunu açık olmalı." };
+    }
+    markSent(c);
+    this.ch.send({
       type: "broadcast",
       event: "freq",
-      payload: { to: toCode.toUpperCase(), fromCode: this.code, fromName: getMyName() },
+      payload: { to: c, fromCode: this.code, fromName: getMyName() },
     });
+    return { ok: true };
   }
 
   // Arkadaşlıktan çıkar: yerelde sil + karşı tarafa bildir (o da beni silsin)

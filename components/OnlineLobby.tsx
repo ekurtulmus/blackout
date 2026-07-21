@@ -126,7 +126,14 @@ export default function OnlineLobby({
                     style={{ padding: "5px 9px", display: "inline-flex", alignItems: "center", gap: 3 }}
                     title="Arkadaş ekle"
                     aria-label="Arkadaş ekle"
-                    onClick={() => { presence?.sendRequest(p.code!); setTick((t) => t + 1); }}
+                    onClick={() => {
+                      const r = presence?.sendRequest(p.code!);
+                      if (!r?.ok) {
+                        setNotice(r?.reason ?? "İstek gönderilemedi");
+                        window.setTimeout(() => setNotice(""), 4000);
+                      }
+                      setTick((t) => t + 1);
+                    }}
                   >
                     <span style={{ fontSize: 16, fontWeight: 800, lineHeight: 1 }}>+</span>
                     <Icon name="people" size={16} />
@@ -212,14 +219,16 @@ export default function OnlineLobby({
   }
 
   function host() {
-    // Global oda kurmak 200 altın. Yetersizse kurulmaz.
-    if (getCoins() < ROOM_COST) {
-      setNotice(`Oda kurmak için ${ROOM_COST} altın gerekli (elinde ${getCoins()}). Oynayıp altın kazan veya dükkândan al.`);
+    // Oda ücreti YALNIZ herkese açık odalar için ("Online Odalar" listesine düşenler).
+    // ARKADAŞ ODASI (özel, kodla paylaşılan) ÜCRETSİZ: dükkânda altın satışı kalktı ve
+    // başlangıç altını 0 → ücret alınsaydı yeni oyuncu arkadaşıyla HİÇ oynayamazdı.
+    const cost = publicRoom ? ROOM_COST : 0;
+    if (getCoins() < cost) {
+      setNotice(`Oda kurmak için ${cost} altın gerekli (elinde ${getCoins()}). Oynayıp altın kazan.`);
       window.setTimeout(() => setNotice(""), 4000);
       return;
     }
-    const left = addCoins(-ROOM_COST);
-    setCoins(left);
+    if (cost > 0) setCoins(addCoins(-cost));
     const c = generateRoomCode(4);
     setCode(c);
     setMode("host");
@@ -321,11 +330,14 @@ export default function OnlineLobby({
             <button
               className="btn btn-primary"
               onClick={host}
-              disabled={coins < ROOM_COST}
-              style={{ opacity: coins < ROOM_COST ? 0.5 : 1 }}
-              title={coins < ROOM_COST ? `${ROOM_COST} altın gerekli` : "Oda kur"}
+              disabled={publicRoom ? coins < ROOM_COST : false}
+              style={{ opacity: publicRoom && coins < ROOM_COST ? 0.5 : 1 }}
+              title={publicRoom && coins < ROOM_COST ? `${ROOM_COST} altın gerekli` : "Oda kur"}
             >
-              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="home" size={15} /> Oda Kur ({ROOM_COST} <Icon name="coin" size={12} />)</span>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Icon name="home" size={15} /> Oda Kur
+                {publicRoom && <>({ROOM_COST} <Icon name="coin" size={12} />)</>}
+              </span>
             </button>
             <button className="btn" onClick={() => setMode("join")}>
               <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><Icon name="key" size={15} /> Odaya Katıl</span>

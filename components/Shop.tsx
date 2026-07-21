@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Icon, { type IconName } from "@/components/Icon";
-import { getCoins, addCoins } from "@/lib/coins";
+import { getCoins } from "@/lib/coins";
 import {
   SHOP_ITEMS,
   buyItem,
@@ -35,12 +35,8 @@ const SWORD_NAME: Record<string, string> = {
   default: "Paslı Çelik", ember: "Köz", void: "Boşluk", frost: "Ayaz",
 };
 
-// Oyun parası (altın) paketleri — GERÇEK ÖDEME YOK (deneme).
-const GOLD_PACKS: { gold: number; price: string; tag?: string }[] = [
-  { gold: 500, price: "12₺" },
-  { gold: 1200, price: "25₺", tag: "%15 daha çok" },
-  { gold: 3000, price: "55₺", tag: "en avantajlı" },
-];
+// NOT: "Altın Satın Al" bandı KALDIRILDI (kullanıcı isteği) — altın YALNIZ oynayarak
+// kazanılır. Bu yüzden fiyatlar ×3 (duvak ×2) ve başlangıç altını 0'dır.
 
 // Özellik sıralaması (mevcut eşyalar)
 const ORDER = ["veil", "permAmmo", "soldier"];
@@ -94,10 +90,6 @@ export default function Shop({
   function flash(m: string) {
     setMsg(m);
     window.setTimeout(() => setMsg(""), 1800);
-  }
-  function buyGold(gold: number) {
-    setCoins(addCoins(gold)); // Deneme: ödeme alınmaz
-    flash(`+${gold} altın eklendi (deneme — ücret alınmadı)`);
   }
   function handleBuy(it: ShopItem) {
     const r = buyItem(it);
@@ -165,21 +157,6 @@ export default function Shop({
 
         {tab === "feat" ? (
           <div style={{ marginTop: 10 }}>
-            {/* Altın satın al */}
-            <div className="gold-band">
-              <div className="gold-band-t"><Coin size={17} /> Altın Satın Al</div>
-              <div className="gold-band-d">Deneme sürümü — ödeme alınmaz, altın anında eklenir.</div>
-              <div className="gold-grid">
-                {GOLD_PACKS.map((p) => (
-                  <div key={p.gold} className="gold-pack">
-                    <div className="gold-pack-n">{p.gold}</div>
-                    <div className="gold-pack-tag">{p.tag ?? ""}</div>
-                    <button className="gold-pack-b" onClick={() => buyGold(p.gold)}>{p.price}</button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Envanter özeti */}
             <div className="inv-strip">
               <span className="inv-strip-t">Envanterin</span>

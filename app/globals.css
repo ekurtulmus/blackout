@@ -896,50 +896,7 @@ button {
   border-top: 2px solid var(--gold);
   color: var(--gold-lite);
 }
-.gold-band {
-  margin-top: 20px;
-  padding: 18px 20px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, rgba(var(--band-rgb), 0.5), rgba(var(--band2-rgb), 0.5));
-  border: 1px solid rgba(var(--gold-rgb), 0.32);
-}
-.gold-band-t {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  font-size: 14.5px;
-  font-weight: 700;
-  letter-spacing: 0.16em;
-  color: var(--gold);
-  text-transform: uppercase;
-}
-.gold-band-d { font-size: 12px; color: var(--ink-2); margin: 5px 0 14px; }
-.gold-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
-.gold-pack {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 9px;
-  padding: 16px 12px;
-  border-radius: 11px;
-  background: rgba(var(--gold-rgb), 0.06);
-  border: 1px solid rgba(var(--gold-rgb), 0.24);
-}
-.gold-pack-n { font-size: 22px; font-weight: 800; color: var(--gold-lite); }
-.gold-pack-tag { font-size: 11px; color: var(--ok-text); height: 16px; }
-.gold-pack-b {
-  width: 100%;
-  padding: 9px;
-  border-radius: 8px;
-  background: linear-gradient(180deg, rgba(var(--btna-rgb), 0.9), rgba(var(--btnb-rgb), 0.9));
-  border: 1px solid rgba(var(--blood-rgb), 0.45);
-  border-top: 2px solid var(--blood);
-  color: #fff;
-  font-size: 14.5px;
-  font-weight: 600;
-  transition: all 0.2s;
-}
-.gold-pack-b:hover { box-shadow: 0 0 18px rgba(var(--blood-rgb), 0.3); }
+/* (Altın satın alma bandı .gold-* KALDIRILDI — altın yalnız oynayarak kazanılır) */
 .inv-strip {
   display: flex;
   flex-wrap: wrap;
@@ -1069,7 +1026,6 @@ button {
   background: radial-gradient(1000px 520px at 50% -8%, rgba(120, 16, 16, 0.3), transparent 62%), #060404;
 }
 @media (max-width: 560px) {
-  .gold-grid { grid-template-columns: 1fr; }
   .shop-head .scr-title { font-size: 34px; }
 }
 
@@ -1818,6 +1774,150 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   .splash-stage, .splash-vignette, .splash-title, .splash-sub { animation-duration: .01s !important; }
 }
 
+/* JILTED kampanya finali (Finale) — 10. bölüm bitince oynayan kapanış sahnesi.
+   Zaman çizelgesi (sn): fener söner .8-4 · satır1 1-4.4 · aralık açılır 4.6-10.6 ·
+   satır2 4.6-8 · satır3 8.2-11.6 · siluet yürür 8.8-12 · başlık 11.8 · kanca 12.9 ·
+   EKRAN KARARIR 14.6-16 · "Şimdilik." 16.2-17.8.
+   Finale.tsx'teki FULL_MS (18400) bu çizelgenin SONUNA denk gelir — biri değişirse diğeri de. */
+@keyframes fin-say {
+  0% { opacity: 0; transform: translateY(10px); }
+  15% { opacity: 1; transform: translateY(0); }
+  84% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+@keyframes fin-open { from { transform: scaleX(.03); } to { transform: scaleX(1); } }
+@keyframes fin-die {
+  0% { opacity: 1; } 16% { opacity: .5; } 28% { opacity: .95; }
+  46% { opacity: .22; } 60% { opacity: .62; } 78% { opacity: .1; } 100% { opacity: 0; }
+}
+@keyframes fin-walk {
+  0% { opacity: .96; transform: translateY(0) scale(1); }
+  62% { opacity: .9; }
+  100% { opacity: 0; transform: translateY(-14px) scale(.74); }
+}
+@keyframes fin-rise { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes fin-hint { from { opacity: 0; } to { opacity: .42; } }
+@keyframes fin-black { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fin-word { from { opacity: 0; letter-spacing: .5em; } to { opacity: 1; letter-spacing: .2em; } }
+
+.fin-stage {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 16px;
+  padding: 24px 18px;
+  background: radial-gradient(130% 100% at 50% 46%, #171110 0%, #0a0706 46%, #040202 100%);
+  overflow: hidden; cursor: pointer;
+  animation: spl-stage .8s ease-out both;
+}
+/* SVG parçaları kendi kutularının MERKEZİNDEN ölçeklenir (aralık ortadan dışa açılsın) */
+.fin-crack, .fin-spill, .fin-walk { transform-box: fill-box; transform-origin: center; }
+.fin-crack { animation: fin-open 6s cubic-bezier(.45,0,.3,1) 4.6s both; }
+.fin-spill { animation: fin-open 6s cubic-bezier(.45,0,.3,1) 5s both; }
+.fin-walk { animation: fin-walk 3.2s ease-in-out 8.8s both; }
+.fin-glow { animation: fin-die 3.2s ease-in-out .8s both; }
+
+/* Anlatı satırları: hepsi AYNI yerde belirip solar → sabit yükseklik, sayfa zıplamaz */
+.fin-lines {
+  position: relative; width: min(560px, 88vw); height: 76px;
+  display: flex; align-items: center; justify-content: center;
+}
+.fin-line {
+  position: absolute; left: 0; right: 0; margin: 0; text-align: center; opacity: 0;
+  /* EB Garamond italik: layout.tsx'te YALNIZ lore/atmosfer metni için tutuluyor */
+  font-family: "EB Garamond", serif; font-style: italic;
+  font-size: clamp(15px, 4.2vw, 20px); line-height: 1.5; color: #cdc3ab;
+}
+.fin-l1 { animation: fin-say 3.4s ease-out 1s both; }
+.fin-l2 { animation: fin-say 3.4s ease-out 4.6s both; }
+.fin-l3 { animation: fin-say 3.4s ease-out 8.2s both; }
+
+.fin-title {
+  font-family: "Cinzel", serif; font-weight: 900;
+  font-size: clamp(38px, 11.5vw, 64px); letter-spacing: .16em; color: #efe7d6;
+  text-shadow: 0 0 40px rgba(224,162,74,.35);
+  animation: fin-rise 1.1s ease-out 11.8s both;
+}
+.fin-hook {
+  margin-top: 12px; display: flex; align-items: center; gap: 12px; justify-content: center;
+  animation: fin-rise 1.1s ease-out 12.9s both;
+}
+.fin-hook > span:nth-child(2) {
+  font-family: "Archivo", sans-serif; font-size: 12px; letter-spacing: .3em;
+  color: #b3aa93; text-transform: uppercase;
+}
+.fin-hook .splash-rule:first-child { background: linear-gradient(90deg, transparent, rgba(224,162,74,.6)); }
+.fin-hook .splash-rule:last-child { background: linear-gradient(90deg, rgba(224,162,74,.6), transparent); }
+.fin-skip {
+  position: absolute; bottom: 22px; left: 0; right: 0; text-align: center;
+  font-family: "Archivo", sans-serif; font-size: 11px; letter-spacing: .34em;
+  color: #8d8474; text-transform: uppercase; pointer-events: none;
+  animation: fin-hint 1.2s ease-out 1.6s both;
+}
+/* Sahne tamamen kararır, ardından TEK kelime kalır — kanca burada vuruyor */
+.fin-dark {
+  position: absolute; inset: 0; z-index: 5; background: #030202; pointer-events: none;
+  animation: fin-black 1.4s ease-in 14.6s both;
+}
+.fin-last {
+  position: absolute; z-index: 6; left: 0; right: 0; text-align: center;
+  font-family: "Cinzel", serif; font-weight: 700;
+  font-size: clamp(22px, 5.4vw, 34px); color: #cdbf9e;
+  text-shadow: 0 0 30px rgba(224,162,74,.28); pointer-events: none;
+  animation: fin-word 1.6s ease-out 16.2s both;
+}
+/* Dar ekran: "GÜN AĞARDI" ve alt satır tek satırda kalsın (375px'te ikiye kırılıyordu) */
+@media (max-width: 430px) {
+  .fin-title { font-size: clamp(30px, 9.6vw, 44px); letter-spacing: .12em; }
+  .fin-hook { gap: 8px; }
+  .fin-hook .splash-rule { width: 24px; }
+  .fin-hook > span:nth-child(2) { font-size: 10.5px; letter-spacing: .18em; }
+}
+/* Alçak ekran (telefon yatay): sahne dikeyde sığsın */
+@media (max-height: 560px) {
+  .fin-stage { gap: 8px; padding: 12px 18px; }
+  .fin-stage > svg { width: 148px; height: 160px; }
+  .fin-lines { height: 52px; }
+  .fin-line { font-size: clamp(13px, 3.4vw, 16px); }
+  .fin-title { font-size: clamp(26px, 6.4vw, 40px); }
+  .fin-hook { margin-top: 6px; }
+  .fin-skip { display: none; }
+}
+/* Hareket azaltma: animasyon yok → her şey aynı anda ve sabit görünür
+   (Finale.tsx bu durumda REDUCED_MS ile daha kısa bekler) */
+@media (prefers-reduced-motion: reduce) {
+  .fin-stage, .fin-stage .splash-vignette, .fin-crack, .fin-spill, .fin-walk,
+  .fin-glow, .fin-line, .fin-title, .fin-hook, .fin-skip,
+  .fin-dark, .fin-last { animation: none !important; }
+  .fin-lines { height: auto; flex-direction: column; gap: 8px; }
+  .fin-line { position: static; opacity: 1; }
+  .fin-crack, .fin-spill { transform: none; }
+  .fin-walk, .fin-glow { opacity: 0; }
+  .fin-title, .fin-hook { opacity: 1; transform: none; }
+  .fin-skip { opacity: .42; }
+  /* Kararma yok → "Şimdilik." kancası akışta, kancanın altında durur */
+  .fin-dark { display: none; }
+  .fin-last { position: static; opacity: 1; letter-spacing: .2em; margin-top: 4px; }
+}
+
+/* Çok Oyunculu: ONLINE ODALAR şimdilik kapalı ("Yakında") */
+.mm-card.is-soon { opacity: .55; }
+.mm-card.is-soon:hover { transform: none; }
+.mm-soon {
+  margin-left: 8px; padding: 3px 8px; border-radius: 999px; vertical-align: middle;
+  font-family: "Archivo", sans-serif; font-size: 10.5px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase; white-space: nowrap;
+  color: var(--gold-warm); border: 1px solid rgba(var(--edge-rgb), .35);
+  background: rgba(var(--chip-rgb), .5);
+}
+/* DİKKAT: fill-mode YOK (`both` değil). Bu metnin OKUNMASI gerekiyor — `both` + from{opacity:0}
+   kullanılsaydı animasyon hiç ilerlemediğinde (arka plandaki sekme, animasyon kapalı ortam)
+   metin kalıcı GÖRÜNMEZ kalırdı. Fill'siz: taban opaklık 1, animasyon yalnız girişi yumuşatır. */
+@keyframes mm-soon-in { from { opacity: 0; transform: translateY(-5px); } }
+.mm-soon-note {
+  margin-top: 16px; text-align: center; line-height: 1.5;
+  font-family: "Archivo", sans-serif; font-size: 14.5px; color: var(--ink-2);
+  animation: mm-soon-in .45s ease-out;
+}
+
 /* Online skor tabloları (bölüm-sonu / tur-sonu / arena-sonu) — ORTAK stil */
 .scorelist {
   display: flex;
@@ -1879,7 +1979,8 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
 /* Bölüm-sonu altın tablosu — alt alta, ikonlu, TEK vurgu rengi (rengarenk değil) */
 .clear-table {
   margin-top: 18px;
-  width: min(280px, 82vw);
+  /* Dar tutulur: 280px'te etiket sola, sayı sağa yapışıp aralarında koca boşluk kalıyordu. */
+  width: min(208px, 70vw);
   display: flex; flex-direction: column;
   border: 1px solid rgba(var(--edge-rgb), 0.22);
   border-radius: 12px;
@@ -1887,8 +1988,8 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   background: rgba(var(--chip-rgb), 0.35);
 }
 .clear-row {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 9px 14px; font-size: 14.5px;
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 8px 12px; font-size: 14px;
 }
 .clear-row + .clear-row { border-top: 1px solid rgba(var(--edge-rgb), 0.14); }
 .clear-row-l { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }

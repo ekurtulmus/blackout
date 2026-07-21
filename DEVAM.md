@@ -2,9 +2,19 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-20** · Canlı sürüm: commit `6b07d95` (oturum #19: UI buton sesi "şişe ağzı üflemesi"). Oyun adı **JILTED** (iç anahtarlar `blackout_` KORUNDU). TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif.
+> Son güncelleme: **2026-07-21** · Canlı sürüm: commit `6b07d95` (oturum #19). ⚠️ **Oturum #20-21-22 henüz
+> CANLIYA ALINMADI** — yerelde `tsc` + `next build` temiz.
+> #20: kampanya final sahnesi · #21: online kapatıldı + ekonomi revizyonu (altın satışı YOK, fiyat ×3,
+> başlangıç 0) + sıfırlama hatası · #22: **bölüm geçişi desync kök nedeni (bayat reachexit)** +
+> arkadaş isim senkronu + olmayan koda istek + bölüm-sonu tablosu.
+> ⚠️ #22'deki online düzeltmeleri **2 GERÇEK CİHAZLA DOĞRULANMADI** — sahada test edilmeli.
+> Oyun adı **JILTED** (iç anahtarlar `blackout_` KORUNDU). TEK SEFERLİK İLERLEME SIFIRLAMA `blackout_reset_v="2026-07-19-fresh"` aktif.
 >
 > ### 🔜 AÇIK İŞLER (yeni sohbette buradan devam)
+> 0. **Kampanya sonrası (oturum #20'de KARAR VERİLDİ, kısmen yapıldı):** kullanıcıya 4 seçenek sunuldu —
+>    İkinci Gece (New Game+) · 10. bölüm = Kraliçe boss · kalıcı ödül+rozet · gerçek final sahnesi.
+>    Kullanıcı **yalnız "gerçek final sahnesi"ni** seçti ("bunu bi dene bakalım nasıl olacak") → YAPILDI.
+>    **Diğer 3'ü hâlâ açık** — özellikle **İkinci Gece**, bitirdikten sonra oynanacak şey bırakan tek madde.
 > 1. **Bağlılık/elde tutma mekanikleri** — kullanıcıya interaktif seçim listesi sunuldu (çekirdek döngü / günlük /
 >    sosyal / ilerleme / gerilim), **seçim henüz gelmedi**. En çok önerilen ikili: **press-your-luck**
 >    ("Kaç / Daha derine in" + çarpan, Bitmeyen Gece üzerine) ve **meta-para** (ölünce bile kalıcı ilerleme).
@@ -75,6 +85,106 @@ Doğrulama: `tsc` + `next build` TEMİZ. Kullanıcı, ajan raporlarından seçti
 - ✅ **Ayarlar:** "Müzik"+"Tüm Sesler" → tek **"Ses"** + açıkken **"Müzik"** alt seçeneği; isim açıklaması kısaldı.
 - ✅ **Nasıl Oynanır:** gelin listesi 7→2+keşfet; duvak+fırsat tek "Duvak & Fırsatlar" konusunda birleşti (9→8).
 - ✅ **Görev brifingi:** ayrı "Hedef" paneli kaldırıldı (hedef kartta zaten var).
+
+## OTURUM 2026-07-21 #22 — BÖLÜM GEÇİŞİ DESYNC (kök neden) + arkadaş isim/kod hataları
+Doğrulama: `tsc` + `next build` TEMİZ. ⚠️ **Online akış 2 GERÇEK CİHAZ ister — düzeltmeler kod
+analiziyle bulundu, sahada DOĞRULANMADI.**
+- 🔴 **KÖK NEDEN — BAYAT VARIŞ (stale reachexit).** Kullanıcı: "A kapıdan geçince A yeni labirente
+  geçiyor, B eski labirentte kalıyor; B de kapıdan geçince oda kapanıyor."
+  ZİNCİR: (1) `{t:"result"}` yayını kayıpsız değil → B kaçırır. (2) B **eski bölümde oynamaya devam
+  eder** (overlay görmez). (3) B eski çıkışa varır → `reachexit` yollar (900ms'de bir tekrar).
+  (4) Host overlay bitip **yeni bölüme geçince** `resultPending` false olur → **bayat mesaj yeni turu
+  bitirir**: puan yanlış yazılır, herkes bir bölüm ATLAR, akış dağılır → oda çöker.
+  **DÜZELTME:** `reachexit` artık **hangi bölümün** çıkışına varıldığını taşıyor
+  (`{t:"reachexit", lvl}`); `handleReach(who, atLevel)` bölüm no'su tutmuyorsa mesajı YOK SAYAR.
+- 🔴 **PUAN YANLIŞ KİŞİYE:** `const seat = Math.max(0, order.indexOf(who))` → tanınmayan gönderende
+  `indexOf` -1 döner, `Math.max(0,-1)` = **0** = KOLTUK 0 = HOST puan alırdı. Artık `seat < 0` ise
+  mesaj yok sayılıyor (otoriter roster).
+- 🔴 **SELF-HEALING 5 SANİYE KÖRDÜ:** host `pos` kalp atışında MEVCUT bölümü duyuruyordu; overlay
+  boyunca (LEVEL_WAIT_MS=5sn) host hâlâ N'de olduğu için, `result`ı kaçıran oyuncuda
+  `hostLvl > myLvl` FALSE → hiç `needlevel` istemiyordu → **B tam o 5 saniye boyunca eski labirentte
+  oynuyordu** (kullanıcının gördüğü şey). Artık host **HEDEF** bölümü duyuruyor
+  (`pendingLevelNum || level`) → geride kalan ANINDA fark ediyor.
+  Ayrıca `needlevel` alıcısı: overlay'deysek `sendLevelSync()` İŞE YARAMAZ (o hâlâ ESKİ bölümü yollar)
+  → onun yerine saklanan `lastResult` yeniden yollanıyor.
+- ✅ **ARKADAŞ İSMİ GÜNCELLENMİYORDU** (`friends.ts`): `blackout_friends` listesi ekleme anındaki ismin
+  ANLIK GÖRÜNTÜSÜYDÜ, bir daha güncellenmiyordu. `here` kalp atışı zaten güncel adı taşıyor →
+  ekli arkadaşsa ve ad değiştiyse `renameFriend()` ile yerel kayıt tazeleniyor + `onPresence()`.
+- ✅ **OLMAYAN KODA İSTEK BOŞLUĞA GİDİYORDU** (`friends.ts` `sendRequest`): kod doğrulanmadan yayın
+  yapılıyor, "gönderildi" deniyor ve `markSent` yüzünden bir daha denenemiyordu. **Veritabanı yok** —
+  tek gerçek kaynak PRESENCE. Artık `isOnline(kod)` değilse GÖNDERİLMİYOR/işaretlenmiyor,
+  `{ok:false, reason}` dönüyor; `Friends.tsx` + `OnlineLobby.tsx` bu mesajı gösteriyor, kod kutusu
+  temizlenmiyor (kullanıcı düzeltip tekrar denesin).
+- ✅ **Bölüm-sonu tablosu daraltıldı** (`.clear-table` 280→**208px** / `min(208px,70vw)`,
+  `.clear-row` dolgu 9/14→8/12, font 14.5→14, gap 10): etiketle sayı arasındaki boşluk kapandı.
+
+## OTURUM 2026-07-21 #21 — Online kapatıldı + EKONOMİ revizyonu + sıfırlama HATASI düzeltildi
+Doğrulama: `tsc` + `next build` TEMİZ. Tarayıcıda gerçek arayüzle ölçüm (geçici `/finale-onizleme`
+rotası — doğrulama sonrası SİLİNDİ).
+- ✅ **FİNAL "Şimdilik." AYRILDI:** kanca artık "Karanlık geride kaldı." ile bitiyor; sahne **tamamen
+  kararıyor** (`.fin-dark`, 14.6-16s) ve **"Şimdilik."** kapkaranlık ekranda TEK BAŞINA beliriyor
+  (`.fin-last`, 16.2s, harf aralığı açıktan dara). `FULL_MS` 15000 → **18400**. Ölçüldü: t=14.6 sahne
+  tam görünür → t=16.2 karartma 1.0 → t=18 "Şimdilik." 1.0 (z-index dark 5 / last 6).
+- ✅ **ONLINE ODALAR KAPATILDI** (kullanıcı: "sonra ekleyeceğim"). `page.tsx` `multi` ekranındaki ikinci
+  kart artık `mm-card is-soon` + **"Yakında"** rozeti (opaklık .55), tıklayınca ekran DEĞİŞMİYOR, altta
+  kısa not çıkıyor: *"O kapı henüz açılmadı. Şimdilik arkadaşlarını çağır."*
+  **`screen === "online"` ekranı KODDA DURUYOR** — yalnız girişi kapatıldı. Açmak için: `is-soon`+rozet
+  kalksın, `onClick` tekrar `setScreen("online")` olsun.
+  ⚠️ Notun animasyonunda **fill-mode YOK** (`both` değil): `both` + `from{opacity:0}` olsaydı animasyon
+  ilerlemediği ortamlarda metin kalıcı görünmez kalırdı. Okunması gereken metinlerde bu kalıbı kullan.
+- ✅ **DÜKKÂNDA ALTIN SATIŞI KALDIRILDI:** `Shop.tsx` `GOLD_PACKS` + `buyGold` + `.gold-band` bloğu ve
+  `globals.css` `.gold-*` sınıfları KOMPLE silindi (ölü kod bırakılmadı). Altın YALNIZ oynayarak kazanılır.
+- ✅ **EKONOMİ (kullanıcı kararı):** kalıcı+kozmetik fiyatlar **×3**, duvak **×2** (tüketilir olduğu için
+  daha düşük), başlangıç altını **1000 → 0** (`coins.ts` `STARTER`).
+  Duvak 22→**44** · Sürekli Cephane 90→**270** · Asker 120→**360** · kılıç renkleri 40→**120** ·
+  fener 30/35/45→**90/105/135** · görünüm 40/45/50→**120/135/150**. Dükkânın tamamı ~645→**~1935**.
+  **NEDEN:** eskiden başlangıç 1000, dükkânın tamamı 645'ti → oyuncu hiç oynamadan her şeyi alıp
+  355 altın artırıyordu. Kampanya kazancı (orta) ~350-450 → artık her turda 1 anlamlı şey alınır.
+- ✅ **ARKADAŞ ODASI ARTIK ÜCRETSİZ** (`OnlineLobby.tsx` `host()`): oda ücreti `publicRoom ? ROOM_COST : 0`.
+  Başlangıç altını 0 olunca 200 altınlık ücret "Arkadaşlarınla Oyna"yı TAMAMEN kapatıyordu (yeni oyuncu
+  hiç oynayamazdı). Ücret herkese açık odalar için duruyor (online tekrar açılınca geçerli olacak).
+  Buton etiketi/disabled durumu da yalnız public'te fiyat gösteriyor. Ölü metin "veya dükkândan al" silindi.
+- ✅ **SIFIRLAMA HATASI DÜZELTİLDİ** (`Settings.tsx`) — kullanıcı "sıfırla deyince veriler sıfırlanmıyor" dedi.
+  **KÖK NEDEN:** elle tutulan `PROGRESS_KEYS` **silinecekler** listesiydi ve her yeni özellikte unutulmuştu.
+  Unutulanlar: `blackout_sp_progress` (→ "Devam Et · Bölüm 7" duruyordu), `blackout_stats` (→ başarım
+  sayaçları duruyor, başarımlar anında geri açılıyordu), `blackout_equipped`, `blackout_best_<id>`
+  (Kör Gece/Sürü Gecesi rekorları; yalnız endless+arena siliniyordu).
+  **ÇÖZÜM = TERSİNE ÇEVİR:** artık `KEEP_KEYS` (korunacaklar) tutuluyor, `blackout_` ile başlayan HER ŞEY
+  siliniyor (page.tsx'teki tek-seferlik sıfırlamayla AYNI mantık). **Yeni anahtar eklenince burayı
+  güncellemek GEREKMİYOR** — hata bir daha aynı şekilde oluşamaz. Anahtarlar önce toplanıp SONRA siliniyor
+  (döngü içinde silmek indeksleri kaydırıp anahtar atlatıyor). Ayarlar açıklaması da güncellendi.
+  Tarayıcıda doğrulandı: sp_progress/stats/equipped/best_99/achievements/journal **silindi**, coins **0**,
+  name/vol/friends/muted/uid/reset_v **korundu**.
+
+## OTURUM 2026-07-21 #20 — KAMPANYA FİNAL SAHNESİ (10. bölüm sonrası kapanış)
+Doğrulama: `tsc` + `next build` TEMİZ. Görsel doğrulama: geçici `/finale-onizleme` rotası + Web Animations API ile
+zamanda gezinme (`getAnimations().currentTime`) + hesaplanmış stil ölçümü — **rota doğrulama sonrası SİLİNDİ**.
+**Sorun:** 10. bölüm bitince tek yaptığı düz bir metin ekranı basmaktı ("GÜN AĞARDI" + skor + Yeniden Oyna).
+10 bölümlük emeğin karşılığı yoktu; oyunu bırakma noktası tam orasıydı.
+- ✅ **`components/Finale.tsx` (YENİ)** — kampanya kapanış sahnesi. Açılış `Splash`ıyla AYNI görsel dil
+  (karanlık sahne + altın line-art + Cinzel başlık). Sahne: **fener titreyip söner → geride bırakılır** →
+  taş kemerde **şafak aralığı ortadan dışa açılır** → **siluet ışığa yürür** → **"GÜN AĞARDI"** + kanca satırı
+  ("Karanlık geride kaldı. Şimdilik."). Anlatı 3 satır (`EB Garamond` italik — `layout.tsx` bu fontu ZATEN
+  yalnız lore için tutuyordu, ilk kez gerçekten kullanıldı). Dokun = atla.
+- ✅ **`globals.css` `fin-*` blokları** — zaman çizelgesi (sn): fener söner .8-4 · satır1 1-4.4 ·
+  aralık açılır 4.6-10.6 · satır2 4.6-8 · satır3 8.2-11.6 · siluet 8.8-12 · başlık 11.8 · kanca 12.9.
+  ⚠️ **`Finale.tsx` `FULL_MS`=15000 bu çizelgenin SONUNA denk gelir — biri değişirse diğeri de değişmeli.**
+  `prefers-reduced-motion`: animasyon yok, her şey sabit görünür + `REDUCED_MS`=5200 ile kısa durur.
+  Dar ekran (`max-width:430`) ve alçak ekran (`max-height:560`, telefon yatay) medya sorguları: başlık 375px'te
+  İKİ SATIRA kırılıyordu (yükseklik 116px) → clamp+letter-spacing kısıldı, artık tek satır (48px).
+- ✅ **SVG kırpma tuzağı:** ışık dikdörtgeni `scaleX` ile açılıyor; `clipPath` ile `transform` AYNI elemanda
+  olursa kırpma da birlikte ölçeklenir. Çözüm: **clip DIŞ `<g>`'de, transform İÇ `<g>`'de**.
+- ✅ **`page.tsx` bağlantısı:** `finaleSeen` state + `handleEnd`'de `status==="win"` iken `false`'a çekilir
+  (her bitirişte yeniden oynar) + splash guard'ının hemen altında
+  `if (screen === "win" && !finaleSeen) return <Finale …/>`.
+- ✅ **"win" sonuç ekranı yeniden yazıldı:** duygusal doruk artık sahnede → ekran TEKRAR ETMESİN diye
+  büyük "GÜN AĞARDI" başlığı kaldırıldı; bölüm-sonu ekranıyla AYNI `.clear-*` diline geçti
+  ("Karanlığı Bitirdin" + `10 / 10` + tablo: Final skoru · Cüzdan). Yeni CSS yazılmadı, mevcut sınıflar.
+- ⚠️ **DOĞRULANAMAYAN:** ekran görüntüsü bu projede alınamıyor (`computer screenshot` 30sn'de zaman aşımı,
+  önceki oturumlarda da böyleydi) → sahnenin **hissi/estetiği** gerçek cihazda görülmeli. Ölçülen: zaman
+  çizelgesi, opaklık/ölçek değerleri, yerleşim (masaüstü 956×910 · mobil 375×812 · yatay 740×360 → taşma yok).
+- ⚠️ Ses/müzik DOKUNULMADI: "win" ekranında olduğu gibi finalde de menü müziği açılır. İstenirse finale
+  kendi parçası/sessizliği verilebilir (`SCREEN_TRACKS` + `page.tsx` ekran-müzik effect'i).
 
 ## OTURUM 2026-07-20 #19 — UI buton sesi ("şişe ağzı üflemesi")
 - ✅ `lib/audio.ts` **`uiClick()`**: bandpass rezonans + aşağı süpüren filtre (nefes/üfleme karakteri), iki katman

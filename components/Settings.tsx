@@ -5,20 +5,27 @@ import { sound } from "@/lib/audio";
 import { getMyCode } from "@/lib/friends";
 import Icon from "@/components/Icon";
 
-// Sıfırlanacak ilerleme/satın alma anahtarları (ses tercihleri KORUNUR)
-const PROGRESS_KEYS = [
-  "blackout_coins",
-  "blackout_inventory",
-  "blackout_missions_cleared",
-  "blackout_mission_best",
-  "blackout_endless_best",
-  "blackout_arena_best",
-  "blackout_secrets",
-  "blackout_sp_diff",
-  "blackout_achievements",
-  "blackout_ach_claimed",
-  "blackout_journal",
-];
+// Sıfırlamada KORUNACAK anahtarlar: kimlik (arkadaş kodu/isim/arkadaşlar) + ses tercihleri.
+// DİKKAT — burada "SİLİNECEKLER" listesi TUTMUYORUZ: eskiden öyleydi ve her yeni özellikte
+// unutuluyordu. Unutulanlar yüzünden "sıfırladım ama hiçbir şey sıfırlanmadı" oluyordu:
+//   blackout_sp_progress  → "Devam Et · Bölüm 7" duruyordu
+//   blackout_stats        → başarım sayaçları duruyordu, başarımlar anında geri açılıyordu
+//   blackout_equipped     → kuşanılan kozmetik duruyordu
+//   blackout_best_<id>    → Kör Gece / Sürü Gecesi rekorları duruyordu (yalnız endless+arena siliniyordu)
+// Artık TERSİ: "blackout_" ile başlayan HER ŞEY silinir, yalnız aşağıdakiler kalır.
+// (app/page.tsx'teki tek-seferlik sürüm sıfırlamasıyla AYNI mantık — yeni anahtar
+// eklendiğinde burayı güncellemek GEREKMEZ.)
+const KEEP_KEYS = new Set([
+  "blackout_uid",
+  "blackout_name",
+  "blackout_friends",
+  "blackout_sent",
+  "blackout_freq_in",
+  "blackout_vol",
+  "blackout_music",
+  "blackout_muted",
+  "blackout_reset_v",
+]);
 
 const NAME_KEY = "blackout_name";
 
@@ -48,7 +55,13 @@ export default function Settings({ onBack }: { onBack: () => void }) {
 
   function resetProgress() {
     try {
-      for (const k of PROGRESS_KEYS) localStorage.removeItem(k);
+      // Önce topla, SONRA sil: silerken indeksler kayar, aynı döngüde silmek anahtar atlatır.
+      const rm: string[] = [];
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith("blackout_") && !KEEP_KEYS.has(k)) rm.push(k);
+      }
+      for (const k of rm) localStorage.removeItem(k);
     } catch {
       /* geç */
     }
@@ -160,8 +173,8 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             <>
               <div className="field-d" style={{ marginTop: 8 }}>
                 Tüm ilerlemen silinir: <b>altın, envanter ve satın almalar</b>, tamamlanan görevler,
-                açılan sırlar, günlük sayfaları, başarımlar ve en iyi skorlar. <b>Geri alınamaz.</b>
-                {" "}Ses tercihlerin korunur.
+                açılan sırlar, günlük sayfaları, başarımlar, en iyi skorlar ve <b>kaldığın bölüm</b>.
+                {" "}<b>Geri alınamaz.</b> Adın, arkadaşların ve ses tercihlerin korunur.
               </div>
               <button className="danger-btn" onClick={() => setConfirmReset(true)}>Sıfırla</button>
             </>

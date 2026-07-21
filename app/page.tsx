@@ -8,6 +8,7 @@ import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import Splash from "@/components/Splash";
+import Finale from "@/components/Finale";
 import Friends from "@/components/Friends";
 import Online from "@/components/Online";
 import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
@@ -136,6 +137,7 @@ const SCREEN_MUSIC: Partial<Record<Screen, ScreenTrack>> = {
 export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [showSplash, setShowSplash] = useState(true); // açılış animasyonu (bir kez)
+  const [finaleSeen, setFinaleSeen] = useState(false); // kampanya kapanış sahnesi oynadı mı
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -198,6 +200,8 @@ export default function Page() {
   const [spDiff, setSpDiff] = useState<Diff>("orta");
   // Nasıl Oynanır: düğme kabuğun sağ üstünde (MenuShell), modal MainMenu'de → durum burada
   const [helpOpen, setHelpOpen] = useState(false);
+  // Online Odalar şimdilik KAPALI (kullanıcı isteği — sonra açılacak). Karta basınca kısa not.
+  const [onlineSoon, setOnlineSoon] = useState(false);
 
   // TEMA: Aydınlık (beyaz) tema KALDIRILDI (kullanıcı isteği) — oyun hep KARANLIK.
   // data-theme her zaman "dark"; eski blackout_theme kaydı yok sayılır, toggle gösterilmez.
@@ -491,6 +495,7 @@ export default function Page() {
     const wonHard = r.status === "win" && spDiff === "zor";
     const newly = refreshAch({ wonHard, coins: r.coins ?? getCoins() });
     setNewAch(newly);
+    if (r.status === "win") setFinaleSeen(false); // kapanış sahnesi her bitirişte yeniden oynasın
     setScreen(r.status);
   }
 
@@ -731,6 +736,10 @@ export default function Page() {
 
   // Açılış animasyonu (marka splash) — her yüklemede bir kez, sonra menü. Dokun=atla.
   if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
+
+  // Kampanya kapanış sahnesi — 10. bölüm bitince BİR KEZ oynar, sonra "win" sonuç
+  // ekranı (skor/altın/başarım) gelir. Dokunmayla atlanabilir.
+  if (screen === "win" && !finaleSeen) return <Finale onDone={() => setFinaleSeen(true)} />;
 
   if (screen === "playing") {
     return (
@@ -1252,9 +1261,13 @@ export default function Page() {
                 <span className="mm-card-sub">Oda kur, kodu paylaş · özel oda</span>
               </span>
             </button>
+            {/* Online Odalar ŞİMDİLİK KAPALI — ekran (screen === "online") duruyor, yalnız
+                buraya giriş kapatıldı. Açmak için: is-soon/rozet kalksın, onClick tekrar
+                setScreen("online") olsun. */}
             <button
-              className="mm-card"
-              onClick={() => setScreen("online")}
+              className="mm-card is-soon"
+              onClick={() => setOnlineSoon(true)}
+              aria-disabled="true"
             >
               <span className="mm-card-ico">
                 <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -1262,11 +1275,14 @@ export default function Page() {
                 </svg>
               </span>
               <span className="mm-card-txt">
-                <span className="mm-card-title">ONLINE ODALAR</span>
-                <span className="mm-card-sub">Herkese açık odalara katıl</span>
+                <span className="mm-card-title">ONLINE ODALAR <span className="mm-soon">Yakında</span></span>
+                <span className="mm-card-sub">Yabancılarla oynamak hazırlanıyor</span>
               </span>
             </button>
           </div>
+          {onlineSoon && (
+            <div className="mm-soon-note">O kapı henüz açılmadı. Şimdilik arkadaşlarını çağır.</div>
+          )}
         </div>
       </div>
     );
@@ -1423,23 +1439,18 @@ export default function Page() {
       )}
 
       {screen === "win" && (
-        <>
-          <div className="title" style={{ color: "#7dffb0" }}>
-            GÜN AĞARDI
-          </div>
-          <div className="subtitle">
-            {TOTAL_LEVELS} bölümün karanlığından da sağ çıktın. Gelinler geride
-            kaldı — şimdilik. Final skorun: <b>{score}</b>
-          </div>
-          <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Icon name="coin" size={16} /> Cüzdan: <b>{coinInfo.total} altın</b>
-          </div>
+        <div className="clear-scr">
+          {/* "GÜN AĞARDI" duygusal doruğu artık Finale sahnesinde veriliyor → burası
+              tekrar etmez, bölüm-sonu ekranıyla aynı dilde HESAP ekranıdır. */}
+          <div className="clear-title">Karanlığı Bitirdin</div>
+          <div className="clear-progress">{TOTAL_LEVELS}<span className="clear-total"> / {TOTAL_LEVELS}</span></div>
+          <div className="clear-note">Gelinler geride kaldı — şimdilik.</div>
           {newAch.length > 0 && (
-            <div className="subtitle" style={{ color: "#ffd75a", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, flexWrap: "wrap" }}>
+            <div className="clear-ach">
               <Icon name="trophy" size={16} /> Yeni başarım: {newAch.map((id) => achievementById(id)?.title).filter(Boolean).join(", ")}
             </div>
           )}
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="clear-actions">
             <button className="btn btn-primary" onClick={startNewGame}>
               Yeniden Oyna
             </button>
@@ -1447,7 +1458,17 @@ export default function Page() {
               ← Menüye Dön
             </button>
           </div>
-        </>
+          <div className="clear-table">
+            <div className="clear-row">
+              <span className="clear-row-l"><Icon name="trophy" size={15} /> Final skoru</span>
+              <span className="clear-row-v">{score}</span>
+            </div>
+            <div className="clear-row">
+              <span className="clear-row-l"><Icon name="wallet" size={15} /> Cüzdan</span>
+              <span className="clear-row-v">{coinInfo.total}</span>
+            </div>
+          </div>
+        </div>
       )}
 
     </div>

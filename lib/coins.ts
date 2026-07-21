@@ -2,7 +2,9 @@
 // İleride dükkân/harcama için temel. Şimdilik mini-görevlerden kazanılır
 // (yüzük = +2 para); başka kaynaklar sonra eklenecek.
 const KEY = "blackout_coins";
-const STARTER = 1000; // yeni oyuncuya başlangıç altını
+// Başlangıç altını 0: dükkânda ALTIN SATIŞI YOK, altın yalnız oynayarak kazanılır.
+// (Eskiden 1000'di; dükkânın tamamı ~645 altındı → oyuncu hiç oynamadan her şeyi alıyordu.)
+const STARTER = 0;
 let mem = 0; // localStorage yoksa (SSR/test) bellek yedeği
 
 // Uygulama açılışında BİR KEZ: hiç para kaydı yoksa (yeni oyuncu) 1000 altın ver.

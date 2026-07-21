@@ -50,10 +50,13 @@ export default function Friends({
     if (c === myCode) { flash("✗ Bu senin kendi kodun"); return; }
     if (friends.some((f) => f.code === c)) { flash("✗ Zaten ekli"); return; }
     if (isSent(c)) { flash("✗ Bu koda zaten istek gönderdin"); return; }
-    presence?.sendRequest(c);
+    // Kod çevrimiçi değilse istek GÖNDERİLMEZ (boşluğa gitmesin) — kutu da temizlenmez
+    // ki kullanıcı kodu düzeltip tekrar deneyebilsin.
+    const r = presence?.sendRequest(c);
+    if (!r?.ok) { flash("✗ " + (r?.reason ?? "İstek gönderilemedi")); return; }
     setCode("");
     setTick((t) => t + 1);
-    flash("✓ İstek gönderildi — arkadaşın çevrimiçiyse kabul edebilir");
+    flash("✓ İstek gönderildi — arkadaşın kabul edince listene eklenecek");
   }
   function flash(m: string) {
     setMsg(m);
