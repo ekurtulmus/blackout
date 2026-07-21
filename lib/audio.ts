@@ -428,6 +428,40 @@ class SoundEngine {
     this.tension = Math.max(0, Math.min(1, v));
   }
 
+  // UI buton sesi — "şişe ağzı üflemesi": rezonanslı kısa nefes (bandpass + aşağı
+  // süpüren filtre). HER tıklamada çaldığı için seviye BİLEREK kısık tutulur.
+  // Ses/kısma ayarları master üzerinden zaten geçerli; kilit açılmadıysa hiç çalmaz.
+  uiClick() {
+    this.init();
+    const ctx = this.ctx;
+    if (!ctx || !this.noiseBuf || !this.master) return;
+    if (this.muted || ctx.state === "suspended") return;
+    const t0 = ctx.currentTime;
+    const R = (a: number, b: number) => a + Math.random() * (b - a);
+    const puff = (dur: number, f0: number, f1: number, q: number, peak: number, delay: number) => {
+      const src = ctx.createBufferSource();
+      src.buffer = this.noiseBuf!;
+      src.loop = true;
+      const f = ctx.createBiquadFilter();
+      f.type = "bandpass";
+      f.frequency.setValueAtTime(f0, t0 + delay);
+      f.frequency.exponentialRampToValueAtTime(Math.max(60, f1), t0 + delay + dur);
+      f.Q.value = q;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.0001, t0 + delay);
+      g.gain.exponentialRampToValueAtTime(peak, t0 + delay + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + dur);
+      src.connect(f);
+      f.connect(g);
+      this.connectOut(g, 0.3);
+      src.start(t0 + delay);
+      src.stop(t0 + delay + dur + 0.05);
+    };
+    // Her basışta hafif sapma → art arda basınca "makine" gibi duyulmaz
+    puff(R(0.14, 0.16), R(600, 700), R(420, 480), R(6, 9), 0.055, 0);
+    puff(0.11, R(1500, 1800), 1100, 4, 0.024, 0.01);
+  }
+
   // --- yardımcılar ---
   private connectOut(node: AudioNode, wet = 0.25, pan = 0) {
     if (!this.ctx || !this.master) return;

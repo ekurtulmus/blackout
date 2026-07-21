@@ -389,6 +389,24 @@ export default function Page() {
     };
   }, []);
 
+  // TÜM UI butonlarına ortak tıklama sesi ("şişe ağzı üflemesi", kısık). Tek yerden
+  // dinlenir — her bileşene tek tek eklemeye gerek yok. Oyun-içi KONTROL butonları
+  // (ateş/kılıç/koş/joystick/slot/bariyer) hariç: onların kendi oyun sesleri var ve
+  // saniyede birkaç kez basıldıkları için UI sesi rahatsız ederdi.
+  useEffect(() => {
+    const SKIP = ".touch, .actionrow, .fire, .actbtn, .slotbtn, .invbtn, .barrierbtn, .joybase";
+    const onDown = (e: PointerEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (!el || typeof el.closest !== "function") return;
+      const btn = el.closest("button, [role='button']") as HTMLElement | null;
+      if (!btn || btn.hasAttribute("disabled")) return;
+      if (btn.closest(SKIP)) return;
+      sound.uiClick();
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, []);
+
   // Menü/ekranlarda müzik çalsın; oyun ekranlarında dursun (oyun kendi sesini çalar).
   // Menü ekranları arası geçişte müziği DURDURMAYIZ — böylece kesintisiz akar.
   useEffect(() => {
