@@ -220,7 +220,9 @@ olması. Bu oturumda o ön şart tamamlandı.
   yok, Bubblewrap kurulu değil. AAB üretmek için ya Bubblewrap + JDK17 + Android SDK (~1.5-2 GB
   indirme) ya da PWABuilder (web, kurulum yok). Kullanıcı henüz seçmedi.
 - ✅ **TWA AAB ÜRETİLDİ + assetlinks CANLI (2026-07-21):** Kullanıcı PWABuilder ile
-  (`jilted.vercel.app` → Package For Stores → Android) paketi üretti; paket adı **`app.jilted.game`**.
+  (`jilted.vercel.app` → Package For Stores → Android) paketi üretti + Play Console'a yükledi.
+  ⚠️ **PAKET ADI `com.jilted.app`** (planlanan `app.jilted.game` DEĞİL — PWABuilder'da öyle
+  girilmiş, AAB yüklenince KİLİTLENDİ, değiştirilemez). assetlinks paket adı buna göre düzeltildi.
   Üretilen **yükleme (upload) anahtarı SHA-256:**
   `DF:C3:45:72:35:C6:5C:3B:82:59:53:89:14:3F:32:3D:71:C8:9F:E4:FA:A0:2D:A2:99:91:8E:88:C8:25:6F:85`
   `public/.well-known/assetlinks.json`'a yazıldı → canlıda HTTP 200 + **Google Digital Asset Links
