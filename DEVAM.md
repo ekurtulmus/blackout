@@ -221,8 +221,12 @@ olması. Bu oturumda o ön şart tamamlandı.
   indirme) ya da PWABuilder (web, kurulum yok). Kullanıcı henüz seçmedi.
 - ✅ **TWA AAB ÜRETİLDİ + assetlinks CANLI (2026-07-21):** Kullanıcı PWABuilder ile
   (`jilted.vercel.app` → Package For Stores → Android) paketi üretti + Play Console'a yükledi.
-  ⚠️ **PAKET ADI `com.jilted.app`** (planlanan `app.jilted.game` DEĞİL — PWABuilder'da öyle
-  girilmiş, AAB yüklenince KİLİTLENDİ, değiştirilemez). assetlinks paket adı buna göre düzeltildi.
+  ⚠️ **PAKET ADI KARIŞIKLIĞI ÇÖZÜLDÜ:** Play Console'da yanlışlıkla `com.jilted.app` diye bir
+  uygulama oluşmuş, ama kullanıcının ELİNDEKİ AAB **`app.jilted.game`** (fingerprint DF:C3, PWABuilder'da
+  öyle üretilmiş — bu zaten kullanıcının en baştaki seçimiydi). **KARAR: app.jilted.game'de standartlaşıldı**
+  (elindeki dosya + parmak izi buna uyuyor, yeni üretim gerekmez). assetlinks `app.jilted.game`'e geri alındı.
+  **YAPILACAK:** Play'deki com.jilted.app uygulaması terk edilip **YENİ uygulama** oluşturulacak; app.jilted.game
+  AAB'si ona yüklenince paket adı app.jilted.game olarak kilitlenir.
   Üretilen **yükleme (upload) anahtarı SHA-256:**
   `DF:C3:45:72:35:C6:5C:3B:82:59:53:89:14:3F:32:3D:71:C8:9F:E4:FA:A0:2D:A2:99:91:8E:88:C8:25:6F:85`
   `public/.well-known/assetlinks.json`'a yazıldı → canlıda HTTP 200 + **Google Digital Asset Links
