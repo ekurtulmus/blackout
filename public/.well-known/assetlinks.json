@@ -3,7 +3,7 @@
     "relation": ["delegate_permission/common.handle_all_urls"],
     "target": {
       "namespace": "android_app",
-      "package_name": "app.jilted.game",
+      "package_name": "com.jilted.app",
       "sha256_cert_fingerprints": [
         "DF:C3:45:72:35:C6:5C:3B:82:59:53:89:14:3F:32:3D:71:C8:9F:E4:FA:A0:2D:A2:99:91:8E:88:C8:25:6F:85"
       ]
