@@ -221,12 +221,19 @@ olması. Bu oturumda o ön şart tamamlandı.
   indirme) ya da PWABuilder (web, kurulum yok). Kullanıcı henüz seçmedi.
 - ✅ **TWA AAB ÜRETİLDİ + assetlinks CANLI (2026-07-21):** Kullanıcı PWABuilder ile
   (`jilted.vercel.app` → Package For Stores → Android) paketi üretti + Play Console'a yükledi.
-  ⚠️ **PAKET ADI KARIŞIKLIĞI ÇÖZÜLDÜ:** Play Console'da yanlışlıkla `com.jilted.app` diye bir
-  uygulama oluşmuş, ama kullanıcının ELİNDEKİ AAB **`app.jilted.game`** (fingerprint DF:C3, PWABuilder'da
-  öyle üretilmiş — bu zaten kullanıcının en baştaki seçimiydi). **KARAR: app.jilted.game'de standartlaşıldı**
-  (elindeki dosya + parmak izi buna uyuyor, yeni üretim gerekmez). assetlinks `app.jilted.game`'e geri alındı.
-  **YAPILACAK:** Play'deki com.jilted.app uygulaması terk edilip **YENİ uygulama** oluşturulacak; app.jilted.game
-  AAB'si ona yüklenince paket adı app.jilted.game olarak kilitlenir.
+  ✅ **PAKET ADI + TWA TAMAMEN ÇÖZÜLDÜ (KOD TARAFI BİTTİ):** Uzun bir karışıklık yaşandı (com.jilted.app
+  yanlışlıkla oluşmuştu, birden çok AAB indirilmişti, sürüm kodu çakışması). **ÇÖZÜM:** kullanıcı Play'deki
+  tüm uygulamaları SİLDİ (⚠️ silinen paket adları KALICI YANAR, bir daha kullanılamaz), sıfırdan **tek temiz
+  uygulama** oluşturdu: **`app.jilted.game`**. Doğru AAB (masaüstünde `YUKLE-BUNU.aab`, `JILTED (3).aab`'nin
+  kopyası) yüklendi, kabul edildi (install boyutu 727 KB).
+  **assetlinks.json CANLIDA — İKİ parmak izi:**
+  · Upload key: `DF:C3:45:...:6F:85` (sideload APK)
+  · Play App Signing (Google): `E1:34:8A:C6:B0:C5:A0:5D:46:E0:60:8D:DA:CB:7B:B9:4B:AF:0D:94:16:78:1D:1F:44:11:98:F7:C5:BE:21:C1`
+  **PÜF NOKTA:** Google'ın imzalama parmak izi, Play Console menüsünde bulunamadı (App integrity "Play
+  korunanlar"a taşınmış, orada da SHA-256 görünmüyor). Bunun yerine App bundle explorer → İndirilenler'den
+  **Play-imzalı universal APK indirildi** ve fingerprint YEREL olarak çıkarıldı (PowerShell: APK'yı zip aç →
+  META-INF/BNDLTOOL.RSA → SignedCms → cert SHA-256). Bu, mağaza sürümünü imzalayan anahtar olduğu için en
+  otoriter kaynak. AAB paket adı da yerelden doğrulandı (zip aç → base/manifest → "app.jilted.game" ara).
   Üretilen **yükleme (upload) anahtarı SHA-256:**
   `DF:C3:45:72:35:C6:5C:3B:82:59:53:89:14:3F:32:3D:71:C8:9F:E4:FA:A0:2D:A2:99:91:8E:88:C8:25:6F:85`
   `public/.well-known/assetlinks.json`'a yazıldı → canlıda HTTP 200 + **Google Digital Asset Links
