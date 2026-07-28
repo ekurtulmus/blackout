@@ -219,7 +219,14 @@ olması. Bu oturumda o ön şart tamamlandı.
 - ⚠️ **BU MAKİNEDE TOOLCHAIN YOK:** `java` yok, `JAVA_HOME`/`ANDROID_HOME` boş, Android SDK klasörü
   yok, Bubblewrap kurulu değil. AAB üretmek için ya Bubblewrap + JDK17 + Android SDK (~1.5-2 GB
   indirme) ya da PWABuilder (web, kurulum yok). Kullanıcı henüz seçmedi.
-- 🔴 **PLAY APP SIGNING TUZAĞI (yayın öncesi mutlaka oku):** AAB'yi hangi araç imzalarsa imzalasın,
+- ✅ **TWA AAB ÜRETİLDİ + assetlinks CANLI (2026-07-21):** Kullanıcı PWABuilder ile
+  (`jilted.vercel.app` → Package For Stores → Android) paketi üretti; paket adı **`app.jilted.game`**.
+  Üretilen **yükleme (upload) anahtarı SHA-256:**
+  `DF:C3:45:72:35:C6:5C:3B:82:59:53:89:14:3F:32:3D:71:C8:9F:E4:FA:A0:2D:A2:99:91:8E:88:C8:25:6F:85`
+  `public/.well-known/assetlinks.json`'a yazıldı → canlıda HTTP 200 + **Google Digital Asset Links
+  API doğruladı** (`digitalassetlinks.googleapis.com/v1/statements:list`). Sideload APK adres
+  çubuğusuz açılır. ⚠️ **Keystore + şifre KULLANICIDA** (signing.keystore) — kaybolursa update sorunu.
+- 🔴 **SIRADAKİ — Google Play App Signing parmak izi (2. fingerprint) HÂLÂ GEREKLİ:** AAB'yi hangi araç imzalarsa imzalasın,
   Play yükledikten sonra uygulamayı **KENDİ anahtarıyla yeniden imzalar**. Bu yüzden
   `assetlinks.json` içinde **Play Console → Uygulama bütünlüğü → Uygulama imzalama** altındaki
   SHA-256 olmalı; yükleme (upload) anahtarının parmak izi TEK BAŞINA YETMEZ.
