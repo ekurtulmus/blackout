@@ -146,12 +146,13 @@ class SoundEngine {
         this.clearMediaSession();
       } else {
         if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
-        const resumed = this.musicOn && !this.muted && this.pausedByHide.length > 0;
-        if (resumed) {
+        if (this.musicOn && !this.muted && this.pausedByHide.length > 0) {
           for (const el of this.pausedByHide) el.play().catch(() => {});
           this.setMediaSession(this.lastMediaLabel); // bildirim geri gelirken kimliği de gelsin
+          this.pausedByHide = [];
         }
-        this.pausedByHide = [];
+        // Ses KAPALIYKEN dönüldüyse listeyi SİLMİYORUZ: kullanıcı sesi açınca
+        // setMuted() devam ettirsin. (Silinirse müzik ekran değişene dek hiç gelmiyordu.)
       }
     });
   }
@@ -310,6 +311,17 @@ class SoundEngine {
       /* geç */
     }
     this.applyLevels();
+    // Sesi AÇTI: arka plana geçerken duraklatılıp, sessiz olduğu için geri
+    // başlatılmamış müzik varsa şimdi devam etsin. Bu olmadan müzik bir sonraki
+    // ekran değişimine kadar hiç gelmiyordu (kapat → uygulamadan çık → dön → aç).
+    if (!m && this.musicOn && this.pausedByHide.length > 0) {
+      // Arada yeni bir parça başladıysa üstüne çalmayalım.
+      if (!this.musicEls().some((e) => !e.paused)) {
+        for (const el of this.pausedByHide) el.play().catch(() => {});
+        this.setMediaSession(this.lastMediaLabel);
+      }
+      this.pausedByHide = [];
+    }
   }
 
   // --- Kullanıcının verdiği ses dosyaları (public/audio/menu.mp3, game.mp3) ---
