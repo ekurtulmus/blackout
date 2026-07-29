@@ -26,6 +26,28 @@ export const PROGRESS_KEEP_KEYS: readonly string[] = [
   "blackout_reset_v",
 ];
 
+// Tarayıcıdan "bu verimi kalıcı işaretle" iznini ister — DEPOLAMA BASKISINDA SİLİNMEYİ önler.
+//
+// Varsayılan olarak site verisi "best-effort"tür: telefon dolunca tarayıcı, az kullanılan
+// sitelerin verisini KULLANICIYA SORMADAN silebilir. Bizde her şey localStorage'da
+// (arkadaş kodu blackout_uid, arkadaş listesi, ilerleme) ve sunucuda YEDEĞİ YOK —
+// yani böyle bir silinme kalıcı kayıp demek. Arkadaş kodu gidince oyuncu, arkadaşlarının
+// listesinde sonsuza dek çevrimdışı görünür (kod kendini beyan usulü, bkz. lib/friends.ts).
+//
+// Chrome bunu SORU SORMADAN karara bağlar: kurulu uygulama / yüksek etkileşim varsa
+// sessizce verir, yoksa sessizce reddeder. Kullanıcı hiçbir şey görmez, hiçbir şey yapmaz.
+// Kullanıcının kendi elle sildiği veriyi (Chrome > verileri temizle) BU DA kurtaramaz.
+export async function requestPersistentStorage(): Promise<boolean> {
+  try {
+    if (typeof navigator === "undefined" || !navigator.storage?.persist) return false;
+    // Zaten kalıcıysa tekrar isteme (her açılışta boşuna çağrı olmasın).
+    if (await navigator.storage.persisted()) return true;
+    return await navigator.storage.persist();
+  } catch {
+    return false;
+  }
+}
+
 // Korunanlar dışındaki tüm `blackout_*` anahtarlarını siler. Silinen anahtar sayısını döndürür.
 export function wipeProgress(): number {
   const keep = new Set(PROGRESS_KEEP_KEYS);
