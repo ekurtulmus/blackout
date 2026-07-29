@@ -8,7 +8,6 @@ import Settings from "@/components/Settings";
 import Shop from "@/components/Shop";
 import MainMenu from "@/components/MainMenu";
 import Splash from "@/components/Splash";
-import Intro from "@/components/Intro";
 import Finale from "@/components/Finale";
 import { wipeProgress, requestPersistentStorage } from "@/lib/progress";
 import { useT, useLang } from "@/lib/i18n";
@@ -142,30 +141,7 @@ export default function Page() {
   const t = useT();
   const { lang } = useLang(); // yalnız yerele duyarlı BÜYÜK HARF için (tr'de i → İ)
   const [screen, setScreen] = useState<Screen>("menu");
-  // AÇILIŞ SIRASI: "pending" (kararsız, siyah) → "intro" VEYA "splash" → "none".
-  // Neden "pending": intro'ya girip girmeyeceğimiz localStorage'a bakar, o da yalnız
-  // client'ta okunabilir. Doğrudan splash ile başlasak ilk karede splash görünüp
-  // intro'ya atlardı (görünür sıçrama + hydration uyuşmazlığı). Siyah bekleme karesi
-  // splash/intro zemininin aynısı olduğu için göze çarpmaz.
-  const [boot, setBoot] = useState<"pending" | "intro" | "splash" | "none">("pending");
-  // Hatıra montajı YALNIZ ilk kurulumda oynar; sonraki açılışlarda kısa marka splash'ı.
-  // O turda splash ATLANIR (logo montajın son saniyesinde zaten var) → toplam bekleme
-  // 8 sn, 12.2 sn değil. `?intro=1` ile zorla izlenir (test + "tekrar izle" bağlantısı).
-  // BAYRAK KEEP LİSTESİNDE DEĞİL (lib/progress.ts): ilerlemeyi sıfırlayan biri oyuna
-  // sıfırdan başlıyor demektir, hikayeyi baştan görmesi doğru.
-  useEffect(() => {
-    let forced = false;
-    try {
-      forced = new URLSearchParams(window.location.search).has("intro");
-    } catch {}
-    let seen = false;
-    try {
-      seen = !!localStorage.getItem("blackout_intro_seen");
-    } catch {
-      seen = true; // localStorage kapalıysa montajı her açılışta tekrarlamak yerine atla
-    }
-    setBoot(forced || !seen ? "intro" : "splash");
-  }, []);
+  const [showSplash, setShowSplash] = useState(true); // açılış animasyonu (bir kez)
   const [finaleSeen, setFinaleSeen] = useState(false); // kampanya kapanış sahnesi oynadı mı
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
@@ -772,23 +748,8 @@ export default function Page() {
       </MenuShell>
     );
 
-  // Açılış sırası. Dokun=atla (her ikisinde de).
-  // pending: localStorage okunana kadarki tek kare — zemin rengi splash/intro ile aynı.
-  if (boot === "pending") return <div className="boot-blank" />;
-  // Hatıra montajı (yalnız ilk kurulum): 8 sn, sonunda logo → doğrudan menü.
-  if (boot === "intro")
-    return (
-      <Intro
-        onDone={() => {
-          try {
-            localStorage.setItem("blackout_intro_seen", "1");
-          } catch {}
-          setBoot("none");
-        }}
-      />
-    );
-  // Marka splash — sonraki her yüklemede bir kez, sonra menü.
-  if (boot === "splash") return <Splash onDone={() => setBoot("none")} />;
+  // Açılış animasyonu (marka splash) — her yüklemede bir kez, sonra menü. Dokun=atla.
+  if (showSplash) return <Splash onDone={() => setShowSplash(false)} />;
 
   // Kampanya kapanış sahnesi — 10. bölüm bitince BİR KEZ oynar, sonra "win" sonuç
   // ekranı (skor/altın/başarım) gelir. Dokunmayla atlanabilir.
