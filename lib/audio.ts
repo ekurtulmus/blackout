@@ -19,6 +19,17 @@ export const SCREEN_TRACKS = {
 } as const;
 export type ScreenTrack = keyof typeof SCREEN_TRACKS;
 
+// Android medya bildiriminde parça adı olarak görünen etiketler (bkz. setMediaSession).
+const TRACK_LABELS: Record<ScreenTrack, string> = {
+  secrets: "Secrets",
+  shop: "The Shop",
+  achievements: "Achievements",
+  missions: "Missions",
+  modes: "Game Modes",
+  journal: "Journal",
+  race: "Death Run",
+};
+
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
@@ -141,6 +152,59 @@ class SoundEngine {
     });
   }
 
+  // --- Android/Chrome medya bildirimi (TWA) ---
+  // Chrome, 5 sn'den uzun bir <audio> çalınca bildirim çubuğunda oynatıcı gösterir ve
+  // TWA'da bunu "Chrome" adına yazar; kapatmanın web tarafında yolu yok (Web Audio
+  // hariç, o da 27 MB'lık parçaları RAM'e açmak demek). Media Session ile bildirimde
+  // oyunun ADI + İKONU görünür ve tuşlar gerçekten müziği kontrol eder — böylece
+  // rastgele bir web sayfası değil, oyunun kendi oynatıcısı gibi durur.
+  private mediaHooked = false;
+  private pausedByMedia: HTMLAudioElement[] = [];
+
+  private musicEls(): HTMLAudioElement[] {
+    return [this.menuAudio, this.gameAudio, ...this.screenAudios.values()].filter(
+      (e): e is HTMLAudioElement => !!e,
+    );
+  }
+
+  private setMediaSession(label: string) {
+    if (typeof navigator === "undefined") return;
+    const ms = navigator.mediaSession;
+    if (!ms || typeof MediaMetadata === "undefined") return;
+    try {
+      ms.metadata = new MediaMetadata({
+        title: "JILTED",
+        artist: label,
+        album: "Escape in the dark",
+        artwork: [
+          { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
+        ],
+      });
+      // playbackState'e ELLE dokunmuyoruz: Chrome bunu <audio> durumundan kendi çıkarıyor.
+      // Elle "playing" yazmak, ses durduğunda bildirimin takılı kalmasına yol açabiliyor.
+      if (this.mediaHooked) return;
+      this.mediaHooked = true;
+      // Bildirimdeki tuşlar: müziği gerçekten duraklat/sürdür (yoksa tuşlar yanıltıcı olur)
+      ms.setActionHandler("pause", () => {
+        this.pausedByMedia = this.musicEls().filter((e) => !e.paused);
+        for (const e of this.pausedByMedia) e.pause();
+      });
+      ms.setActionHandler("play", () => {
+        if (this.musicOn && !this.muted) {
+          for (const e of this.pausedByMedia) e.play().catch(() => {});
+        }
+        this.pausedByMedia = [];
+      });
+      ms.setActionHandler("stop", () => {
+        for (const e of this.musicEls()) e.pause();
+        this.pausedByMedia = [];
+      });
+    } catch {
+      /* desteklenmiyorsa geç */
+    }
+  }
+
   init() {
     this.setupVisibility();
     if (this.ctx) return;
@@ -256,6 +320,7 @@ class SoundEngine {
           resolve(true);
           return;
         }
+        this.setMediaSession("Main Menu");
         const p = a.play();
         if (p && typeof p.then === "function") {
           p.then(() => resolve(true)).catch(() => resolve(false));
@@ -292,6 +357,7 @@ class SoundEngine {
       a.muted = this.muted; // global sessizde değilse duyulur
       if (a.paused) a.play().catch(() => {});
       this.applyLevels(); // ses seviyesi / müzik tercihini uygula
+      this.setMediaSession("Main Menu");
     } catch {
       /* geç */
     }
@@ -312,6 +378,7 @@ class SoundEngine {
         a.addEventListener("error", fail, { once: true });
         a.currentTime = 0;
         this.applyLevels(); // ses seviyesi / müzik tercihini uygula
+        this.setMediaSession("In the Maze");
         const p = a.play();
         if (p && typeof p.then === "function") {
           p.then(() => {
@@ -380,6 +447,7 @@ class SoundEngine {
     }
     if (this.menuAudio && !this.menuAudio.paused) this.fadeTo(this.menuAudio, 0, 400, true);
     el.muted = this.muted;
+    this.setMediaSession(TRACK_LABELS[kind]);
     if (!el.paused) {
       this.fadeTo(el, target, 300); // zaten çalıyor: sadece seviyeyi koru
       return;
