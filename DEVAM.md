@@ -206,6 +206,14 @@ olması. Bu oturumda o ön şart tamamlandı.
      Supabase üzerinden yayınlıyor, ZORUNLU. **Analitik/reklam/izleyici YOK** (kod tarandı: gtag,
      analytics, sentry, admob vb. sıfır sonuç) — politika metni buna göre yazılacak.
   5. Mağaza görselleri + içerik derecelendirme anketi (kanlı/korku → yaş sınırı çıkacak).
+- ✅ **MAĞAZA GÖRSELLERİ HAZIR (2026-07-21):** `D:\OneDrive\Desktop\JILTED-store\`. İkon + öne çıkan
+  görsel = **AI sanatı** (Bing/DALL·E, kullanıcının ürettiği duvaklı gelin yüzü + fener/labirent sahnesi),
+  `sharp` ile kırpıldı/derecelendi (**mat** = doygunluk↓+gren, "3D render" hissini azaltmak için; canlı
+  sürümler `-canli`). ⚠️ **Ekran görüntüleri AI DEĞİL** — oyunun gerçek 2D halini (yukarıdan labirent +
+  fener konisi) gösteren SVG'ler (`scripts/gen-store.mjs`), çünkü Google ekran görüntülerinin gerçek
+  oynanışı göstermesini ister (AI yüz oyunda öyle görünmüyor → yanıltma/ret riski). Üretici scriptler:
+  `scripts/gen-store.mjs` (ekran görüntüleri/tablet), `scripts/make-cover.mjs` + `scripts/grade.mjs`
+  (AI kapak/derecelendirme), `scripts/crop-icon.mjs` (AI ikon kırpma).
 - ✅ **ALAN ADI ALINDI:** **`jilted.vercel.app`** (Vercel projesine ikinci alan adı olarak eklendi;
   proje adı `blackout` KORUNDU, `blackout-plum.vercel.app` de çalışıyor). Ücretsiz, DNS gerekmedi.
   Kullanıcı `jilted.xyz` almaktan vazgeçti. **TWA bu adres üzerine kurulacak.**
