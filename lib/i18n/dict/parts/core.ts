@@ -30,6 +30,8 @@ export const core = definePart({
     "settings.on": "Açık",
     "settings.off": "Kapalı",
     "settings.hint": "Oyun içinde Esc / P ile duraklat. Ayarların bu cihazda saklanır.",
+    // Dokunmatik karşılığı: telefonda klavye tuşu yazmak anlamsız (bkz. lib/useIsTouch.ts).
+    "settings.hint.touch": "Oyun içinde sağ üstteki menüden duraklatabilirsin. Ayarların bu cihazda saklanır.",
     "settings.reset.title": "Tüm İlerlemeyi Sıfırla",
     "settings.reset.desc": "Tüm ilerlemen silinir: altın, envanter ve satın almalar, tamamlanan görevler, açılan sırlar, günlük sayfaları, başarımlar, en iyi skorlar ve kaldığın bölüm. Geri alınamaz. Adın, arkadaşların ve ses tercihlerin korunur.",
     "settings.reset.btn": "Sıfırla",
@@ -67,6 +69,7 @@ export const core = definePart({
     "settings.on": "On",
     "settings.off": "Off",
     "settings.hint": "Press Esc / P during the game to pause. Your settings are saved on this device.",
+    "settings.hint.touch": "Pause from the top-right menu during the game. Your settings are saved on this device.",
     "settings.reset.title": "Reset All Progress",
     "settings.reset.desc": "Everything will be erased: gold, inventory and purchases, completed missions, unlocked secrets, journal pages, achievements, best scores and the chapter you reached. This cannot be undone. Your name, friends and sound preferences are kept.",
     "settings.reset.btn": "Reset",

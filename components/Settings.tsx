@@ -5,6 +5,7 @@ import { sound } from "@/lib/audio";
 import { getMyCode } from "@/lib/friends";
 import { wipeProgress } from "@/lib/progress";
 import { useLang, useT } from "@/lib/i18n";
+import { useIsTouch } from "@/lib/useIsTouch";
 import { LANGS, LANG_META } from "@/lib/i18n/langs";
 import Icon from "@/components/Icon";
 
@@ -16,6 +17,7 @@ const NAME_KEY = "blackout_name";
 export default function Settings({ onBack }: { onBack: () => void }) {
   const t = useT();
   const { lang, setLang } = useLang();
+  const isTouch = useIsTouch(); // telefonda "Esc / P" ipucu gösterme
   const [vol, setVol] = useState(100);
   const [music, setMusic] = useState(true);
   const [muted, setMuted] = useState(false);
@@ -155,7 +157,10 @@ export default function Settings({ onBack }: { onBack: () => void }) {
             </button>
           </div>
 
-          <div className="field-d" style={{ marginTop: 16 }}>{t("settings.hint")}</div>
+          {/* Telefonda "Esc / P" yazmak anlamsız → dokunmatik ipucu (lib/useIsTouch.ts). */}
+          <div className="field-d" style={{ marginTop: 16 }}>
+            {t(isTouch ? "settings.hint.touch" : "settings.hint")}
+          </div>
         </div>
 
         {/* Tehlikeli bölge */}

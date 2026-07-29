@@ -49,7 +49,8 @@ class SoundEngine {
   private whistleTimer = 0; // ıslık zamanlayıcısı
   private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
   private visibilityHooked = false; // sekme görünürlük dinleyicisi kuruldu mu
-  private pausedByHide: HTMLAudioElement[] = []; // sekme gizlenince duraklatılanlar
+  // Sekme gizlenince BIRAKILANLAR (yeri saklanır, dönüşte aynı saniyeden devam eder).
+  private pausedByHide: { el: HTMLAudioElement; src: string; time: number }[] = [];
   private pausedByPause: HTMLAudioElement[] = []; // oyun duraklatılınca duraklatılanlar
   muted = false;
   tension = 0; // 0..1 (Game her kare günceller)
@@ -132,13 +133,13 @@ class SoundEngine {
     if (typeof document === "undefined") return;
     this.visibilityHooked = true;
     document.addEventListener("visibilitychange", () => {
-      const els = [this.menuAudio, this.gameAudio, ...this.screenAudios.values()];
       if (document.hidden) {
         this.pausedByHide = [];
-        for (const el of els) {
-          if (el && !el.paused) {
-            this.pausedByHide.push(el);
-            el.pause();
+        for (const el of this.musicEls()) {
+          if (!el.paused) {
+            // Kaynağı BIRAKMADAN önce yerini sakla — dönüşte aynı yerden devam etsin.
+            this.pausedByHide.push({ el, src: el.src, time: el.currentTime });
+            this.releaseEl(el);
           }
         }
         if (this.ctx && this.ctx.state === "running") this.ctx.suspend().catch(() => {});
@@ -147,7 +148,7 @@ class SoundEngine {
       } else {
         if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
         if (this.musicOn && !this.muted && this.pausedByHide.length > 0) {
-          for (const el of this.pausedByHide) el.play().catch(() => {});
+          for (const p of this.pausedByHide) this.restoreEl(p);
           this.setMediaSession(this.lastMediaLabel); // bildirim geri gelirken kimliği de gelsin
           this.pausedByHide = [];
         }
@@ -171,6 +172,44 @@ class SoundEngine {
     return [this.menuAudio, this.gameAudio, ...this.screenAudios.values()].filter(
       (e): e is HTMLAudioElement => !!e,
     );
+  }
+
+  // Ses öğesinin kaynağını BIRAKIR — sadece pause() yetmiyor.
+  //
+  // Neden: Android'de duraklatılan medya, bildirim/hızlı ayarlar alanında "devam ettir"
+  // kartı olarak ASILI KALIYOR (Android 11+ medya sürdürme özelliği). Oyuncu ana ekrana
+  // çıkınca müzik susuyor ama kart duruyordu. Kaynağı boşaltmak medya oturumunu
+  // tamamen bitirir, kart da kalkar. Dosya tarayıcı önbelleğinde kaldığı için
+  // dönüşte yeniden yükleme pratikte anlıktır.
+  private releaseEl(el: HTMLAudioElement) {
+    try {
+      el.pause();
+      el.removeAttribute("src");
+      el.load(); // medya oturumunu bitir (MDN'in önerdiği bırakma yolu)
+    } catch {
+      /* geç */
+    }
+  }
+
+  // releaseEl ile bırakılan öğeyi eski yerinden geri başlatır.
+  private restoreEl(p: { el: HTMLAudioElement; src: string; time: number }) {
+    try {
+      p.el.src = p.src;
+      p.el.muted = this.muted;
+      const seek = () => {
+        try {
+          p.el.currentTime = p.time;
+        } catch {
+          /* aranabilir değilse baştan çalsın */
+        }
+      };
+      // Meta veri gelmeden currentTime yazılamaz; hazırsa hemen, değilse bir kez dinle.
+      if (p.el.readyState >= 1) seek();
+      else p.el.addEventListener("loadedmetadata", seek, { once: true });
+      p.el.play().catch(() => {});
+    } catch {
+      /* geç */
+    }
   }
 
   // Hiçbir müzik çalmıyorken bildirimi düşür. Chrome, programatik duraklamada
@@ -317,7 +356,7 @@ class SoundEngine {
     if (!m && this.musicOn && this.pausedByHide.length > 0) {
       // Arada yeni bir parça başladıysa üstüne çalmayalım.
       if (!this.musicEls().some((e) => !e.paused)) {
-        for (const el of this.pausedByHide) el.play().catch(() => {});
+        for (const p of this.pausedByHide) this.restoreEl(p);
         this.setMediaSession(this.lastMediaLabel);
       }
       this.pausedByHide = [];
@@ -336,6 +375,7 @@ class SoundEngine {
         a.muted = this.muted;
         this.menuAudio = a;
       }
+      this.rearm(this.menuAudio, "/audio/menu.mp3");
       return this.menuAudio;
     }
     if (!this.gameAudio) {
@@ -346,7 +386,15 @@ class SoundEngine {
       a.muted = this.muted;
       this.gameAudio = a;
     }
+    this.rearm(this.gameAudio, "/audio/game.mp3");
     return this.gameAudio;
+  }
+
+  // releaseEl() kaynağı boşalttığı için önbellekteki öğe "kaynaksız" kalabiliyor.
+  // Yeniden çalınmadan önce kaynağı geri koy — yoksa play() sessizce başarısız olur
+  // (arka plandan dönüp BAŞKA bir ekrana giren oyuncuda müzik hiç gelmezdi).
+  private rearm(el: HTMLAudioElement, src: string) {
+    if (!el.getAttribute("src")) el.src = src;
   }
 
   // Menü müziğini çalar. Otomatik-oynatma izni varsa hemen başlar; yoksa false döner.
@@ -470,6 +518,7 @@ class SoundEngine {
       el.muted = this.muted;
       this.screenAudios.set(kind, el);
     }
+    this.rearm(el, SCREEN_TRACKS[kind]);
     return el;
   }
 

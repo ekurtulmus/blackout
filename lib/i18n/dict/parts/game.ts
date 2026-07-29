@@ -50,6 +50,8 @@ export const game = definePart({
     "game.ctrl.swap": "/sağ tık silah değiştir",
     "game.ctrl.run": "koş",
     "game.ctrl.inv": "envanter (Duvak)",
+    // Dokunmatik karşılığı: telefonda klavye satırı yerine BU gösterilir (tek satır).
+    "game.ctrl.touch": "Sol joystick hareket · sağ düğme ateş · yanındaki düğme silah değiştir · kutu simgesi envanter · duraklat sağ üstteki menüde",
     "game.btn.continue": "Devam →",
     "game.btn.start": "Başla →",
 
@@ -183,6 +185,7 @@ export const game = definePart({
     "game.prep.chapter": "CHAPTER {n}",
     "game.prep.desc": "Destroy the Brides, find the hidden Exit. Be quick in the dark.",
     "game.prep.controls": "Controls",
+    "game.ctrl.touch": "Left joystick moves · right button fires · the button beside it swaps weapon · box icon opens your inventory · pause from the top-right menu",
     "game.ctrl.move": "WASD/arrows move",
     "game.ctrl.fire": "Space or left click fires",
     "game.ctrl.swap": "/right click swaps weapon",

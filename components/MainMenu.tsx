@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
+import { useIsTouch } from "@/lib/useIsTouch";
 
 // Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
 let introShown = false;
@@ -40,20 +41,10 @@ export default function MainMenu({
 }) {
   const t = useT();
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
-  const [isTouch, setIsTouch] = useState(false);
+  const isTouch = useIsTouch(); // klavye metinlerini telefonda gösterme (lib/useIsTouch.ts)
   const anim = !introShown;
   useEffect(() => {
     introShown = true;
-  }, []);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // Sağlam dokunmatik tespiti: bazı mobil tarayıcılarda yalnız `pointer: coarse`
-    // güvenilmez → touch noktaları ve ontouchstart de kontrol edilir. Yoksa telefonda
-    // "Nasıl Oynanır" yanlışlıkla WASD/klavye kontrollerini gösteriyordu.
-    const coarse = !!window.matchMedia && window.matchMedia("(pointer: coarse)").matches;
-    const touchPts = typeof navigator !== "undefined" && navigator.maxTouchPoints > 0;
-    const hasTouch = "ontouchstart" in window;
-    setIsTouch(coarse || touchPts || hasTouch);
   }, []);
   // Modal kapanınca açık konu da sıfırlanır (bir dahaki açılış konu listesinden başlasın)
   const closeHelp = useCallback(() => {

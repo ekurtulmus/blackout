@@ -14,6 +14,7 @@ import {
   type Txt,
 } from "@/lib/engine";
 import { useT } from "@/lib/i18n";
+import { useIsTouch } from "@/lib/useIsTouch";
 import type { DictKey } from "@/lib/i18n/dict";
 import { sound } from "@/lib/audio";
 import { drawBride, drawPlayer, drawSword, grime } from "@/lib/sprites";
@@ -113,6 +114,7 @@ export default function Game({
   const [coins, setCoins] = useState(0); // para (kalıcı; mount'ta yüklenir)
   const [exitHint, setExitHint] = useState(""); // ayna kehaneti: çıkış yönü
   const [levelNotice, setLevelNotice] = useState<DictKey | "">(""); // bu bölümün özel uyarı ANAHTARI ("" = yok)
+  const isTouch = useIsTouch(); // telefonda klavye kontrolleri yazma (lib/useIsTouch.ts)
   const [helpOpen, setHelpOpen] = useState(false); // hazırlık/yardım ekranı (oyunu duraklatır)
   const [exitMsg, setExitMsg] = useState(""); // çıkışa tıklayınca kilit sebebi
   const [escapeSec, setEscapeSec] = useState(""); // Faz E: kaçış geri sayımı
@@ -1674,9 +1676,16 @@ export default function Game({
             </p>
             <div style={{ marginTop: 13, paddingTop: 13, borderTop: "1px solid var(--edge)", fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.8 }}>
               <span style={{ color: "var(--copper)", fontWeight: 700, letterSpacing: "0.14em", textTransform: "uppercase", fontSize: 12 }}>{t("game.prep.controls")}</span>
+              {/* Telefonda klavye tuşu (WASD/F/Shift) yazmak anlamsız → dokunmatik satırı. */}
               <div style={{ marginTop: 5 }}>
-                {t("game.ctrl.move")} · {t("game.ctrl.fire")} · <kbd>F</kbd>{t("game.ctrl.swap")} ·{" "}
-                <kbd>Shift</kbd> {t("game.ctrl.run")} · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> {t("game.ctrl.inv")}
+                {isTouch ? (
+                  t("game.ctrl.touch")
+                ) : (
+                  <>
+                    {t("game.ctrl.move")} · {t("game.ctrl.fire")} · <kbd>F</kbd>{t("game.ctrl.swap")} ·{" "}
+                    <kbd>Shift</kbd> {t("game.ctrl.run")} · <Icon name="box" size={13} style={{ verticalAlign: "-2px" }} /> {t("game.ctrl.inv")}
+                  </>
+                )}
               </div>
             </div>
           </div>
