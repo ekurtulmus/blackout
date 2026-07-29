@@ -142,10 +142,14 @@ class SoundEngine {
           }
         }
         if (this.ctx && this.ctx.state === "running") this.ctx.suspend().catch(() => {});
+        // Müzik sustu: bildirim çubuğundaki oynatıcı da kalksın (asılı kalmasın).
+        this.clearMediaSession();
       } else {
         if (this.ctx && this.ctx.state === "suspended") this.ctx.resume().catch(() => {});
-        if (this.musicOn && !this.muted) {
+        const resumed = this.musicOn && !this.muted && this.pausedByHide.length > 0;
+        if (resumed) {
           for (const el of this.pausedByHide) el.play().catch(() => {});
+          this.setMediaSession(this.lastMediaLabel); // bildirim geri gelirken kimliği de gelsin
         }
         this.pausedByHide = [];
       }
@@ -160,6 +164,7 @@ class SoundEngine {
   // rastgele bir web sayfası değil, oyunun kendi oynatıcısı gibi durur.
   private mediaHooked = false;
   private pausedByMedia: HTMLAudioElement[] = [];
+  private lastMediaLabel = "Main Menu"; // arka plandan dönünce geri yazılacak etiket
 
   private musicEls(): HTMLAudioElement[] {
     return [this.menuAudio, this.gameAudio, ...this.screenAudios.values()].filter(
@@ -167,10 +172,26 @@ class SoundEngine {
     );
   }
 
+  // Hiçbir müzik çalmıyorken bildirimi düşür. Chrome, programatik duraklamada
+  // "duraklatıldı" kartını asılı bırakabiliyor (loop'lu parçalar hiç "ended" olmuyor);
+  // metadata'yı boşaltıp playbackState="none" demek en net "ortada bir şey yok" sinyali.
+  private clearMediaSession() {
+    if (typeof navigator === "undefined") return;
+    const ms = navigator.mediaSession;
+    if (!ms) return;
+    try {
+      ms.metadata = null;
+      ms.playbackState = "none";
+    } catch {
+      /* desteklenmiyorsa geç */
+    }
+  }
+
   private setMediaSession(label: string) {
     if (typeof navigator === "undefined") return;
     const ms = navigator.mediaSession;
     if (!ms || typeof MediaMetadata === "undefined") return;
+    this.lastMediaLabel = label;
     try {
       ms.metadata = new MediaMetadata({
         title: "JILTED",
@@ -181,24 +202,29 @@ class SoundEngine {
           { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
         ],
       });
-      // playbackState'e ELLE dokunmuyoruz: Chrome bunu <audio> durumundan kendi çıkarıyor.
-      // Elle "playing" yazmak, ses durduğunda bildirimin takılı kalmasına yol açabiliyor.
+      // playbackState açıkça yönetiliyor ve clearMediaSession() ile "none"a çekiliyor;
+      // bu yüzden çalmaya başlarken "playing" yazmak ŞART (yoksa geri dönüşte kart
+      // yanlış durumda kalır). Simetri: playing / paused / none.
+      ms.playbackState = "playing";
       if (this.mediaHooked) return;
       this.mediaHooked = true;
       // Bildirimdeki tuşlar: müziği gerçekten duraklat/sürdür (yoksa tuşlar yanıltıcı olur)
       ms.setActionHandler("pause", () => {
         this.pausedByMedia = this.musicEls().filter((e) => !e.paused);
         for (const e of this.pausedByMedia) e.pause();
+        ms.playbackState = "paused";
       });
       ms.setActionHandler("play", () => {
         if (this.musicOn && !this.muted) {
           for (const e of this.pausedByMedia) e.play().catch(() => {});
         }
         this.pausedByMedia = [];
+        ms.playbackState = "playing";
       });
       ms.setActionHandler("stop", () => {
         for (const e of this.musicEls()) e.pause();
         this.pausedByMedia = [];
+        this.clearMediaSession(); // durdur = ortada bir şey yok, kart kalksın
       });
     } catch {
       /* desteklenmiyorsa geç */
