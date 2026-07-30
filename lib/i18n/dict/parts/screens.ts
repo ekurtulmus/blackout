@@ -47,6 +47,11 @@ export const screens = definePart({
     "scr.clear.newach": "Yeni başarım:",
     "scr.clear.next": "Sonraki Bölüm →",
     "scr.clear.shop": "Dükkâna Uğra",
+    // Puan isteği — 3. bölüm bitişinde BİR KEZ. ÖDÜL YOK (bkz. lib/review.ts).
+    "scr.clear.rate.q": "Buraya kadar geldin. Oyunu beğendin mi?",
+    "scr.clear.rate.sub": "Play Store'da bırakacağın puan, JILTED'ı bulan kişi sayısını gerçekten değiştiriyor.",
+    "scr.clear.rate.yes": "Puan ver",
+    "scr.clear.rate.no": "Şimdi değil",
     "scr.clear.earned": "Kazanılan",
     "scr.clear.bonus": "Bonus",
 
@@ -182,6 +187,10 @@ export const screens = definePart({
     "scr.clear.newach": "New achievement:",
     "scr.clear.next": "Next Chapter →",
     "scr.clear.shop": "Visit the Shop",
+    "scr.clear.rate.q": "You made it this far. Enjoying the game?",
+    "scr.clear.rate.sub": "A rating on the Play Store genuinely changes how many people find JILTED.",
+    "scr.clear.rate.yes": "Rate it",
+    "scr.clear.rate.no": "Not now",
     "scr.clear.earned": "Earned",
     "scr.clear.bonus": "Bonus",
 

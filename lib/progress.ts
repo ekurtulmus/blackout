@@ -24,6 +24,9 @@ export const PROGRESS_KEEP_KEYS: readonly string[] = [
   "blackout_music",
   "blackout_muted",
   "blackout_reset_v",
+  // Puan isteği ÖMÜR BOYU bir kez sorulur: sıfırlamada silinse ikinci kez sorulurdu
+  // (bkz. lib/review.ts). Bu bir ilerleme değeri değil, "bu kişiye zaten sorduk" notu.
+  "blackout_rated",
 ];
 
 // Tarayıcıdan "bu verimi kalıcı işaretle" iznini ister — DEPOLAMA BASKISINDA SİLİNMEYİ önler.

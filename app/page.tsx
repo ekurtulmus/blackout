@@ -10,6 +10,7 @@ import MainMenu from "@/components/MainMenu";
 import Splash from "@/components/Splash";
 import Finale from "@/components/Finale";
 import { wipeProgress, requestPersistentStorage } from "@/lib/progress";
+import { shouldAskReview, markReviewAsked, openStorePage } from "@/lib/review";
 import { useT, useLang } from "@/lib/i18n";
 import type { DictKey } from "@/lib/i18n/dict";
 import Friends from "@/components/Friends";
@@ -143,6 +144,7 @@ export default function Page() {
   const [screen, setScreen] = useState<Screen>("menu");
   const [showSplash, setShowSplash] = useState(true); // açılış animasyonu (bir kez)
   const [finaleSeen, setFinaleSeen] = useState(false); // kampanya kapanış sahnesi oynadı mı
+  const [rateAsk, setRateAsk] = useState(false); // bölüm bitişinde puan isteği gösterilsin mi
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
@@ -510,6 +512,8 @@ export default function Page() {
     const newly = refreshAch({ wonHard, coins: r.coins ?? getCoins() });
     setNewAch(newly);
     if (r.status === "win") setFinaleSeen(false); // kapanış sahnesi her bitirişte yeniden oynasın
+    // Puan isteği: yalnız 3. bölüm bitişinde ve ömür boyu bir kez (bkz. lib/review.ts).
+    setRateAsk(r.status === "levelclear" && shouldAskReview(r.level));
     setScreen(r.status);
   }
 
@@ -1415,6 +1419,26 @@ export default function Page() {
               <Icon name="cart" size={16} /> {t("scr.clear.shop")}
             </button>
           </div>
+          {/* Puan isteği — ÖDÜLSÜZ (Google Play teşvikli puanlamayı yasaklıyor, bkz.
+              lib/review.ts). Birincil eylemin ALTINDA: "Sonraki Bölüm" akışını kesmez. */}
+          {rateAsk && (
+            <div className="clear-rate">
+              <div className="clear-rate-q">{t("scr.clear.rate.q")}</div>
+              <div className="clear-rate-sub">{t("scr.clear.rate.sub")}</div>
+              <div className="clear-rate-btns">
+                <button
+                  className="btn btn-primary"
+                  onClick={() => { openStorePage(); setRateAsk(false); }}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+                >
+                  <Icon name="trophy" size={15} /> {t("scr.clear.rate.yes")}
+                </button>
+                <button className="btn" onClick={() => { markReviewAsked(); setRateAsk(false); }}>
+                  {t("scr.clear.rate.no")}
+                </button>
+              </div>
+            </div>
+          )}
           <div className="clear-table">
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="coin" size={15} /> {t("scr.clear.earned")}</span>
