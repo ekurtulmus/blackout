@@ -748,6 +748,11 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
+  /* DİKEY ORTALAMA — "safe" ŞART. Gövdede `overflow: hidden` var (oyun için gerekli),
+     yani sayfa kaydırılamıyor. Düz `center` ile içerik ekrandan uzunsa taşan kısım
+     HEM ÜSTTEN hem alttan kesilir ve başlığa/geri düğmesine ulaşılamaz. `safe center`
+     sığdığında ortalar, sığmadığında başa hizalar → uzun listelerde eski davranış. */
+  justify-content: safe center;
 }
 .scr-head { text-align: center; margin-bottom: 22px; }
 .scr-eyebrow {
@@ -1106,18 +1111,9 @@ button {
   .grid-232,
   .grid-268 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid-340 { grid-template-columns: 1fr; }
-  /* (Sır kartı kompaktlığı .secret-card tanımının ALTINDAKİ media query'de —
-      buraya yazılırsa sonra gelen temel kural onu ezer.) */
-  .card { padding: 12px; gap: 7px; border-radius: 11px; }
-  .card-t { font-size: 14px; }
-  .card-d { font-size: 12.5px; line-height: 1.4; }
-  .card-meta { font-size: 11.5px; gap: 7px; }
-  .card-head { gap: 8px; }
-  .item-ico { width: 34px; height: 34px; border-radius: 8px; }
-  .badge-tier,
-  .badge-ok { font-size: 8.5px; padding: 2px 5px; }
-  .badge-num { min-width: 22px; height: 22px; font-size: 11px; }
-  .roman { font-size: 16px; }
+  /* KART KOMPAKTLIĞI BURADA DEĞİL: kart kuralları bu satırdan SONRA tanımlandığı için
+     buraya yazılanlar eziliyordu (yıllarca ölü kaldı). .roman tanımının ALTINDAKİ
+     media query'de — aynı tuzak .secret-card için de not edilmiş durumda. */
 }
 
 .card {
@@ -1227,6 +1223,27 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   color: var(--gold);
   letter-spacing: 0.06em;
 }
+
+/* MOBİL KART KOMPAKTLIĞI — bu blok kart kurallarının ALTINDA olmak ZORUNDA.
+   Yukarıdaki ızgara media query'sine yazılmıştı ve sonra gelen temel kurallar
+   tarafından eziliyordu: telefonda kartlar masaüstü ölçüleriyle çiziliyordu
+   (.card-t 17px, padding 19px, .card-head gap 11px). Başarım kartında 169px'lik
+   alanda ikon+rozet her şeyi yiyip başlığa 19px kalıyor, ad iki satıra bölünüp
+   üst üste binmiş görünüyordu. */
+@media (max-width: 640px) {
+  .card { padding: 12px; gap: 7px; border-radius: 11px; }
+  .card-t { font-size: 14px; }
+  .card-d { font-size: 12.5px; line-height: 1.4; }
+  .card-meta { font-size: 11.5px; gap: 7px; }
+  .card-head { gap: 7px; }
+  .item-ico { width: 34px; height: 34px; border-radius: 8px; }
+  /* Zorluk rozeti dar kartta başlıktan yer çalıyordu: harf aralığı kalkar, küçülür. */
+  .badge-tier,
+  .badge-ok { font-size: 8px; padding: 2px 4px; letter-spacing: 0.02em; }
+  .badge-num { min-width: 22px; height: 22px; font-size: 11px; }
+  .roman { font-size: 16px; }
+}
+
 /* Sır kartı görseli */
 .secret-img {
   width: 100%;
