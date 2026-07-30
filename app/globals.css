@@ -209,6 +209,23 @@ body {
   font-family: var(--font-body);
   overflow: hidden;
   -webkit-tap-highlight-color: transparent;
+  /* OYUN ARAYÜZÜ — metin seçimi kapalı. Telefonda herhangi bir yazıya uzun basınca
+     "Kopyala / Tümünü seç / Paylaş" menüsü çıkıyordu; oyunda anlamsız ve dokunmatik
+     kontrolleri de kesiyordu. Yazı alanları (isim, arkadaş kodu) aşağıda geri açılır. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+/* Kullanıcının GERÇEKTEN yazı seçmesi/kopyalaması gereken yerler: form alanları ve
+   belge sayfaları (gizlilik politikası). Yukarıdaki genel kapatma burada iptal edilir. */
+input,
+textarea,
+[contenteditable="true"],
+.doc-scr {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 
 /* BELGE SAYFALARI (gizlilik politikası vb.).
