@@ -2323,12 +2323,16 @@ export default function OnlineGame({
             konum yerine satır: tuzak/bariyer butonlarıyla çakışmaz. */}
         <div className="actionrow actionrow-mp">
           <button
-            className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
+            className={"actbtn has-label" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
             title={weapon === "sword" ? t("online.game.toGun") : t("online.game.toSword")}
             aria-label={t("online.game.swapWeapon")}
           >
-            {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
+            {/* Tek kişilikle aynı: ikon + görünür etiket (title dokunmatikte görünmüyor). */}
+            {weapon === "sword" ? <Icon name="ammo" size={15} /> : <Icon name="sword" size={17} />}
+            <span className="actbtn-l">
+              {t(weapon === "sword" ? "game.btn.swap.togun" : "game.btn.swap.tosword")}
+            </span>
           </button>
         </div>
       </div>

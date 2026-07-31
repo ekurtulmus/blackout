@@ -83,6 +83,11 @@ export const game = definePart({
     "game.btn.togun": "Silaha geç (F / sağ tık)",
     "game.btn.tosword": "Kılıca geç (F / sağ tık)",
     "game.btn.swap": "Silah değiştir",
+    // Değiştirme düğmesinin ÜSTÜNDEKİ görünür etiket: HANGİ silaha geçileceğini yazar.
+    // Eskiden yalnız ikon vardı ve açıklama `title` içindeydi — dokunmatikte title hiç
+    // görünmediği için oyuncu tabancaya nasıl geçeceğini bulamıyordu.
+    "game.btn.swap.togun": "SİLAH",
+    "game.btn.swap.tosword": "KILIÇ",
 
     // --- Bildirimler / ödüller ---
     "game.reward.gold": "+{n} para",
@@ -222,6 +227,8 @@ export const game = definePart({
     "game.btn.togun": "Switch to gun (F / right click)",
     "game.btn.tosword": "Switch to Sword (F / right click)",
     "game.btn.swap": "Swap weapon",
+    "game.btn.swap.togun": "GUN",
+    "game.btn.swap.tosword": "SWORD",
 
     // --- Toasts / rewards ---
     "game.reward.gold": "+{n} Gold",

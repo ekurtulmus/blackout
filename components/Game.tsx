@@ -1777,13 +1777,20 @@ export default function Game({
             İkisi de ayrı ayrı sağ-alta konumlanıyordu (bottom 146 / 148) → üst üste
             biniyorlardı. Tek satırda tutulunca çakışma yapısal olarak imkânsız. */}
         <div className="actionrow">
+          {/* Silah değiştir. İKON + GÖRÜNÜR ETİKET: hangi silaha geçileceğini yazar.
+              Önce yalnız ikon vardı (kılıçtayken küçük bir fişek) ve tek açıklama
+              `title` içindeydi — dokunmatikte title görünmediği için oyuncu tabancaya
+              nasıl döneceğini bulamıyordu. */}
           <button
-            className={"actbtn" + (weapon === "sword" ? " is-sword" : "")}
+            className={"actbtn has-label" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
-            title={weapon === "sword" ? t("game.btn.togun") : t("game.btn.tosword")}
+            title={t(weapon === "sword" ? "game.btn.togun" : "game.btn.tosword")}
             aria-label={t("game.btn.swap")}
           >
-            {weapon === "sword" ? <Icon name="ammo" size={18} /> : <Icon name="sword" size={20} />}
+            {weapon === "sword" ? <Icon name="ammo" size={15} /> : <Icon name="sword" size={17} />}
+            <span className="actbtn-l">
+              {t(weapon === "sword" ? "game.btn.swap.togun" : "game.btn.swap.tosword")}
+            </span>
           </button>
           <button
             className="actbtn is-sprint"
