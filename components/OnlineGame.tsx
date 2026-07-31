@@ -215,8 +215,9 @@ export default function OnlineGame({
   const [arenaOver, setArenaOver] = useState<{ scores: number[]; winner: number } | null>(null);
   const [confirmQuit, setConfirmQuit] = useState(false); // çıkış onayı (yanlış tık koruması)
   // Kuşanılan silah: mermi ↔ kılıç (ref = döngü okur, state = buton görünümü)
-  const [weapon, setWeapon] = useState<"gun" | "sword">("gun");
-  const weaponRef = useRef<"gun" | "sword">("gun");
+  // Tek kişilikle aynı: kılıçla başlanır (mermi tüketmez, hep çalışır) — bkz. Game.tsx.
+  const [weapon, setWeapon] = useState<"gun" | "sword">("sword");
+  const weaponRef = useRef<"gun" | "sword">("sword");
   const swordCd = useRef(0);
   const swordSwing = useRef(0);
   const swordColorRef = useRef(SWORD_COLORS.default);

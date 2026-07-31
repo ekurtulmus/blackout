@@ -100,8 +100,11 @@ export default function Game({
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
   // Kuşanılan silah: mermi ↔ kılıç. Ref = oyun döngüsü okur, state = buton görünümü.
-  const [weapon, setWeapon] = useState<"gun" | "sword">("gun");
-  const weaponRef = useRef<"gun" | "sword">("gun");
+  // KILIÇLA BAŞLANIR: kılıç TEMEL silah (mermi tüketmez, hep çalışır). Tabancayla
+  // başlanınca bölüme çoğu zaman 0 mermiyle giriliyor ve ateş düğmesi boşa basılıyordu.
+  // Rehberli 1. bölüm bundan etkilenmez: orada silah senaryoyla ele geçer (engine.tutEquip).
+  const [weapon, setWeapon] = useState<"gun" | "sword">("sword");
+  const weaponRef = useRef<"gun" | "sword">("sword");
   const toggleWeapon = () => {
     const w = weaponRef.current === "gun" ? "sword" : "gun";
     weaponRef.current = w;
