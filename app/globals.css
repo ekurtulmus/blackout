@@ -2544,10 +2544,26 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
   transform: scale(0.96);
 }
 
-/* Dokunmatik olmayan (fare) cihazlarda dokunmatik kontrolleri gizle */
+/* MASAÜSTÜ (fare): eskiden `.touch` tamamen gizleniyordu → ekranda hiç düğme yoktu,
+   silah değiştirmenin tek yolu F tuşuydu ve bunu kimse bilmiyordu. Artık düğmeler
+   fare ile de görünüyor; yalnız JOYSTICK gizli (WASD varken anlamsız) ve düzen
+   sağ-alt sütunda çakışmayacak şekilde yeniden konumlanıyor:
+     SOL-ALT : ateş  (joystick'in boşalttığı yer) — üstünde ELİNDEKİ silah yazar
+     SAĞ-ALT : slot (44) → envanter (128) → silah değiştir + koş (172) */
 @media (pointer: fine) {
-  .touch {
+  .touch .joybase {
     display: none;
+  }
+  .fire {
+    left: 26px;
+    right: auto;
+    bottom: 40px;
+    width: 84px;
+    height: 84px;
+    font-size: 14px;
+  }
+  .actionrow {
+    bottom: 172px;
   }
 }
 
