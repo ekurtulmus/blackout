@@ -99,13 +99,19 @@ export default function Game({
   const theme = themeFor(level, themeSeed); // bu bölümün görsel teması
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const inputExternal = useRef<Input | null>(null);
-  // Kuşanılan silah: mermi ↔ kılıç. Ref = oyun döngüsü okur, state = buton görünümü.
-  // KILIÇLA BAŞLANIR: kılıç TEMEL silah (mermi tüketmez, hep çalışır). Tabancayla
-  // başlanınca bölüme çoğu zaman 0 mermiyle giriliyor ve ateş düğmesi boşa basılıyordu.
-  // Rehberli 1. bölüm bundan etkilenmez: orada silah senaryoyla ele geçer (engine.tutEquip).
-  const [weapon, setWeapon] = useState<"gun" | "sword">("sword");
-  const weaponRef = useRef<"gun" | "sword">("sword");
+  // Kuşanılan silah. Ref = oyun döngüsü okur, state = buton görünümü.
+  //
+  // "none" = ELDE SİLAH YOK. Yalnız REHBERLİ 1. BÖLÜMDE başlangıç durumu: orada kılıç
+  // ve tabanca yerden TOPLANIR (engine.tutEquip), bu yüzden daha bulmadan elde silah
+  // görünmesi yanlıştı — hikâyeyi de bozuyordu.
+  // Diğer tüm bölümlerde KILIÇLA başlanır: kılıç TEMEL silah (mermi tüketmez, hep
+  // çalışır). Tabancayla başlanınca bölüme çoğu zaman 0 mermiyle giriliyor ve ateş
+  // düğmesi boşa basılıyordu.
+  const isTutorial = level === 1 && !mission; // engine.ts constructor ile AYNI koşul
+  const [weapon, setWeapon] = useState<"gun" | "sword" | "none">(isTutorial ? "none" : "sword");
+  const weaponRef = useRef<"gun" | "sword" | "none">(isTutorial ? "none" : "sword");
   const toggleWeapon = () => {
+    if (weaponRef.current === "none") return; // silah yokken değiştirilecek bir şey yok
     const w = weaponRef.current === "gun" ? "sword" : "gun";
     weaponRef.current = w;
     setWeapon(w);
@@ -1006,8 +1012,11 @@ export default function Game({
         coneColor: flashColorRef.current,
         ring: engine.invuln ? "#6ee7ff" : skinRingRef.current,
       });
-      // KILIÇ: kuşanılıysa elde HEP görünür (savururken yay çizer)
-      if (weaponRef.current === "sword") {
+      // KILIÇ: kuşanılıysa elde HEP görünür (savururken yay çizer).
+      // "none" (rehberde kılıcı bulmadan önce) → elde HİÇBİR ŞEY çizilmez.
+      if (weaponRef.current === "none") {
+        /* elde silah yok — çizme */
+      } else if (weaponRef.current === "sword") {
         const sw = swordColorRef.current;
         drawSword(
           ctx!, TS, cssW / 2, cssH / 2, p.dir, sw.blade, sw.glow,
@@ -1248,7 +1257,8 @@ export default function Game({
       last = now;
       // SİLAH SEÇİMİ: tek bir saldırı girdisi (Boşluk / ATEŞ butonu) var; kuşanılan
       // silaha göre ya mermi ya kılıç tetiklenir. Kılıç mermi harcamaz.
-      const atk = input.fire;
+      // "none" (rehberde silah bulunmadan önce): ne ateş ne kılıç tetiklenir.
+      const atk = input.fire && weaponRef.current !== "none";
       const useSword = weaponRef.current === "sword";
       input.sword = useSword && atk;
       input.fire = !useSword && atk;
@@ -1759,7 +1769,7 @@ export default function Game({
         {/* Saldırı butonu — kuşanılan silaha göre ateş eder ya da kılıç savurur.
             KILIÇ mermi harcamaz → "Sessizlik" (noFire) görevinde bile kullanılabilir,
             o yüzden buton kılıçtayken gizlenmez. */}
-        {(!mission?.noFire || weapon === "sword") && (
+        {weapon !== "none" && (!mission?.noFire || weapon === "sword") && (
           <button
             className={"fire" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => {
@@ -1781,6 +1791,7 @@ export default function Game({
               Önce yalnız ikon vardı (kılıçtayken küçük bir fişek) ve tek açıklama
               `title` içindeydi — dokunmatikte title görünmediği için oyuncu tabancaya
               nasıl döneceğini bulamıyordu. */}
+          {weapon !== "none" && (
           <button
             className={"actbtn has-label" + (weapon === "sword" ? " is-sword" : "")}
             onPointerDown={(e) => { e.preventDefault(); toggleWeapon(); }}
@@ -1792,6 +1803,7 @@ export default function Game({
               {t(weapon === "sword" ? "game.btn.swap.togun" : "game.btn.swap.tosword")}
             </span>
           </button>
+          )}
           <button
             className="actbtn is-sprint"
             onPointerDown={(e) => { e.preventDefault(); const i = inputExternal.current; if (i) i.sprint = true; }}
