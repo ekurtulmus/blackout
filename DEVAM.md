@@ -2,7 +2,14 @@
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
-> Son güncelleme: **2026-07-21** · 🔴 **TOPLU SIFIRLAMA AKTİF:** `blackout_reset_v="2026-07-21-ekonomi"`
+> Son güncelleme: **2026-10-07** · **Canlı sürüm: `ef4065e`** (CLI deploy, canlıda doğrulandı:
+> başlık + manifest "Dark Maze: Jilted"). Uygulama adı artık **Dark Maze: Jilted** (kısa ad "Dark Maze");
+> iç anahtarlar `blackout_` ve Play paket adı `app.jilted.game` DEĞİŞMEDİ. Play dosyaları: `Desktop/JILTED-store/`.
+> 21 Tem – 3 Ağu arası (bu notta ayrıntısı yok, `git log`'a bak): medya bildirimi (Media Session), kalıcı
+> depolama izni, intro iptal, labirent ikonu, internetsiz tek kişilik, Play puan isteği (3. bölüm sonu, bir kez),
+> her bölüm KILIÇLA başlar, rehberli 1. bölümde silah yerden alınır, masaüstünde dokunmatik düğmeler.
+> Aşağıdaki "Canlı sürüm ec6af54" satırı ESKİ.
+> (Eski) 2026-07-21 · 🔴 **TOPLU SIFIRLAMA AKTİF:** `blackout_reset_v="2026-07-21-ekonomi"`
 > — oyunu açan HERKES bir kez sıfırlanır (kimlik/arkadaş/ses korunur). Tekrar gerekirse damgayı değiştir
 > (`app/page.tsx`; kural `lib/progress.ts`).
 > Canlı sürüm: commit **`ec6af54`** (oturum #20+#21+#22 tek commit).
