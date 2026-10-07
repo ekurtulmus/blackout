@@ -4,14 +4,14 @@ import SWRegister from "@/components/SWRegister";
 import { I18nProvider } from "@/lib/i18n";
 
 export const metadata: Metadata = {
-  title: "JILTED — Karanlıkta Kaçış",
+  title: "Dark Maze: Jilted",
   description:
     "Karanlık labirentte el fenerinle yolunu keşfet, Kanlı Gelinlerden kaç, gizli çıkışı bul.",
-  applicationName: "JILTED",
+  applicationName: "Dark Maze",
   // PWA/TWA: manifest app/manifest.ts'ten üretilir. appleWebApp = iOS'ta ana ekrana
   // eklenince tam ekran açılsın (Android tarafını manifest hallediyor).
   manifest: "/manifest.webmanifest",
-  appleWebApp: { capable: true, title: "JILTED", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "Dark Maze", statusBarStyle: "black-translucent" },
   icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
