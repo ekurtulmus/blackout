@@ -38,6 +38,7 @@ import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
 import MenuShell from "@/components/MenuShell";
 import CountUp from "@/components/CountUp";
+import AdBreak, { type AdUi } from "@/components/AdBreak";
 import { getNightUnlocked, unlockNextNight, nightLabel, nightMods, NIGHT_CAP } from "@/lib/night";
 import { billingAvailable, isPremium, onPremiumChange, restorePurchases } from "@/lib/billing";
 import { adsEnabled, initAds, requestReward, showInterstitial } from "@/lib/ads";
@@ -168,6 +169,7 @@ export default function Page() {
   const [adBusy, setAdBusy] = useState(false); // bölüm arası reklam oynuyor/bekleniyor
   const [rewardShow, setRewardShow] = useState<(() => void) | null>(null); // ödüllü reklam hazırsa oynatıcı
   const [rewardGot, setRewardGot] = useState(0); // bu bölüm sonunda ödüllü reklamla kazanılan altın
+  const [adUi, setAdUi] = useState<AdUi | null>(null); // reklam arası ekranı (sayaç / test reklamı)
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [deadCrushed, setDeadCrushed] = useState(false); // ölüm sebebi: çıkış çöktü (mesaj ayrımı)
   const [settingsReturn, setSettingsReturn] = useState<Screen>("menu"); // ayarlardan çıkınca dönülecek ekran
@@ -311,6 +313,11 @@ export default function Page() {
         setFinaleSeen(true);
         setScreen(s);
       },
+      // Bölümü brifingsiz doğrudan başlat (video çekimi / test)
+      play(lv: number, diff: Diff = "orta") {
+        setSpDiff(diff);
+        play(lv, 0, 3, 1);
+      },
     };
   }, []);
 
@@ -327,13 +334,48 @@ export default function Page() {
     return onPremiumChange(setPremium);
   }, []);
 
-  // ÖDÜLLÜ REKLAM (bölüm sonu): Google'da hazır reklam varsa "altını 2 katla" düğmesi çıkar.
-  // Hazır değilse düğme HİÇ görünmez (boş vaat yok). Bölüm başına bir kez.
+  // REKLAM AKIŞI. Bölüm arası: önce "3-2-1" sayacı, sonra reklam. Reklam ağı henüz
+  // bağlanmadıysa (kimlik yok) gerçek reklam yerine açıkça etiketli TEST reklamı gösterilir →
+  // akış kurulumdan önce de görülür. Ağ bağlanınca test kartı hiç çıkmaz.
+  const wait = (ms: number) => new Promise<void>((r) => window.setTimeout(r, ms));
+  async function runAd(kind: "interstitial" | "reward"): Promise<void> {
+    if (kind === "interstitial") {
+      for (let n = 3; n >= 1; n--) {
+        setAdUi({ kind, phase: "count", n });
+        await wait(1000);
+      }
+    }
+    if (adsEnabled()) {
+      setAdUi(null);
+      if (kind === "interstitial") await showInterstitial("chapter-" + level);
+      return;
+    }
+    const ms = kind === "reward" ? 5000 : 3500;
+    setAdUi({ kind, phase: "test", n: 0, ms });
+    await wait(ms);
+    setAdUi(null);
+  }
+
+  // ÖDÜLLÜ REKLAM (bölüm sonu): "Reklam izle · +X altın". Gerçek ağda yalnız Google'da hazır
+  // reklam varsa çıkar (boş vaat yok); test modunda her zaman çıkar. Bölüm başına bir kez.
   useEffect(() => {
     setRewardShow(null);
     setRewardGot(0);
-    if (screen !== "levelclear" || coinInfo.gained <= 0 || !adsEnabled()) return;
+    if (screen !== "levelclear" || coinInfo.gained <= 0) return;
     const g = coinInfo.gained;
+    const grant = () => {
+      const total = addCoins(g);
+      setRewardGot(g);
+      setCoinInfo((c) => ({ ...c, total }));
+      setMenuCoins(total);
+    };
+    if (!adsEnabled()) {
+      setRewardShow(() => () => {
+        setRewardShow(null);
+        runAd("reward").then(grant);
+      });
+      return;
+    }
     return requestReward("double-gold", {
       onReady: (show) => setRewardShow(() => show),
       onReward: () => {
@@ -350,9 +392,9 @@ export default function Page() {
   // oyuncu oyunu sevmeden reklamla karşılaşmasın. Premium'da showInterstitial hemen döner.
   async function nextLevel() {
     if (adBusy) return;
-    if (!(level === 1 && night <= 1)) {
+    if (!(level === 1 && night <= 1) && !isPremium()) {
       setAdBusy(true);
-      await showInterstitial("chapter-" + level);
+      await runAd("interstitial");
       setAdBusy(false);
     }
     play(level + 1, score, lives);
@@ -838,6 +880,7 @@ export default function Page() {
         friendsOnline={friendsOnline}
       >
         {inviteBanner}
+        {adUi && <AdBreak ui={adUi} />}
         {/* EKRAN GEÇİŞİ: her ekran değişiminde içerik yumuşakça belirir (key=screen → yeniden
             mount). YALNIZ opaklık: transform/filter, içerideki position:fixed ekranların
             konumunu bozardı. İç öğelerin kademeli yükselişi CSS'te (.scr-enter). */}
@@ -1614,7 +1657,7 @@ export default function Page() {
             </div>
           </div>
           {/* Reklamları kaldır — yalnız Play'de, premium değilse, reklamın gerçekten olduğu yerde */}
-          {canBuy && !premium && adsEnabled() && !(level === 1 && night <= 1) && (
+          {!premium && !(level === 1 && night <= 1) && (
             <button
               className="clear-noads"
               onClick={() => { setShopTab("gold"); setShopReturn("levelclear"); setScreen("shop"); }}

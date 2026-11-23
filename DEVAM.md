@@ -49,6 +49,12 @@
 >   `CountUp` ile sayar) · ölüm (başlık sarsılarak düşer, giden can kırılır) · oyun bitti (bulanıktan çıkış) · zafer
 >   (köz dalgası + şafak ışığı) · düğmeler (yükselme/ezilme/ışık geçişi). Hepsi `prefers-reduced-motion`'da kapalı.
 >   Geliştirmede sonuç ekranı önizleme: konsolda `__jd.show("levelclear", { level: 4 })` (üretimde yok).
+> - **REKLAM/MAĞAZA GÖRÜNÜRLÜĞÜ (kullanıcı isteği):** bölüm arası reklamdan önce **3-2-1 sayacı** (`components/AdBreak.tsx`).
+>   Reklam ağı kimliği YOKKEN gerçek reklam yerine etiketli **TEST REKLAMI** kartı çıkar (bölüm arası 3.5 sn, ödüllü 5 sn;
+>   ödüllü test de altını verir). Kimlik girilince test kartı hiç çıkmaz. **Altın sekmesi tarayıcıda da görünür**
+>   (`WEB_PRICES` ₺30/12/15/20, Play fiyatı değişirse güncelle); tarayıcıda satın alma → "Google Play uygulamasında" uyarısı.
+>   ⚠️ Kullanıcı **AdMob** kurmak istiyor — AdMob TWA'da ÇALIŞMAZ (yerel SDK). Ya AdSense H5 Games Ads ya da Capacitor kabuğu.
+>   Geliştirme kancaları: `__jd.play(4)` bölümü brifingsiz açar, `__game` kare kare sürer (video çekimi). Üretimde yok.
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**

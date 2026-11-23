@@ -1285,6 +1285,10 @@ export default function Game({
     }
 
     // --- Ana döngü ---
+    // Bir oyun karesi: dünya + efektler + çizim. false = bölüm bitti (döngü durur).
+    // loop() gerçek zamanla çağırır; geliştirmedeki kayıt kancası sabit dt ile çağırır.
+    let manual = false; // YALNIZ GELİŞTİRME: kayıt sırasında rAF döngüsü kareleri kendisi ilerletmez
+    let devTap: { events: string[]; fx: import("@/lib/juice").Fx[] } | null = null;
     function loop(now: number) {
       // Duraklatıldıysa, görev brifingi ya da envanter paneli açıksa dünyayı dondur
       if (pausedRef.current || briefRef.current || invPausedRef.current) {
@@ -1294,6 +1298,14 @@ export default function Game({
       }
       const dt = (now - last) / 1000;
       last = now;
+      if (manual) {
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+      if (tick(dt)) raf = requestAnimationFrame(loop);
+    }
+
+    function tick(dt: number): boolean {
       quality.frame(dt);
       juice.update(Math.min(dt, 0.05));
 
@@ -1305,17 +1317,15 @@ export default function Game({
         drawEndAnim(endAnim);
         if (endAnim.t >= endAnim.dur) {
           finish();
-          return;
+          return false;
         }
-        raf = requestAnimationFrame(loop);
-        return;
+        return true;
       }
 
       // HITSTOP: güçlü vuruşta dünya bir an donar → darbenin "ağırlığı" hissedilir.
       if (juice.hitstop > 0) {
         render();
-        raf = requestAnimationFrame(loop);
-        return;
+        return true;
       }
       // SİLAH SEÇİMİ: tek bir saldırı girdisi (Boşluk / ATEŞ butonu) var; kuşanılan
       // silaha göre ya mermi ya kılıç tetiklenir. Kılıç mermi harcamaz.
@@ -1330,6 +1340,7 @@ export default function Game({
       sound.setTension(engine.tension);
       // bu karede oluşan ses olaylarını çal ve boşalt
       if (engine.events.length) {
+        if (devTap) devTap.events.push(...engine.events);
         for (const ev of engine.events) {
           sound.play(ev);
           if (ev === "pickup") juice.add({ k: "pickup", x: engine.player.pos.x, y: engine.player.pos.y });
@@ -1338,6 +1349,7 @@ export default function Game({
         engine.events.length = 0;
       }
       if (engine.fx.length) {
+        if (devTap) devTap.fx.push(...engine.fx);
         for (const f of engine.fx) juice.add(f);
         engine.fx.length = 0;
       }
@@ -1348,10 +1360,36 @@ export default function Game({
         const died = engine.status === "dead" || engine.status === "gameover";
         juice.add({ k: died ? "death" : "clear", x: engine.player.pos.x, y: engine.player.pos.y });
         endAnim = { t: 0, dur: died ? 1.15 : 0.7, died };
-        raf = requestAnimationFrame(loop);
-        return;
+        return true;
       }
-      raf = requestAnimationFrame(loop);
+      return true;
+    }
+
+    // YALNIZ GELİŞTİRME: oynanış videosu çekmek için kare kare sürme kancası.
+    // window.__game.setManual(true) → kareleri __game.tick(1/30) ile sen ilerletirsin.
+    // Üretim paketinden tamamen atılır.
+    if (process.env.NODE_ENV !== "production") {
+      (window as unknown as { __game: unknown }).__game = {
+        engine,
+        input,
+        canvas,
+        setManual(on: boolean) {
+          manual = on;
+          devTap = on ? { events: [], fx: [] } : null;
+        },
+        tick(dt: number) {
+          if (devTap) {
+            devTap.events.length = 0;
+            devTap.fx.length = 0;
+          }
+          const alive = tick(dt);
+          return { alive, events: devTap ? devTap.events.slice() : [], fx: devTap ? devTap.fx.slice() : [] };
+        },
+        setWeapon(w: "gun" | "sword") {
+          weaponRef.current = w;
+          setWeapon(w);
+        },
+      };
     }
 
     // Bitiş anı katmanı (ekran uzayı). Ölüm: kızıl nabız → siyaha. Çıkış: soğuk ışık → siyaha.

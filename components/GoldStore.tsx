@@ -36,6 +36,7 @@ export default function GoldStore({ onCoins }: { onCoins: (n: number) => void })
     setBusy(null);
     onCoins(getCoins());
     if (r.ok) flash(true, p.kind === "premium" ? t("iap.premium.thanks") : t("iap.gold.added", { n: p.gold }));
+    else if (r.reason === "unavailable") flash(false, t("iap.webOnly"));
     else if (r.reason !== "cancelled") flash(false, t("iap.error"));
   }
 

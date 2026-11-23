@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import GoldStore from "@/components/GoldStore";
-import { billingAvailable } from "@/lib/billing";
 import Icon, { type IconName } from "@/components/Icon";
 import { getCoins } from "@/lib/coins";
 import {
@@ -99,14 +98,8 @@ export default function Shop({
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState<"feat" | "cos" | "gold">(initialTab);
-  // Altın sekmesi YALNIZ Play Billing varken (Play'den kurulan uygulama) görünür.
-  const [canBuy, setCanBuy] = useState(false);
-  useEffect(() => {
-    billingAvailable().then((ok) => {
-      setCanBuy(ok);
-      if (!ok) setTab((x) => (x === "gold" ? "feat" : x));
-    });
-  }, []);
+  // Altın sekmesi HER YERDE görünür. Satın alma Play uygulamasında çalışır; tarayıcıda
+  // kartlar/fiyatlar görünür, dokununca "uygulamadan satın al" uyarısı çıkar (GoldStore).
 
   function flash(m: string) {
     setMsg(m);
@@ -172,12 +165,10 @@ export default function Shop({
             </svg>
             {t("shop.tab.cosmetics")}
           </button>
-          {canBuy && (
-            <button className={"tab" + (tab === "gold" ? " is-on" : "")} onClick={() => setTab("gold")}>
-              <Icon name="coin" size={16} />
-              {t("shop.tab.gold")}
-            </button>
-          )}
+          <button className={"tab" + (tab === "gold" ? " is-on" : "")} onClick={() => setTab("gold")}>
+            <Icon name="coin" size={16} />
+            {t("shop.tab.gold")}
+          </button>
         </div>
 
         <div style={{ minHeight: 20, margin: "10px 0 0", color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5 }}>{msg}</div>

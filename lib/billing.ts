@@ -137,6 +137,16 @@ function getService(): Promise<DigitalGoodsService | null> {
   return servicePromise;
 }
 
+// Play DIŞINDA (tarayıcı) gösterilen fiyatlar — Play Console'a girilen Türkiye fiyatları.
+// Mağaza kartları tarayıcıda da görünsün diye; satın alma ise yalnız Play uygulamasında olur.
+// Play'de fiyatı değiştirirsen burayı da güncelle (yalnız tarayıcı görünümü etkilenir).
+const WEB_PRICES: Record<ProductId, number> = {
+  premium_noads: 30,
+  gold_300: 12,
+  gold_500: 15,
+  gold_1000: 20,
+};
+
 export async function billingAvailable(): Promise<boolean> {
   return (await getService()) !== null;
 }
@@ -148,7 +158,20 @@ export type PriceMap = Partial<Record<ProductId, Price>>;
 // Play Console'da ne girildiyse o gösterilir.
 export async function loadPrices(lang: string): Promise<PriceMap> {
   const s = await getService();
-  if (!s) return {};
+  if (!s) {
+    const out: PriceMap = {};
+    for (const p of PRODUCTS) {
+      const v = WEB_PRICES[p.id];
+      let label = "₺" + v;
+      try {
+        label = new Intl.NumberFormat(lang, { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(v);
+      } catch {
+        /* geç */
+      }
+      out[p.id] = { label, value: v, currency: "TRY" };
+    }
+    return out;
+  }
   try {
     const det = await s.getDetails(PRODUCTS.map((p) => p.id));
     const out: PriceMap = {};
