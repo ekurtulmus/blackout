@@ -55,6 +55,12 @@
 >   (`WEB_PRICES` ₺30/12/15/20, Play fiyatı değişirse güncelle); tarayıcıda satın alma → "Google Play uygulamasında" uyarısı.
 >   ⚠️ Kullanıcı **AdMob** kurmak istiyor — AdMob TWA'da ÇALIŞMAZ (yerel SDK). Ya AdSense H5 Games Ads ya da Capacitor kabuğu.
 >   Geliştirme kancaları: `__jd.play(4)` bölümü brifingsiz açar, `__game` kare kare sürer (video çekimi). Üretimde yok.
+> - **MÜZİK / TELİF (2026-11-23):** kaynağı belirsiz 8 parça + eski menü müziği (Fesliyan "Darkest Hour") KALDIRILDI
+>   (yedek: `Desktop/JILTED-muzik-yedek/`). Yerlerine bu proje için KODLA SENTEZLENEN özgün döngüler: menü = bozuk müzik
+>   kutusu valsi (`muzik-kutusu.mp3`), görevler = gerilim, günlük+sırlar = boş salonda piyano, dükkân = eski gramofon.
+>   Oyun içi ıslık artık kodda üretiliyor. Kalan tek dış müzik `game.mp3` (Fesliyan "It Is Coming") →
+>   🔴 **Play'de satmadan önce Fesliyan lisansı (bağış) alınmalı** — ya da onu da özgün parçayla değiştir.
+>   Her müziğin kaynağı: `public/audio/README.md`.
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**

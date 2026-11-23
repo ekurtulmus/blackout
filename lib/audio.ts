@@ -7,15 +7,20 @@ import type { SoundEvent } from "./engine";
 // Ekran müzikleri — her menü ekranının kendi parçası. Yeni ekran müziği eklemek =
 // buraya bir satır + page.tsx'teki SCREEN_MUSIC eşlemesine bir satır.
 // NOT: dosya adları ASCII; Vercel (Linux) büyük/küçük harfe ve Türkçe karaktere duyarlı.
+// TELİF: oyunda YALNIZ kaynağı ve lisansı belli müzik kalır (kayıt: public/audio/README.md).
+// muzik-kutusu / gorevler / gunluk / dukkan.mp3 = bu proje için KODLA SENTEZLENEN özgün
+// parçalar (telif yok). game.mp3 = Fesliyan Studios "It Is Coming" → ticari kullanım için
+// Fesliyan lisansı (bağış) ŞART. Hepsi kesintisiz döngü olarak üretildi (loop = true).
+export const MENU_TRACK = "/audio/muzik-kutusu.mp3";
 export const SCREEN_TRACKS = {
-  secrets: "/audio/sirlar.mp3",
+  secrets: "/audio/gunluk.mp3", // Sırlar + Günlük aynı parçayı paylaşır (page.tsx)
   shop: "/audio/dukkan.mp3",
-  achievements: "/audio/basarim.mp3",
+  achievements: MENU_TRACK, // (kullanılmıyor — menü müziği sürer)
   missions: "/audio/gorevler.mp3",
-  modes: "/audio/modlar.mp3",
+  modes: MENU_TRACK, // (kullanılmıyor — menü müziği sürer)
   journal: "/audio/gunluk.mp3",
-  // Ölüm Koşusu (online) kendi parçasını korur — dükkânınkiyle aynı değil.
-  race: "/audio/envanter.mp3",
+  // Ölüm Koşusu (online): oyun müziği
+  race: "/audio/game.mp3",
 } as const;
 export type ScreenTrack = keyof typeof SCREEN_TRACKS;
 
@@ -45,7 +50,6 @@ class SoundEngine {
   // Ekran müzikleri (sırlar/dükkân/başarım/görevler/modlar/günlük) — kind → <audio>.
   // Tek tek alan yerine tablo: yeni ekran müziği eklemek SCREEN_TRACKS'e satır yazmak.
   private screenAudios = new Map<ScreenTrack, HTMLAudioElement>();
-  private islikAudio: HTMLAudioElement | null = null; // oyun-içi ıslık (ara sıra)
   private whistleTimer = 0; // ıslık zamanlayıcısı
   private fades = new Map<HTMLAudioElement, number>(); // aktif fade interval'leri
   private visibilityHooked = false; // sekme görünürlük dinleyicisi kuruldu mu
@@ -94,7 +98,6 @@ class SoundEngine {
       el.muted = this.muted;
       if (!el.paused && !this.fades.has(el)) el.volume = this.musicOn ? this.vol * 0.5 : 0;
     }
-    if (this.islikAudio) this.islikAudio.muted = this.muted;
   }
 
   getVolume() {
@@ -363,19 +366,19 @@ class SoundEngine {
     }
   }
 
-  // --- Kullanıcının verdiği ses dosyaları (public/audio/menu.mp3, game.mp3) ---
+  // --- Müzik dosyaları (public/audio: MENU_TRACK, game.mp3 — kaynaklar README.md) ---
   private ensureEl(kind: "menu" | "game"): HTMLAudioElement {
     this.setupVisibility();
     if (kind === "menu") {
       if (!this.menuAudio) {
-        const a = new Audio("/audio/menu.mp3");
+        const a = new Audio(MENU_TRACK);
         a.loop = true;
         a.preload = "auto";
         a.volume = 0.55;
         a.muted = this.muted;
         this.menuAudio = a;
       }
-      this.rearm(this.menuAudio, "/audio/menu.mp3");
+      this.rearm(this.menuAudio, MENU_TRACK);
       return this.menuAudio;
     }
     if (!this.gameAudio) {
@@ -569,19 +572,37 @@ class SoundEngine {
   private scheduleWhistle() {
     const delay = 20 + Math.random() * 40; // 20-60 sn
     this.whistleTimer = window.setTimeout(() => {
-      if (!this.muted && this.musicOn) {
-        if (!this.islikAudio) {
-          const a = new Audio("/audio/islik.mp3");
-          a.preload = "auto";
-          this.islikAudio = a;
-        }
-        // Islık, oyun müziğini bastırmasın: oyun müziği seviyesinin (~0.45) yalnız %35'i
-        this.islikAudio.volume = Math.min(1, this.vol * 0.45 * 0.35);
-        this.islikAudio.currentTime = 0;
-        this.islikAudio.play().catch(() => {});
-      }
+      if (!this.muted && this.musicOn) this.whistle();
       this.scheduleWhistle();
     }, delay * 1000);
+  }
+
+  // Uzaktan gelen, tekinsiz bir insan ıslığı — TAMAMEN KODDA üretilir (dosya yok, telif yok).
+  // Kısa, hüzünlü 3-4 notalık bir düğün ezgisi kırıntısı; her seferinde biraz farklı
+  // (perde, yön, ezgi) ki ezber olmasın. Seviye kısık: oyun müziğini bastırmaz.
+  private whistle() {
+    if (!this.ctx || this.muted) return;
+    this.resume();
+    const t = this.ctx.currentTime + 0.05;
+    const pan = Math.random() * 1.6 - 0.8; // soldan/sağdan, uzaktan
+    const k = Math.pow(2, (Math.floor(Math.random() * 5) - 2) / 12); // ±2 yarım ton
+    const tunes = [
+      [988, 880, 784, 880, 659],
+      [784, 880, 988, 880, 740],
+      [1046, 988, 880, 784],
+    ];
+    const notes = tunes[Math.floor(Math.random() * tunes.length)];
+    let at = t;
+    notes.forEach((f, i) => {
+      const last = i === notes.length - 1;
+      const dur = last ? 0.9 : 0.26 + Math.random() * 0.12;
+      const next = last ? f * 0.94 : notes[i + 1];
+      // ıslık = saf sinüs + notadan notaya kayış (glissando), son nota söner gibi düşer
+      this.tone(at, f * k, next * k, dur, last ? 0.05 : 0.06, "sine", 0.75, pan);
+      // dudak/nefes hışırtısı
+      this.noise(at, dur * 0.8, 0.012, 2200, "bandpass", 0.7, pan, 4);
+      at += dur * 0.92;
+    });
   }
 
   setTension(v: number) {

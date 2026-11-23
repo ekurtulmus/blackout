@@ -135,12 +135,13 @@ type Screen =
 
 // Kendi müziği olan menü ekranları. Burada OLMAYAN ekranlarda menü müziği kesintisiz sürer.
 // (Oyun ekranları ve Ölüm Koşusu yukarıdaki efektte ayrıca ele alınır.)
+// Kendi müziği olan ekranlar (özgün sentez parçalar, bkz. lib/audio.ts SCREEN_TRACKS).
+// Burada olmayan ekranlarda (Başarımlar, Modlar, Ayarlar…) menü müziği kesintisiz sürer.
+// Günlük ve Sırlar AYNI anahtarı kullanır → aralarında geçince parça baştan başlamaz.
 const SCREEN_MUSIC: Partial<Record<Screen, ScreenTrack>> = {
   shop: "shop",
-  achievements: "achievements",
   missions: "missions",
-  modes: "modes",
-  journal: "journal",
+  journal: "secrets",
   secrets: "secrets",
 };
 
