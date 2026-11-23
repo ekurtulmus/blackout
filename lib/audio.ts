@@ -14,7 +14,7 @@ export const MENU_TRACK = "/audio/menu-ninni.mp3"; // yumuşak, karanlık ninni 
 export const GAME_TRACK = "/audio/oyun-ici.mp3";
 export const SCREEN_TRACKS = {
   secrets: "/audio/gunluk.mp3", // Sırlar + Günlük aynı parçayı paylaşır (page.tsx)
-  shop: "/audio/dukkan.mp3",
+  shop: "/audio/dukkan-tuccar.mp3", // neşeli-ürkütücü "tuhaf tüccar" (eski gramofon fazla kasvetliydi)
   achievements: MENU_TRACK, // (kullanılmıyor — menü müziği sürer)
   missions: "/audio/gorevler.mp3",
   modes: MENU_TRACK, // (kullanılmıyor — menü müziği sürer)
@@ -612,6 +612,45 @@ class SoundEngine {
   // UI buton sesi — "şişe ağzı üflemesi": rezonanslı kısa nefes (bandpass + aşağı
   // süpüren filtre). HER tıklamada çaldığı için seviye BİLEREK kısık tutulur.
   // Ses/kısma ayarları master üzerinden zaten geçerli; kilit açılmadıysa hiç çalmaz.
+  // SATIN ALMA: kasa çekmecesi "tok" + yağan bozuk paralar + küçük, parlak bir "tamam" pırıltısı.
+  // Ödül hissi vermeli (bir dahaki alışverişi de tatlı kılar) ama kısa ve tiz olmayan bir seviyede.
+  // big=true → altın paketi / premium gibi büyük alım: daha çok para, daha uzun pırıltı.
+  purchase(big = false) {
+    this.init();
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    this.resume();
+    const t = ctx.currentTime + 0.01;
+    // çekmece: alçak, tok vuruş
+    this.tone(t, 180, 90, 0.12, 0.22, "sine", 0.15);
+    this.noise(t, 0.05, 0.12, 900, "lowpass", 0.1);
+    // yağan paralar: aralıkları giderek açılan metal pingler
+    const n = big ? 9 : 5;
+    let at = t + 0.05;
+    for (let i = 0; i < n; i++) {
+      const f = 1500 + Math.random() * 900;
+      const pan = Math.random() * 1.2 - 0.6;
+      this.tone(at, f, f * 0.995, 0.16, 0.06 - i * 0.004, "sine", 0.3, pan);
+      this.tone(at, f * 1.47, f * 1.46, 0.09, 0.025, "sine", 0.3, pan);
+      at += 0.045 + i * 0.012;
+    }
+    // "tamam" pırıltısı: majör üçlü yukarı (Do-Mi-Sol), yumuşak
+    const base = big ? 784 : 659;
+    [1, 1.26, 1.5].forEach((k, i) => this.tone(at + i * 0.07, base * k, base * k, 0.32, 0.07, "triangle", 0.5));
+    if (big) [2, 2.52].forEach((k, i) => this.tone(at + 0.25 + i * 0.08, base * k, base * k, 0.4, 0.045, "sine", 0.6));
+  }
+
+  // Altın yetmedi / alınamadı: boğuk, kısa "tok-tok" (azarlamaz, sadece "olmadı" der)
+  denied() {
+    this.init();
+    const ctx = this.ctx;
+    if (!ctx || this.muted) return;
+    this.resume();
+    const t = ctx.currentTime + 0.01;
+    this.tone(t, 220, 200, 0.09, 0.14, "triangle", 0.1);
+    this.tone(t + 0.11, 175, 160, 0.12, 0.12, "triangle", 0.1);
+  }
+
   uiClick() {
     this.init();
     const ctx = this.ctx;

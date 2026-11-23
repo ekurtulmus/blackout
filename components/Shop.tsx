@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { sound } from "@/lib/audio";
 import GoldStore from "@/components/GoldStore";
 import Icon, { type IconName } from "@/components/Icon";
 import { getCoins } from "@/lib/coins";
@@ -110,9 +111,11 @@ export default function Shop({
     setCoins(r.coins);
     setInv(getInventory());
     if (r.ok) {
+      sound.purchase();
       unlock("shopper");
       flash(t("shop.bought", { name: t(it.title) }));
     } else {
+      sound.denied();
       flash(r.reason === "yetersiz para" ? t("shop.notEnough") : t("shop.alreadyOwned"));
     }
   }

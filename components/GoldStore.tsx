@@ -9,6 +9,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { PRODUCTS, bonusPercents, buy, isPremium, loadPrices, onPremiumChange, restorePurchases, type PriceMap, type Product } from "@/lib/billing";
 import { getCoins } from "@/lib/coins";
 import Icon from "@/components/Icon";
+import { sound } from "@/lib/audio";
 
 export default function GoldStore({ onCoins }: { onCoins: (n: number) => void }) {
   const t = useT();
@@ -35,8 +36,10 @@ export default function GoldStore({ onCoins }: { onCoins: (n: number) => void })
     const r = await buy(p.id);
     setBusy(null);
     onCoins(getCoins());
-    if (r.ok) flash(true, p.kind === "premium" ? t("iap.premium.thanks") : t("iap.gold.added", { n: p.gold }));
-    else if (r.reason === "unavailable") flash(false, t("iap.webOnly"));
+    if (r.ok) {
+      sound.purchase(true);
+      flash(true, p.kind === "premium" ? t("iap.premium.thanks") : t("iap.gold.added", { n: p.gold }));
+    } else if (r.reason === "unavailable") flash(false, t("iap.webOnly"));
     else if (r.reason !== "cancelled") flash(false, t("iap.error"));
   }
 

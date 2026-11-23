@@ -10,7 +10,7 @@ Kaynağı belirsiz müzik Play'de telif şikâyetine, uygulamanın kaldırılmas
 | `oyun-ici.mp3` | Oyun içi (+ Ölüm Koşusu) | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
 | `gorevler.mp3` | Görevler | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
 | `gunluk.mp3` | Günlük + Sırlar | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
-| `dukkan.mp3` | Dükkân | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
+| `dukkan-tuccar.mp3` | Dükkân | Özgün — kodla sentezlendi (2026-11-23, neşeli "tuhaf tüccar" v2) | Projenin kendi eseri |
 
 - Özgün parçalar sample/örnek ses KULLANMAZ; ezgiler projeye özel bestelendi, sesler sentezlendi.
   Hepsi kesintisiz döngü (sonu başa eşit güçlü çapraz geçişle bağlı).
