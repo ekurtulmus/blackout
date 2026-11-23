@@ -10,8 +10,8 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Dark Maze: Jilted",
-    short_name: "Dark Maze", // ana ekranda ikon altında görünen ad (kısa olmalı)
+    name: "Jilted: Dark Maze",
+    short_name: "Jilted", // ana ekranda ikon altında görünen ad (kısa olmalı)
     description:
       "Karanlık labirentte el fenerinle yolunu keşfet, Kanlı Gelinlerden kaç, gizli çıkışı bul.",
     start_url: "/",

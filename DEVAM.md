@@ -1,5 +1,12 @@
 # BLACKOUT — Devam / Durum Dosyası
 
+> **2026-11-23 — AD + ANDROID:** Uygulama adı artık **"Jilted: Dark Maze"** (kısa ad / telefon: **"Jilted"**). Aşağıdaki
+> "Dark Maze: Jilted" geçen notlar ESKİ. Play paketi **Capacitor** ile (TWA DEĞİL — AdMob için): `com.darkmaze.jilted`,
+> oyunu canlı siteden yükler. Derleme **GitHub Actions** (`.github/workflows/android.yml`) → imzalı AAB + test APK.
+> Yükleme anahtarı `Desktop/JILTED-imza/` (depoda YOK; GitHub gizlileri UPLOAD_KEY_P12_BASE64 + UPLOAD_KEY_PASSWORD).
+> AdMob: `lib/admobNative.ts` (kimlik yoksa Google TEST birimleri). Kullanıcının AdMob hesabı VAR, kimlikleri verecek.
+> Uygulama içi satın alma (Play Billing eklentisi) HENÜZ YOK — GoldStore uygulamada "çok yakında" der.
+
 > **2026-11-23 — KALİTE TURU BAŞLADI.** Eski Play Store kurulumu (`app.jilted.game`, assetlinks) GEÇERSİZ:
 > oyun ileride YENİ bir Play hesabına çıkacak; önce oyun cilalanıyor. Bu oturumda (commit'lenmedi):
 > - **GAME FEEL — `lib/juice.ts` (YENİ):** motor `engine.fx` kuyruğuna konumlu olay yazar (kill/hit/spark/

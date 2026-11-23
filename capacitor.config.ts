@@ -11,7 +11,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.darkmaze.jilted",
-  appName: "Dark Maze",
+  appName: "Jilted",
   webDir: "cap-www",
   server: {
     url: "https://jilted.vercel.app",
