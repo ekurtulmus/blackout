@@ -43,7 +43,7 @@ export default function RootLayout({
         {/* Tasarım: Cinzel YALNIZ büyük başlıklarda; diğer her şey Archivo.
             (EB Garamond yalnız italik lore/atmosfer metinleri için korunur.) */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&family=EB+Garamond:ital@1&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&family=EB+Garamond:ital,wght@0,500;0,600;1,400;1,500&display=swap"
           rel="stylesheet"
         />
       </head>

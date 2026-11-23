@@ -2939,3 +2939,229 @@ button.card.is-done:hover { border-color: rgba(90, 220, 140, 0.8); box-shadow: 0
 @media (prefers-reduced-motion: reduce) {
   .adb, .adb-num, .adb-card { animation: none; }
 }
+
+/* =====================================================================
+   DÜĞME DİLİ: "DÜĞÜN" (kullanıcı seçimi 2026-11-23: A2 + A3)
+   - ANA   : yırtık düğün davetiyesi kâğıdı + kırmızı mum mühür  (.btn-primary-x, .btn.btn-primary, .mm-continue)
+   - İKİNCİL: koyu saten kurdele, uçları kesik                    (.btn, .mm-ghost, .buy-btn)
+   - TEHLİKE: kan kırmızısı kurdele                               (.danger-btn)
+   - SİMGE : mum mühür                                            (.shell-icon)
+   Eski "yuvarlak köşe + gradyan + parlama" görünümünü EZER (bu blok dosyanın sonunda).
+   Oyun içi dokunmatik düğmeler (saldırı/koş/silah) BİLEREK dokunulmadı.
+   ===================================================================== */
+:root {
+  --paper: #e6d7b8;
+  --paper-hi: #f0e3c6;
+  --paper-ink: #2a1a12;
+  --seal: #8e1b17;
+  --seal-dk: #5e0f0c;
+  --seal-ink: #f0d3a6;
+  --ribbon: #3a2420;
+  --ribbon-hi: #4d2f29;
+  --ribbon-ink: #ead9c0;
+  --font-paper: "EB Garamond", Georgia, serif;
+  /* yırtık kâğıt kenarı (üst/alt dişli, yanlar hafif oynak) */
+  --torn: polygon(0 7%, 6% 1%, 15% 6%, 24% 0, 34% 5%, 45% 1%, 56% 6%, 66% 0, 77% 5%, 88% 1%, 100% 5%,
+    99% 35%, 100% 66%, 98% 96%, 89% 100%, 78% 94%, 67% 100%, 55% 95%, 44% 100%, 33% 94%, 22% 100%, 11% 95%, 1% 100%, 2% 62%, 0 32%);
+  /* kurdele: iki ucu V kesik */
+  --ribbon-cut: polygon(0 0, 100% 0, 94% 50%, 100% 100%, 0 100%, 6% 50%);
+}
+
+/* ---------- ANA: yırtık davetiye + mum mühür ---------- */
+.btn-primary-x,
+.btn.btn-primary,
+.mm-continue {
+  position: relative;
+  overflow: visible;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 30px 12px 54px;
+  border: 0;
+  border-radius: 0;
+  background: var(--paper);
+  color: var(--paper-ink);
+  font-family: var(--font-paper);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  clip-path: var(--torn);
+  /* kâğıt kenarında hafif kararma (eski kâğıt) — gölge değil, iç ton */
+  box-shadow: inset 0 0 0 1px rgba(120, 90, 50, 0.35), inset 0 -10px 18px -12px rgba(110, 70, 30, 0.45);
+  transition: transform 0.14s cubic-bezier(0.3, 1.4, 0.5, 1), background 0.2s, color 0.2s;
+}
+.btn-primary-x:hover:not(:disabled),
+.btn.btn-primary:hover:not(:disabled),
+.mm-continue:hover {
+  background: var(--paper-hi);
+  color: #12090a;
+  border: 0;
+  box-shadow: inset 0 0 0 1px rgba(120, 90, 50, 0.45), inset 0 -10px 18px -12px rgba(110, 70, 30, 0.5);
+}
+.btn-primary-x:focus-visible,
+.btn.btn-primary:focus-visible,
+.mm-continue:focus-visible { outline: none; background: #fff1d2; }
+.btn-primary-x:disabled,
+.btn.btn-primary:disabled { opacity: 0.55; }
+/* mum mühür (kâğıdın sol içinde) — eski kayan ışık efektini kapatır */
+.btn-primary-x::after,
+.btn.btn-primary::after { display: none; }
+.btn-primary-x::before,
+.btn.btn-primary::before,
+.mm-continue::before {
+  content: "J";
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  width: 28px;
+  height: 28px;
+  margin-top: -14px;
+  border-radius: 52% 48% 50% 47%;
+  background: var(--seal);
+  color: var(--seal-ink);
+  font-family: var(--font-title);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 28px;
+  text-align: center;
+  box-shadow: inset 0 0 0 2px #a52c26, inset 0 0 0 4px var(--seal-dk);
+  transition: transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1);
+}
+.btn-primary-x:hover::before,
+.btn.btn-primary:hover::before,
+.mm-continue:hover::before { transform: rotate(-14deg) scale(1.08); }
+/* mühür artık "ana eylem" işaretini taşıdığı için baştaki küçük ikon gereksiz */
+.btn-primary-x > svg:first-child,
+.mm-continue > svg:first-child { display: none; }
+.btn.btn-primary > svg:first-child { display: none; }
+
+/* ---------- İKİNCİL: koyu saten kurdele ---------- */
+.btn:not(.btn-primary),
+.mm-ghost,
+.buy-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 11px 32px;
+  border: 0;
+  border-radius: 0;
+  background: var(--ribbon);
+  color: var(--ribbon-ink);
+  font-family: var(--font-title);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  clip-path: var(--ribbon-cut);
+  /* saten parıltısı: ortadan geçen ince açık bant */
+  box-shadow: inset 0 1px 0 rgba(255, 220, 190, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+.btn:not(.btn-primary):hover:not(:disabled),
+.mm-ghost:hover,
+.buy-btn:hover:not(:disabled) {
+  background: var(--ribbon-hi);
+  color: #fff3df;
+  border: 0;
+  box-shadow: inset 0 1px 0 rgba(255, 220, 190, 0.22), inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+}
+.btn:not(.btn-primary):focus-visible,
+.mm-ghost:focus-visible,
+.buy-btn:focus-visible { outline: none; background: #5b382f; }
+.buy-btn { align-self: flex-start; padding: 9px 26px; font-size: 12px; }
+.buy-btn.is-owned { background: #1f2e25; color: var(--ok-text); }
+.buy-btn:disabled { opacity: 0.5; }
+/* rehberde dükkânı işaret eden altın nabız kurdelede de görünsün */
+.btn.pulse-gold { background: #5a3a1a; color: #ffe2a8; }
+
+/* ---------- TEHLİKE: kan kırmızısı kurdele ---------- */
+.danger-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 11px 32px;
+  border: 0;
+  border-radius: 0;
+  background: #5c1411;
+  color: #f6dccf;
+  font-family: var(--font-title);
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  clip-path: var(--ribbon-cut);
+  box-shadow: inset 0 1px 0 rgba(255, 190, 170, 0.16), inset 0 -2px 0 rgba(0, 0, 0, 0.4);
+}
+.danger-btn:hover { background: #7a1915; color: #fff; border: 0; }
+.danger-btn.is-solid { background: var(--seal); color: #fff; }
+.danger-btn.is-solid:hover { background: #a8231d; }
+
+/* ---------- SİMGE: mum mühür ---------- */
+.shell-icon {
+  width: 46px;
+  height: 46px;
+  border: 0;
+  border-radius: 52% 48% 50% 47% / 48% 52% 47% 53%;
+  background: var(--seal);
+  color: var(--seal-ink);
+  backdrop-filter: none;
+  box-shadow: inset 0 0 0 3px #a52c26, inset 0 0 0 6px var(--seal-dk), 0 2px 0 #2a0605;
+  transition: transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1), background 0.2s, color 0.2s;
+}
+.shell-icon:hover {
+  background: #a3221d;
+  color: #fff1d6;
+  border: 0;
+  transform: rotate(-10deg) scale(1.06);
+}
+.shell-icon:active { transform: rotate(-10deg) scale(0.94); }
+
+/* ---------- ANA MENÜ: kartlar ve kutular aynı dile ---------- */
+.mm-card {
+  border-radius: 3px;
+  background: #1a1311;
+  border: 1px solid #3b2a21;
+  border-top: 1px solid #3b2a21;
+  border-bottom: 3px solid #120c0a;
+}
+.mm-card:hover {
+  background: #221815;
+  border-color: #6b4a2c;
+  box-shadow: none;
+}
+/* kart ikonu = mum mühür */
+.mm-card-ico {
+  border-radius: 52% 48% 50% 47% / 48% 52% 47% 53%;
+  background: var(--seal);
+  border: 0;
+  color: var(--seal-ink);
+  box-shadow: inset 0 0 0 3px #a52c26, inset 0 0 0 6px var(--seal-dk);
+}
+.mm-card-title { font-family: var(--font-title); }
+.mm-card-sub { font-family: var(--font-paper); font-size: 15.5px; font-style: italic; letter-spacing: 0; }
+.mm-box {
+  border-radius: 3px;
+  background: #17110f;
+  border: 1px solid #33261f;
+  border-bottom: 3px solid #0f0a08;
+}
+.mm-box:hover { background: #1f1714; border-color: #6b4a2c; color: var(--gold-lite); }
+/* "Buradan başla" vurgusu: mühür rengiyle nabız */
+.mm-card-start { border-color: #8e1b17; }
+@keyframes mm-start-breathe {
+  0%, 100% { box-shadow: 0 0 0 rgba(142, 27, 23, 0); }
+  50% { box-shadow: 0 0 30px rgba(142, 27, 23, 0.45); }
+}
+.mm-start-badge { background: var(--seal); border-radius: 2px; }
+
+/* Dar ekran: kâğıt/kurdele biraz incelir */
+@media (max-width: 430px) {
+  .btn-primary-x, .btn.btn-primary, .mm-continue { font-size: 17px; padding: 11px 24px 11px 50px; }
+  .btn:not(.btn-primary), .mm-ghost { padding: 10px 26px; font-size: 11.5px; letter-spacing: 0.12em; }
+  .danger-btn { padding: 10px 26px; font-size: 11.5px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary-x::before, .btn.btn-primary::before, .mm-continue::before, .shell-icon { transition: none; }
+}

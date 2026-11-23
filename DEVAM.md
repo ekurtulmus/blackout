@@ -61,6 +61,11 @@
 >   Oyun içi ıslık artık kodda üretiliyor. Oyun içi müzik de özgün döngü (`oyun-ici.mp3`; Fesliyan game.mp3 kaldırıldı)
 >   → ✅ **oyunda telifli müzik YOK**. Döngüler eşit güçlü çapraz geçişle bağlı (ilk sürümde başta tık + 5. sn'de
 >   kesinti vardı, düzeltildi). Her müziğin kaynağı: `public/audio/README.md`.
+> - **DÜĞME DİLİ "DÜĞÜN" (kullanıcı seçimi A2 + A3):** ANA = yırtık davetiye kâğıdı + kırmızı mum mühür
+>   (`.btn-primary-x`, `.btn.btn-primary`, `.mm-continue`; yazı EB Garamond — Türkçe karakter tam) · İKİNCİL = koyu saten
+>   kurdele (`.btn`, `.mm-ghost`, `.buy-btn`) · TEHLİKE = kan kırmızısı kurdele (`.danger-btn`) · SİMGE = mum mühür
+>   (`.shell-icon`) · menü kartı ikonları mühür. Hepsi globals.css SONUNDAKİ blokta (eski stilleri ezer).
+>   ⚠️ clip-path kullanıldığı için bu düğmelere dışarı taşan öğe (rozet vb.) koyma — kırpılır.
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
