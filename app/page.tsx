@@ -37,6 +37,7 @@ import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
 import MenuShell from "@/components/MenuShell";
+import CountUp from "@/components/CountUp";
 import { getNightUnlocked, unlockNextNight, nightLabel, nightMods, NIGHT_CAP } from "@/lib/night";
 import { billingAvailable, isPremium, onPremiumChange, restorePurchases } from "@/lib/billing";
 import { adsEnabled, initAds, requestReward, showInterstitial } from "@/lib/ads";
@@ -295,6 +296,22 @@ export default function Page() {
     } catch {
       /* geç */
     }
+  }, []);
+
+  // YALNIZ GELİŞTİRME: sonuç ekranlarını oynamadan önizlemek için (animasyon ayarı).
+  // Konsolda: __jd.show("levelclear", { level: 4 }). Üretim paketinden tamamen atılır.
+  useEffect(() => {
+    if (process.env.NODE_ENV === "production") return;
+    (window as unknown as { __jd: unknown }).__jd = {
+      show(s: Screen, o: { level?: number; lives?: number; score?: number; gained?: number; bonus?: number; total?: number } = {}) {
+        if (o.level) setLevel(o.level);
+        if (o.lives !== undefined) setLives(o.lives);
+        if (o.score !== undefined) setScore(o.score);
+        setCoinInfo({ gained: o.gained ?? 23, bonus: o.bonus ?? 16, total: o.total ?? 412 });
+        setFinaleSeen(true);
+        setScreen(s);
+      },
+    };
   }, []);
 
   // GELİR kurulumu: reklam betiği (önden yükle) + Play satın alımlarını geri yükle
@@ -821,7 +838,10 @@ export default function Page() {
         friendsOnline={friendsOnline}
       >
         {inviteBanner}
-        {body}
+        {/* EKRAN GEÇİŞİ: her ekran değişiminde içerik yumuşakça belirir (key=screen → yeniden
+            mount). YALNIZ opaklık: transform/filter, içerideki position:fixed ekranların
+            konumunu bozardı. İç öğelerin kademeli yükselişi CSS'te (.scr-enter). */}
+        <div key={screen} className="scr-enter">{body}</div>
       </MenuShell>
     );
 
@@ -1477,19 +1497,26 @@ export default function Page() {
     <div className="screen">
       {screen === "dead" && (
         <>
-          <div className="big" style={{ color: "#ff6b6b" }}>
+          <div className="big dead-title" style={{ color: "#ff6b6b" }}>
             {deadCrushed ? t("scr.dead.crushed") : t("scr.dead.title")}
           </div>
-          <div className="subtitle">
+          <div className="subtitle rise" style={{ ["--d" as string]: "0.35s" } as React.CSSProperties}>
             {deadCrushed ? t("scr.dead.crushed.sub", { n: level }) : t("scr.dead.sub", { n: level })}
           </div>
-          <div className="subtitle" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+          {/* Kalan canlar: az önce GİDEN can (index = lives) gözünün önünde kırılıp söner */}
+          <div className="subtitle rise" style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, ["--d" as string]: "0.55s" } as React.CSSProperties}>
             {t("scr.dead.lives")}
             {Array.from({ length: Math.max(3, lives) }, (_, i) => (
-              <Icon key={i} name="heart" size={17} fill={i < lives} className={"heart" + (i < lives ? "" : " gone")} />
+              <Icon
+                key={i}
+                name="heart"
+                size={17}
+                fill={i <= lives}
+                className={"heart" + (i < lives ? "" : i === lives ? " heart-lost" : " gone")}
+              />
             ))}
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="rise" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", ["--d" as string]: "1.25s" } as React.CSSProperties}>
             <button className="btn btn-primary" onClick={() => play(level, score, lives)}>
               {t("scr.continue")}
             </button>
@@ -1503,17 +1530,23 @@ export default function Page() {
       {screen === "levelclear" && (
         <div className="clear-scr">
           {/* Başlık (büyük) → ilerleme (biraz küçük) → (rehber notu) → eylemler → altın; cüzdan altta */}
-          <div className="clear-title">{t("scr.clear.title")}</div>
-          <div className="clear-progress">{level}<span className="clear-total"> / 10</span></div>
+          <div className="clear-title fx-ignite">{t("scr.clear.title")}</div>
+          {/* Yolculuk şeridi: geçilen bölümler yanık, az önce biten bölüm gözünün önünde TUTUŞUR */}
+          <div className="chap-pips rise" style={{ ["--d" as string]: "0.25s" } as React.CSSProperties} aria-hidden="true">
+            {Array.from({ length: TOTAL_LEVELS }, (_, i) => (
+              <span key={i} className={i < level - 1 ? "is-done" : i === level - 1 ? "is-now" : ""} />
+            ))}
+          </div>
+          <div className="clear-progress rise" style={{ ["--d" as string]: "0.4s" } as React.CSSProperties}>{level}<span className="clear-total"> / {TOTAL_LEVELS}</span></div>
           {level === 1 && (
-            <div className="clear-note">{t("scr.clear.note1")}</div>
+            <div className="clear-note rise" style={{ ["--d" as string]: "0.55s" } as React.CSSProperties}>{t("scr.clear.note1")}</div>
           )}
           {newAch.length > 0 && (
-            <div className="clear-ach">
+            <div className="clear-ach rise fx-shine" style={{ ["--d" as string]: "0.65s" } as React.CSSProperties}>
               <Icon name="trophy" size={16} /> {t("scr.clear.newach")} {newAch.map((id) => { const a = achievementById(id); return a ? t(a.title) : null; }).filter(Boolean).join(", ")}
             </div>
           )}
-          <div className="clear-actions">
+          <div className="clear-actions rise" style={{ ["--d" as string]: "0.9s" } as React.CSSProperties}>
             <button className="btn btn-primary" onClick={nextLevel} disabled={adBusy}>
               {adBusy ? "…" : t("scr.clear.next")}
             </button>
@@ -1555,26 +1588,29 @@ export default function Page() {
               <Icon name="play" size={15} /> {t("ads.reward.btn", { n: coinInfo.gained })}
             </button>
           )}
-          <div className="clear-table">
+          {/* Altın tablosu: satırlar sırayla gelir, sayılar SAYARAK dolar (ödül anı görünür olsun) */}
+          <div className="clear-table rise" style={{ ["--d" as string]: "0.7s" } as React.CSSProperties}>
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="coin" size={15} /> {t("scr.clear.earned")}</span>
-              <span className="clear-row-v">+{coinInfo.gained}</span>
+              <span className="clear-row-v"><CountUp to={coinInfo.gained} prefix="+" delay={750} /></span>
             </div>
             {coinInfo.bonus > 0 && (
               <div className="clear-row">
                 <span className="clear-row-l"><Icon name="plus" size={15} /> {t("scr.clear.bonus")}</span>
-                <span className="clear-row-v">+{coinInfo.bonus}</span>
+                <span className="clear-row-v"><CountUp to={coinInfo.bonus} prefix="+" delay={950} /></span>
               </div>
             )}
             {rewardGot > 0 && (
-              <div className="clear-row">
+              <div className="clear-row fx-shine">
                 <span className="clear-row-l"><Icon name="play" size={15} /> {t("ads.reward.row")}</span>
-                <span className="clear-row-v">+{rewardGot}</span>
+                <span className="clear-row-v"><CountUp to={rewardGot} prefix="+" /></span>
               </div>
             )}
-            <div className="clear-row">
+            <div className="clear-row clear-row-total">
               <span className="clear-row-l"><Icon name="wallet" size={15} /> {t("scr.wallet")}</span>
-              <span className="clear-row-v">{coinInfo.total}</span>
+              <span className="clear-row-v">
+                <CountUp to={coinInfo.total} from={Math.max(0, coinInfo.total - coinInfo.gained - rewardGot)} delay={rewardGot ? 0 : 1150} ms={900} />
+              </span>
             </div>
           </div>
           {/* Reklamları kaldır — yalnız Play'de, premium değilse, reklamın gerçekten olduğu yerde */}
@@ -1591,14 +1627,15 @@ export default function Page() {
 
       {screen === "gameover" && (
         <>
-          <div className="title" style={{ fontSize: "clamp(36px,10vw,72px)" }}>
+          {/* Oyun bitti: başlık karanlıktan ağır ağır, bulanık çıkar — acele yok, yas anı */}
+          <div className="title go-title" style={{ fontSize: "clamp(36px,10vw,72px)" }}>
             {t("scr.gameover.title")}
           </div>
-          <div className="subtitle">
+          <div className="subtitle rise" style={{ ["--d" as string]: "1.1s" } as React.CSSProperties}>
             {t("scr.gameover.sub")} <b>{level}</b> · {t("scr.score.label")}{" "}
-            <b>{score}</b>
+            <b><CountUp to={score} delay={1300} ms={1000} /></b>
           </div>
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center" }}>
+          <div className="rise" style={{ display: "flex", gap: 12, flexWrap: "wrap", justifyContent: "center", ["--d" as string]: "1.9s" } as React.CSSProperties}>
             <button className="btn btn-primary" onClick={startNewGame}>
               {t("scr.restart")}
             </button>
@@ -1613,9 +1650,14 @@ export default function Page() {
         <div className="clear-scr">
           {/* "GÜN AĞARDI" duygusal doruğu artık Finale sahnesinde veriliyor → burası
               tekrar etmez, bölüm-sonu ekranıyla aynı dilde HESAP ekranıdır. */}
-          <div className="clear-title">{t("scr.win.title")}</div>
-          <div className="clear-progress">{TOTAL_LEVELS}<span className="clear-total"> / {TOTAL_LEVELS}</span></div>
-          <div className="clear-note">
+          <div className="clear-title fx-ignite fx-dawn">{t("scr.win.title")}</div>
+          <div className="chap-pips is-complete rise" style={{ ["--d" as string]: "0.25s" } as React.CSSProperties} aria-hidden="true">
+            {Array.from({ length: TOTAL_LEVELS }, (_, i) => (
+              <span key={i} className="is-done" style={{ ["--i" as string]: i } as React.CSSProperties} />
+            ))}
+          </div>
+          <div className="clear-progress rise" style={{ ["--d" as string]: "0.45s" } as React.CSSProperties}>{TOTAL_LEVELS}<span className="clear-total"> / {TOTAL_LEVELS}</span></div>
+          <div className="clear-note rise" style={{ ["--d" as string]: "0.6s" } as React.CSSProperties}>
             {night + 1 <= nightUnlocked
               ? t("night.win.note", { name: nightLabel(t, night + 1) })
               : t("scr.win.note")}
@@ -1625,7 +1667,7 @@ export default function Page() {
               <Icon name="trophy" size={16} /> {t("scr.clear.newach")} {newAch.map((id) => { const a = achievementById(id); return a ? t(a.title) : null; }).filter(Boolean).join(", ")}
             </div>
           )}
-          <div className="clear-actions">
+          <div className="clear-actions rise" style={{ ["--d" as string]: "0.95s" } as React.CSSProperties}>
             {night + 1 <= nightUnlocked && (
               <button
                 className="btn btn-primary"
@@ -1642,10 +1684,10 @@ export default function Page() {
               {t("scr.tomenu")}
             </button>
           </div>
-          <div className="clear-table">
+          <div className="clear-table rise" style={{ ["--d" as string]: "0.75s" } as React.CSSProperties}>
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="trophy" size={15} /> {t("scr.win.finalscore")}</span>
-              <span className="clear-row-v">{score}</span>
+              <span className="clear-row-v"><CountUp to={score} delay={900} ms={1200} /></span>
             </div>
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="wallet" size={15} /> {t("scr.wallet")}</span>

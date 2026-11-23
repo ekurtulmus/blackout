@@ -44,6 +44,11 @@
 >        `NEXT_PUBLIC_ADSENSE_CLIENT` olarak ekle ve `public/ads.txt` dosyasını (AdSense verir) ekle.
 >     4. AdSense → Gizlilik ve mesajlaşma → **AB/İngiltere izin mesajını (GDPR) aç**.
 >     5. Play Console → "Reklam içerir" beyanı + **Veri güvenliği** formunu güncelle (reklam kimliği, satın alma geçmişi).
+> - **ANİMASYON CİLASI:** ekran geçişi (`.scr-enter`, key=screen, YALNIZ opaklık — transform fixed ekranları bozar) ·
+>   açılış (harf harf başlık, toz zerreleri, sıcak ışık, yumuşak çıkış) · bölüm sonu (köz şeridi `.chap-pips`, altın
+>   `CountUp` ile sayar) · ölüm (başlık sarsılarak düşer, giden can kırılır) · oyun bitti (bulanıktan çıkış) · zafer
+>   (köz dalgası + şafak ışığı) · düğmeler (yükselme/ezilme/ışık geçişi). Hepsi `prefers-reduced-motion`'da kapalı.
+>   Geliştirmede sonuç ekranı önizleme: konsolda `__jd.show("levelclear", { level: 4 })` (üretimde yok).
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**

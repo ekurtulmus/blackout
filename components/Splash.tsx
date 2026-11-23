@@ -3,25 +3,59 @@
 // JILTED — açılış animasyonu (marka splash). Uygulama yüklenince bir kez oynar,
 // sonra menüye geçer. Dokununca atlanır; ~4 sn sonra otomatik kapanır.
 // Tasarım: karanlık sahne + fenerini tutan oyuncu + kıvrılan J + "JILTED" başlığı.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+
+// Fenerin ışığında süzülen toz zerreleri (deterministik — SSR/hydration uyumlu)
+const MOTES = Array.from({ length: 18 }, (_, i) => ({
+  x: (i * 37) % 100,
+  y: 30 + ((i * 53) % 60),
+  s: 1 + ((i * 7) % 3),
+  d: 7 + ((i * 11) % 7),
+  dl: -((i * 13) % 9),
+}));
 import { useT } from "@/lib/i18n";
 
 export default function Splash({ onDone }: { onDone: () => void }) {
   const t = useT();
   const done = useRef(false);
-  const finish = () => {
+  const [leaving, setLeaving] = useState(false);
+  // Sert kesme yok: sahne yumuşakça kararıp menüye bırakır (dokunuşta daha hızlı).
+  const finish = (fast = false) => {
     if (done.current) return;
     done.current = true;
-    onDone();
+    setLeaving(true);
+    window.setTimeout(onDone, fast ? 260 : 520);
   };
   useEffect(() => {
-    const t = window.setTimeout(finish, 4200);
+    const t = window.setTimeout(() => finish(false), 4300);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
-    <div className="splash-stage" onClick={finish} role="button" aria-label={t("chrome.splash.skip.aria")}>
+    <div
+      className={"splash-stage" + (leaving ? " is-leaving" : "")}
+      onClick={() => finish(true)}
+      role="button"
+      aria-label={t("chrome.splash.skip.aria")}
+    >
+      {/* fener yanınca sahneye düşen sıcak ışık */}
+      <div className="splash-glow" />
+      <div className="splash-motes" aria-hidden="true">
+        {MOTES.map((m, i) => (
+          <span
+            key={i}
+            style={{
+              left: m.x + "%",
+              top: m.y + "%",
+              width: m.s,
+              height: m.s,
+              animationDuration: m.d + "s",
+              animationDelay: m.dl + "s",
+            }}
+          />
+        ))}
+      </div>
       <div className="splash-vignette" />
 
       <svg viewBox="0 0 156 168" width="230" height="248" style={{ position: "relative", maxWidth: "60vw" }} aria-hidden="true">
@@ -49,7 +83,12 @@ export default function Splash({ onDone }: { onDone: () => void }) {
       </svg>
 
       <div style={{ textAlign: "center", position: "relative" }}>
-        <div className="splash-title">JILTED</div>
+        {/* harf harf: karanlıktan bulanık çıkar, yerine oturur */}
+        <div className="splash-title" aria-label="JILTED">
+          {"JILTED".split("").map((ch, i) => (
+            <span key={i} style={{ animationDelay: 2.15 + i * 0.09 + "s" }}>{ch}</span>
+          ))}
+        </div>
         <div className="splash-sub">
           <span className="splash-rule" />
           <span>{t("chrome.splash.sub")}</span>
