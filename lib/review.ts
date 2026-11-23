@@ -16,7 +16,7 @@
 const ASKED_KEY = "blackout_rated";
 const MIN_LEVEL = 3; // bu bölüm BİTİNCE sorulur
 
-export const STORE_URL = "https://play.google.com/store/apps/details?id=app.jilted.game";
+export const STORE_URL = "https://play.google.com/store/apps/details?id=com.darkmaze.jilted";
 
 // Bu bölüm bitişinde sorulsun mu?
 export function shouldAskReview(clearedLevel: number): boolean {

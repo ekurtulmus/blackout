@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { sound } from "@/lib/audio";
+import { isNativeApp } from "@/lib/admobNative";
 import GoldStore from "@/components/GoldStore";
 import Icon, { type IconName } from "@/components/Icon";
 import { getCoins } from "@/lib/coins";
@@ -99,8 +100,9 @@ export default function Shop({
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
   const [tab, setTab] = useState<"feat" | "cos" | "gold">(initialTab);
-  // Altın sekmesi HER YERDE görünür. Satın alma Play uygulamasında çalışır; tarayıcıda
-  // kartlar/fiyatlar görünür, dokununca "uygulamadan satın al" uyarısı çıkar (GoldStore).
+  // Altın sekmesi: Android uygulamasında Play Billing eklentisi bağlanana kadar GİZLİ (basınca
+  // çalışmayan satın alma düğmesi Play incelemesinde ret sebebidir). Tarayıcıda kartlar görünür.
+  const showGold = !isNativeApp();
 
   function flash(m: string) {
     setMsg(m);
@@ -168,10 +170,12 @@ export default function Shop({
             </svg>
             {t("shop.tab.cosmetics")}
           </button>
-          <button className={"tab" + (tab === "gold" ? " is-on" : "")} onClick={() => setTab("gold")}>
-            <Icon name="coin" size={16} />
-            {t("shop.tab.gold")}
-          </button>
+          {showGold && (
+            <button className={"tab" + (tab === "gold" ? " is-on" : "")} onClick={() => setTab("gold")}>
+              <Icon name="coin" size={16} />
+              {t("shop.tab.gold")}
+            </button>
+          )}
         </div>
 
         <div style={{ minHeight: 20, margin: "10px 0 0", color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5 }}>{msg}</div>

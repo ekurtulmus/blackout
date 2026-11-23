@@ -8,7 +8,7 @@
 // her dil kendi gövdesinde duruyor. Oyunun geri kalanı sözlük kullanır — burası bilinçli istisna.
 //
 // ⚠️ BİR DİLİ GÜNCELLERKEN DİĞERİNİ DE GÜNCELLE. İkisi de aynı gerçeği anlatmalı.
-// ⚠️ Metin KODA GÖRE yazıldı: REKLAM VAR (Google AdSense / H5 Games Ads — lib/ads.ts),
+// ⚠️ Metin KODA GÖRE yazıldı: REKLAM VAR (Android: Google AdMob — lib/admobNative.ts; web: AdSense — lib/ads.ts),
 //    ÖDEME VAR (Google Play Faturalandırma — lib/billing.ts), analitik YOK, hesap yok,
 //    sunucuda veritabanı kaydı yok. Oyuna böyle bir servis eklenirse BU SAYFA GÜNCELLENMELİ —
 //    yanlış gizlilik beyanı Play'de uygulamanın kaldırılma sebebidir.
@@ -61,7 +61,7 @@ function Tr() {
 
       <Blok baslik="Reklamlar">
         Bölümler arasında ve isteğe bağlı &quot;reklam izle, altın kazan&quot; düğmesinde reklamları{" "}
-        <b>Google (AdSense / H5 Games Ads)</b> gösterir. Google; reklam sunmak, sıklığı sınırlamak ve
+        <b>Google</b> gösterir (Android uygulamasında <b>AdMob</b>, tarayıcıda AdSense). Google; reklam sunmak, sıklığı sınırlamak ve
         sahtekârlığı önlemek için çerezler ve cihaz/tarayıcı bilgisi (IP adresi, reklam kimliği gibi)
         kullanabilir ve bölgendeki kurallara göre senden <b>izin isteyebilir</b>. Bu veriler doğrudan
         Google&apos;a gider; biz görmeyiz ve saklamayız. Ayrıntı:{" "}
@@ -108,7 +108,7 @@ function Tr() {
             adresin Google&apos;a ulaşır.
           </li>
           <li>
-            <b>Google AdSense</b> (reklamlar): yukarıdaki &quot;Reklamlar&quot; bölümüne bak.
+            <b>Google AdMob / AdSense</b> (reklamlar): yukarıdaki &quot;Reklamlar&quot; bölümüne bak.
           </li>
           <li>
             <b>Google Play</b> (satın almalar): yukarıdaki &quot;Satın almalar&quot; bölümüne bak.
@@ -179,7 +179,7 @@ function En() {
 
       <Blok baslik="Ads">
         Ads between chapters and on the optional &quot;watch an ad, earn gold&quot; button are served
-        by <b>Google (AdSense / H5 Games Ads)</b>. Google may use cookies and device/browser
+        by <b>Google</b> (<b>AdMob</b> in the Android app, AdSense in the browser). Google may use cookies and device/browser
         information (such as your IP address and advertising ID) to serve ads, cap their frequency
         and prevent fraud, and may <b>ask for your consent</b> where your region requires it. This
         data goes directly to Google; we neither see nor store it. Details:{" "}
@@ -228,7 +228,7 @@ function En() {
             your IP address reaches Google in the process.
           </li>
           <li>
-            <b>Google AdSense</b> (ads): see &quot;Ads&quot; above.
+            <b>Google AdMob / AdSense</b> (ads): see &quot;Ads&quot; above.
           </li>
           <li>
             <b>Google Play</b> (purchases): see &quot;Purchases&quot; above.

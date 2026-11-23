@@ -39,6 +39,7 @@ import Icon, { type IconName } from "@/components/Icon";
 import MenuShell from "@/components/MenuShell";
 import CountUp from "@/components/CountUp";
 import AdBreak, { type AdUi } from "@/components/AdBreak";
+import { isNativeApp } from "@/lib/admobNative";
 import { getNightUnlocked, unlockNextNight, nightLabel, nightMods, NIGHT_CAP } from "@/lib/night";
 import { billingAvailable, isPremium, onPremiumChange, restorePurchases } from "@/lib/billing";
 import { adsEnabled, initAds, requestReward, showInterstitial } from "@/lib/ads";
@@ -1657,8 +1658,8 @@ export default function Page() {
               </span>
             </div>
           </div>
-          {/* Reklamları kaldır — yalnız Play'de, premium değilse, reklamın gerçekten olduğu yerde */}
-          {!premium && !(level === 1 && night <= 1) && (
+          {/* Reklamları kaldır — premium değilse. Uygulamada Play Billing bağlanana kadar gizli (bkz. Shop.tsx) */}
+          {!premium && !isNativeApp() && !(level === 1 && night <= 1) && (
             <button
               className="clear-noads"
               onClick={() => { setShopTab("gold"); setShopReturn("levelclear"); setScreen("shop"); }}
