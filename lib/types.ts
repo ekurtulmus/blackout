@@ -39,6 +39,7 @@ export type Zombie = {
   noSplit?: boolean; // Faz D "splitter": bölünmeden doğan yavru tekrar bölünmez
   dmgMul?: number; // temas hasar çarpanı (kraliçe 1.5, bölünen yavru 0.6)
   scale?: number; // görsel boyut çarpanı (kraliçe büyük, yavru küçük)
+  spotT?: number; // seni FARK ETTİĞİ an (engine.time) — göz parlaması/irkilme çizimi için
 };
 
 // Mukus lekesi (Madde 7): ölen mukus gelininin hücresinde kalan hasar bölgesi

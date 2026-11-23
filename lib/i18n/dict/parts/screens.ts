@@ -64,6 +64,13 @@ export const screens = definePart({
     "scr.win.note": "Gelinler geride kaldı — şimdilik.",
     "scr.win.replay": "Yeniden Oyna",
     "scr.win.finalscore": "Final skoru",
+    "night.second": "İkinci Gece",
+    "night.name": "{n}. Gece",
+    "night.pick": "Gece",
+    "night.desc.base": "Kampanya",
+    "night.desc": "Gelin ×{c} · Ödül ×{r}",
+    "night.enter": "Daha Derine: {name}",
+    "night.win.note": "Ama gece bitmedi. {name} açıldı: gelinler daha kalabalık, daha akıllı ve daha güçlü — ödül de büyük.",
 
     // --- basarimlar ---
     "scr.ach.eyebrow": "Karanlıkta Bıraktıkların",
@@ -203,6 +210,13 @@ export const screens = definePart({
     "scr.win.note": "The brides are behind you — for now.",
     "scr.win.replay": "Play Again",
     "scr.win.finalscore": "Final score",
+    "night.second": "Second Night",
+    "night.name": "Night {n}",
+    "night.pick": "Night",
+    "night.desc.base": "Campaign",
+    "night.desc": "Brides ×{c} · Reward ×{r}",
+    "night.enter": "Go Deeper: {name}",
+    "night.win.note": "But the night isn't over. {name} is open: more brides, smarter and stronger — and a bigger reward.",
 
     // --- achievements ---
     "scr.ach.eyebrow": "What You Left in the Dark",

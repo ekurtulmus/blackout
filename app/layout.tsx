@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="tr">
+    <html lang="tr" suppressHydrationWarning>
       <head>
         {/* Aydınlık tema kaldırıldı → her zaman KARANLIK. İlk boyamadan önce sabitlenir. */}
         <script

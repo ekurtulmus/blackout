@@ -8,6 +8,7 @@ import { useLang, useT } from "@/lib/i18n";
 import { useIsTouch } from "@/lib/useIsTouch";
 import { LANGS, LANG_META } from "@/lib/i18n/langs";
 import Icon from "@/components/Icon";
+import { hapticsOn, setHaptics, buzz } from "@/lib/juice";
 
 // Sıfırlama kuralı + korunan anahtarlar TEK KAYNAKTA: lib/progress.ts
 // (app/page.tsx'teki tek-seferlik sürüm sıfırlaması da aynı fonksiyonu kullanır).
@@ -24,6 +25,13 @@ export default function Settings({ onBack }: { onBack: () => void }) {
   const [confirmReset, setConfirmReset] = useState(false);
   const [name, setName] = useState("");
   const [nameMsg, setNameMsg] = useState("");
+  // Titreşim: SSR'de navigator yok → mount'ta okunur (hydration uyuşmazlığı olmasın)
+  const [haptics, setHapticsState] = useState(true);
+  const [canVibrate, setCanVibrate] = useState(false);
+  useEffect(() => {
+    setHapticsState(hapticsOn());
+    setCanVibrate(typeof navigator !== "undefined" && "vibrate" in navigator);
+  }, []);
 
   // Yalnız KULLANICININ YAZDIĞI isim saklanır. Alan boşsa anahtar SİLİNİR (boş string
   // yazılmaz): boş kayıt, okuyan tarafta "isim yok" ile aynı anlama gelir ve yedek
@@ -156,6 +164,19 @@ export default function Settings({ onBack }: { onBack: () => void }) {
               {muted ? t("settings.off") : t("settings.on")}
             </button>
           </div>
+
+          {/* Titreşim (vuruş/hasar hissi) — yalnız destekleyen cihazlarda görünür */}
+          {canVibrate && (
+            <div className="field-row" style={{ marginTop: 12 }}>
+              <span className="field-t">{t("settings.haptics")}</span>
+              <button
+                className={"toggle" + (haptics ? " is-on" : "")}
+                onClick={() => { const v = !haptics; setHapticsState(v); setHaptics(v); if (v) buzz(30); }}
+              >
+                {haptics ? t("settings.on") : t("settings.off")}
+              </button>
+            </div>
+          )}
 
           {/* Telefonda "Esc / P" yazmak anlamsız → dokunmatik ipucu (lib/useIsTouch.ts). */}
           <div className="field-d" style={{ marginTop: 16 }}>

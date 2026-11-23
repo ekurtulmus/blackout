@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import GoldStore from "@/components/GoldStore";
+import { billingAvailable } from "@/lib/billing";
 import Icon, { type IconName } from "@/components/Icon";
 import { getCoins } from "@/lib/coins";
 import {
@@ -83,17 +85,28 @@ export default function Shop({
   onBack,
   title,
   standalone = false,
+  initialTab = "feat",
 }: {
   onBack: () => void;
   /** HAZIR ÇEVRİLMİŞ başlık (ör. t("shop.title.interlude")). Boşsa "shop.title" kullanılır. */
   title?: string;
   standalone?: boolean;
+  /** Açılışta seçili sekme ("gold" = Altın/Premium, ör. "reklamları kaldır" bağlantısından) */
+  initialTab?: "feat" | "cos" | "gold";
 }) {
   const t = useT();
   const [coins, setCoins] = useState(() => getCoins());
   const [inv, setInv] = useState<Inventory>(() => getInventory());
   const [msg, setMsg] = useState("");
-  const [tab, setTab] = useState<"feat" | "cos">("feat");
+  const [tab, setTab] = useState<"feat" | "cos" | "gold">(initialTab);
+  // Altın sekmesi YALNIZ Play Billing varken (Play'den kurulan uygulama) görünür.
+  const [canBuy, setCanBuy] = useState(false);
+  useEffect(() => {
+    billingAvailable().then((ok) => {
+      setCanBuy(ok);
+      if (!ok) setTab((x) => (x === "gold" ? "feat" : x));
+    });
+  }, []);
 
   function flash(m: string) {
     setMsg(m);
@@ -159,11 +172,19 @@ export default function Shop({
             </svg>
             {t("shop.tab.cosmetics")}
           </button>
+          {canBuy && (
+            <button className={"tab" + (tab === "gold" ? " is-on" : "")} onClick={() => setTab("gold")}>
+              <Icon name="coin" size={16} />
+              {t("shop.tab.gold")}
+            </button>
+          )}
         </div>
 
         <div style={{ minHeight: 20, margin: "10px 0 0", color: "var(--ok-text)", fontWeight: 600, fontSize: 13.5 }}>{msg}</div>
 
-        {tab === "feat" ? (
+        {tab === "gold" ? (
+          <GoldStore onCoins={setCoins} />
+        ) : tab === "feat" ? (
           <div style={{ marginTop: 10 }}>
             {/* Envanter özeti */}
             <div className="inv-strip">

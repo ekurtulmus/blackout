@@ -198,7 +198,8 @@ export function drawBride(
   t: number,
   id: number,
   aware: boolean,
-  lean: number
+  lean: number,
+  flare = 0 // 0..1 — seni FARK ETTİĞİ an: gözler parlar, kafa irkilir
 ) {
   const variant = id % 4;
   const S = TS * (0.4 + ((id * 53) % 20) / 200);
@@ -207,7 +208,9 @@ export function drawBride(
 
   ctx.save();
   ctx.translate(cx, cy + bob);
-  ctx.rotate(lean * 0.07);
+  // irkilme: fark ettiği anda kafa sana doğru keskin bir sarsılma (hızla söner)
+  ctx.rotate(lean * 0.07 + (flare > 0 ? Math.sin(flare * 40) * 0.12 * flare : 0));
+  if (flare > 0) ctx.scale(1 + 0.08 * flare, 1 + 0.08 * flare);
   ctx.lineJoin = "round";
   ctx.lineCap = "round";
 
@@ -276,6 +279,19 @@ export function drawBride(
       ctx.arc(-S * 0.15, -S * 0.03, S * 0.035, 0, Math.PI * 2);
       ctx.arc(S * 0.15, -S * 0.03, S * 0.035, 0, Math.PI * 2);
       ctx.fill();
+      if (flare > 0) {
+        // fark etme: gözlerden taşan kızıl ışık (shadowBlur'suz, lighter ile)
+        ctx.globalCompositeOperation = "lighter";
+        for (const ex of [-S * 0.15, S * 0.15]) {
+          const g = ctx.createRadialGradient(ex, -S * 0.03, 0, ex, -S * 0.03, S * 0.35 * (0.6 + flare));
+          g.addColorStop(0, `rgba(255,70,40,${(0.85 * flare).toFixed(3)})`);
+          g.addColorStop(1, "rgba(255,30,20,0)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(ex, -S * 0.03, S * 0.35 * (0.6 + flare), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
       ctx.restore();
     }
   };

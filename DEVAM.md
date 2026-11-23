@@ -1,5 +1,50 @@
 # BLACKOUT — Devam / Durum Dosyası
 
+> **2026-11-23 — KALİTE TURU BAŞLADI.** Eski Play Store kurulumu (`app.jilted.game`, assetlinks) GEÇERSİZ:
+> oyun ileride YENİ bir Play hesabına çıkacak; önce oyun cilalanıyor. Bu oturumda (commit'lenmedi):
+> - **GAME FEEL — `lib/juice.ts` (YENİ):** motor `engine.fx` kuyruğuna konumlu olay yazar (kill/hit/spark/
+>   shot/swing/hurt), Game.tsx bunları ekran sarsıntısı (trauma² modeli, "hareketi azalt"ta kısık) +
+>   hitstop (vuruşta 55 ms, kraliçede 140 ms donma) + parçacık (kan konisi, ruh kıvılcımı, namlu ateşi,
+>   duvar kıvılcımı, toplama ışıltısı) + halka + **titreşim** (Ayarlar'da aç/kapa, `blackout_haptics`) yapar.
+>   Parçacıklarda shadowBlur YOK, tavan 240. Oyun mantığı DEĞİŞMEDİ.
+> - **Bitiş anı:** ölüm/bölüm sonunda sert kesme yerine kısa sahne (ölüm 1.15 sn kızıl nabız + fener sönmesi,
+>   çıkış 0.7 sn soğuk ışık) → sonra sonuç ekranı.
+> - **Uyarlanabilir kalite:** `QualityGuard` ~2 sn ortalama <45 FPS görürse tüm `shadowBlur`'u tek hamlede
+>   kapatır (`disableShadowBlur`) + DPR'ı 1.25'e kısar.
+> - **İkinci Gece (New Game+)** kodu (`lib/night.ts`) tamam, tsc+build temiz; gerçek oynanışla test EDİLMEDİ.
+> - `<html suppressHydrationWarning>` (tema betiği kaynaklı hydration uyarısı).
+> - **FARK ETME ANI ("beni gördü"):** `engine.detectSpotted()` gelinin `aware`'i false→true döndüğü kareyi
+>   yakalar (yalnız yakınsa, vurgular arası 3.5 sn). Ses `spotted` (uyumsuz yaylı bıçak + tısıltı + kalp atışı),
+>   gözlerden taşan kızıl ışık + kafa irkilmesi (`drawBride(..., flare)`, `Zombie.spotT`), küçük sarsıntı +
+>   kızıl halka + titreşim. Headless testte ~17 sn'de bir tetiklendi. Online oyun ETKİLENMEDİ.
+> - **İLK 5 DAKİKA:** (1) Rehberde **ders kapısı** (`tutGate`): gelin dersi o gelin inmeden bitmez (30 sn emniyet
+>   sınırı) + her ipucu en az 2 sn ekranda (`tutHintUntil`) — eskiden gelinin yanından geçince ipuçları birbirini
+>   eziyordu, "altın kazandın" öldürmeden çıkabiliyordu. (2) İpucu bandı altında **platforma göre kontrol satırı**
+>   (`TUT_CTRL`, Game.tsx: WASD/çubuk, saldır, silah değiştir, koş) + her yeni ipucunda bant yeniden girer.
+>   (3) **Yeni oyuncu menüsü:** hiç oynamamışsa (`blackout_tut_done` yok + kayıt yok + başarım yok) Tek Kişilik
+>   nefes alır gibi parlar + "Buradan başla" rozeti, diğer kutular %55 soluk (kilit YOK). 1. bölüm bitince söner.
+>   Headless: savaşan bot 11 dersi sırayla görüp 27 sn'de bitirdi.
+> - **GELİR (YENİ — eski "altın satışı YOK" kararı DEĞİŞTİ):** kullanıcı kararları: Play Billing · premium TEK
+>   SEFERLİK · bölüm arası reklam her bölümde AMA rehberli 1. bölümden (ilk gece) sonra YOK · isteğe bağlı ödüllü reklam.
+>   · `lib/billing.ts` — Digital Goods API + PaymentRequest. Ürün ID'leri: `premium_noads`, `gold_300` (₺12), `gold_500` (₺15),
+>     `gold_1000` (₺20) (Play Console'da AYNI ID'lerle açılmalı; premium_noads = ₺30). Bonus rozeti
+>     Play fiyatlarından HESAPLANIR (`bonusPercents`), sabit değil. Altın consume edilir; premium edilmez, açılışta
+>     `restorePurchases()` ile geri yüklenir. Jetonlar `blackout_iap_granted`'da (çift altın yok). Premium ve jetonlar
+>     sıfırlamada KORUNUR (`PROGRESS_KEEP_KEYS`). Play dışında (tarayıcı) Altın sekmesi HİÇ görünmez.
+>     Geliştirmede test: localStorage `blackout_billing_mock=1` → sahte mağaza (üretim paketinden atılıyor).
+>   · `lib/ads.ts` — Google H5 Games Ads (adBreak). `NEXT_PUBLIC_ADSENSE_CLIENT=ca-pub-…` yoksa reklam TAMAMEN kapalı.
+>     Bölüm arası: "Sonraki Bölüm" düğmesinde (`nextLevel()`), premium'da atlanır; betik engellenirse 1.5–3.5 sn'de
+>     oyuna devam. Ödüllü: bölüm sonunda Google'da hazır reklam varsa "Reklam izle · +X altın" (X = bölüm kazancı).
+>     Reklam sırasında oyun sesi durur. "Reklamları kaldır" bağlantısı → Dükkân Altın sekmesi.
+>   · Gizlilik politikası TR+EN güncellendi (Reklamlar + Satın almalar bölümleri, 23 Kasım 2026).
+>   · 🔴 **KULLANICININ YAPMASI GEREKENLER (kod hazır, bunlar olmadan çalışmaz):**
+>     1. Play Console → ürünleri yukarıdaki ID'lerle oluştur, fiyat gir.
+>     2. TWA paketi üretilirken **Play Billing'i aç** (PWABuilder: "Play Billing" seçeneği / Bubblewrap `playBilling`).
+>     3. AdSense hesabı + siteyi doğrula + **H5 Games Ads** başvurusu; onaydan sonra `ca-pub-…` kimliğini Vercel'e
+>        `NEXT_PUBLIC_ADSENSE_CLIENT` olarak ekle ve `public/ads.txt` dosyasını (AdSense verir) ekle.
+>     4. AdSense → Gizlilik ve mesajlaşma → **AB/İngiltere izin mesajını (GDPR) aç**.
+>     5. Play Console → "Reklam içerir" beyanı + **Veri güvenliği** formunu güncelle (reklam kimliği, satın alma geçmişi).
+
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**
 > Son güncelleme: **2026-10-07** · **Canlı sürüm: `ef4065e`** (CLI deploy, canlıda doğrulandı:

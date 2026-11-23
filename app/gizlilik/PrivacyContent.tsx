@@ -8,13 +8,14 @@
 // her dil kendi gövdesinde duruyor. Oyunun geri kalanı sözlük kullanır — burası bilinçli istisna.
 //
 // ⚠️ BİR DİLİ GÜNCELLERKEN DİĞERİNİ DE GÜNCELLE. İkisi de aynı gerçeği anlatmalı.
-// ⚠️ Metin KODA GÖRE yazıldı: analitik/reklam/izleyici YOK (tarandı), hesap yok, ödeme yok,
+// ⚠️ Metin KODA GÖRE yazıldı: REKLAM VAR (Google AdSense / H5 Games Ads — lib/ads.ts),
+//    ÖDEME VAR (Google Play Faturalandırma — lib/billing.ts), analitik YOK, hesap yok,
 //    sunucuda veritabanı kaydı yok. Oyuna böyle bir servis eklenirse BU SAYFA GÜNCELLENMELİ —
 //    yanlış gizlilik beyanı Play'de uygulamanın kaldırılma sebebidir.
 import { useLang } from "@/lib/i18n";
 
-const SON_GUNCELLEME = "21 Temmuz 2026";
-const LAST_UPDATED = "21 July 2026";
+const SON_GUNCELLEME = "23 Kasım 2026";
+const LAST_UPDATED = "23 November 2026";
 
 function Blok({ baslik, children }: { baslik: string; children: React.ReactNode }) {
   return (
@@ -39,8 +40,10 @@ function Tr() {
 
       <Blok baslik="Kısaca">
         JILTED&apos;de <b>hesap açmazsın</b>. E-posta, şifre, telefon numarası istemiyoruz.
-        <b> Reklam yok, analitik yok, izleyici (tracker) yok.</b> Oyun verilerin kendi cihazında
-        durur. Yalnız çok oyunculu oynarken, aynı odadaki oyunculara anlık oyun bilgisi gönderilir.
+        Oyun verilerin kendi cihazında durur. Oyunda <b>Google reklamları</b> gösterilir (Premium
+        alırsan bölüm arası reklamlar kalkar) ve isteğe bağlı <b>Google Play üzerinden satın
+        alma</b> yapılabilir. Analitik yok. Çok oyunculu oynarken aynı odadaki oyunculara anlık
+        oyun bilgisi gönderilir.
       </Blok>
 
       <Blok baslik="Cihazında saklananlar">
@@ -51,8 +54,32 @@ function Tr() {
           <li>Cihazına özel üretilen <b>arkadaş kodu</b> — rastgele harflerden oluşur, kimliğinle bağlantısı yoktur</li>
           <li>Eklediğin arkadaşların kodları ve adları</li>
           <li>İlerlemen: bölüm, altın, envanter, başarımlar, rekorlar, günlük sayfaları</li>
-          <li>Ayarların: dil, ses seviyesi, sesin açık/kapalı olması</li>
+          <li>Ayarların: dil, ses seviyesi, sesin açık/kapalı olması, titreşim</li>
+          <li>Satın alımların: Premium sahibi olup olmadığın ve işlenmiş satın alma jetonları (aynı satın alımın iki kez işlenmemesi için)</li>
         </ul>
+      </Blok>
+
+      <Blok baslik="Reklamlar">
+        Bölümler arasında ve isteğe bağlı &quot;reklam izle, altın kazan&quot; düğmesinde reklamları{" "}
+        <b>Google (AdSense / H5 Games Ads)</b> gösterir. Google; reklam sunmak, sıklığı sınırlamak ve
+        sahtekârlığı önlemek için çerezler ve cihaz/tarayıcı bilgisi (IP adresi, reklam kimliği gibi)
+        kullanabilir ve bölgendeki kurallara göre senden <b>izin isteyebilir</b>. Bu veriler doğrudan
+        Google&apos;a gider; biz görmeyiz ve saklamayız. Ayrıntı:{" "}
+        <a href="https://policies.google.com/technologies/ads" style={{ color: "var(--gold-warm)" }}>
+          Google reklam politikası
+        </a>
+        . Kişiselleştirilmiş reklamları{" "}
+        <a href="https://adssettings.google.com" style={{ color: "var(--gold-warm)" }}>
+          Google Reklam Ayarları
+        </a>
+        &apos;ndan kapatabilirsin. <b>Premium</b> alırsan bölüm arası reklamlar gösterilmez.
+      </Blok>
+
+      <Blok baslik="Satın almalar">
+        Altın paketleri ve Premium <b>Google Play Faturalandırma</b> ile satılır. Ödemeyi tamamen
+        Google Play yapar: kart ve ödeme bilgilerini <b>biz hiç görmeyiz</b>. Bize yalnız hangi ürünün
+        alındığı ve bir satın alma jetonu ulaşır; bu da yalnız senin cihazında saklanır. İadeler
+        Google Play&apos;in iade kurallarına tabidir.
       </Blok>
 
       <Blok baslik="Çok oyunculu oynarken gönderilenler">
@@ -80,13 +107,19 @@ function Tr() {
             <b>Google Fonts</b>: oyunun yazı tipleri Google sunucularından yüklenir, bu sırada IP
             adresin Google&apos;a ulaşır.
           </li>
+          <li>
+            <b>Google AdSense</b> (reklamlar): yukarıdaki &quot;Reklamlar&quot; bölümüne bak.
+          </li>
+          <li>
+            <b>Google Play</b> (satın almalar): yukarıdaki &quot;Satın almalar&quot; bölümüne bak.
+          </li>
         </ul>
         Bunların dışında hiçbir servise veri gönderilmez.
       </Blok>
 
       <Blok baslik="Verilerini silmek">
-        Oyun içinden: <b>Ayarlar → Tüm İlerlemeyi Sıfırla</b>. Bu; altınını, envanterini,
-        başarımlarını, rekorlarını ve kaldığın bölümü siler.
+        Oyun içinden: <b>Ayarlar → Tüm İlerlemeyi Sıfırla</b>. Bu; altınını (satın aldığın altın
+        dahil), envanterini, başarımlarını, rekorlarını ve kaldığın bölümü siler. Premium silinmez.
         <p style={{ marginTop: 10 }}>
           Adın, arkadaş kodun ve arkadaş listen dahil <b>her şeyi</b> silmek için tarayıcının site
           verilerini temizle ya da uygulamayı kaldır. Cihazından silinen veriyi geri getiremeyiz —
@@ -96,8 +129,8 @@ function Tr() {
 
       <Blok baslik="Çocuklar">
         JILTED bir <b>korku oyunudur</b> (karanlık, gerilim, kan öğeleri içerir) ve çocuklara
-        yönelik değildir. Çocuklardan bilerek veri toplamıyoruz — zaten hiç kimseden kişisel veri
-        toplamıyoruz.
+        yönelik değildir. Çocuklardan bilerek veri toplamıyoruz; biz kimseden kişisel veri
+        toplamayız (reklam verilerini Google işler, bkz. &quot;Reklamlar&quot;).
       </Blok>
 
       <Blok baslik="Değişiklikler ve iletişim">
@@ -125,8 +158,10 @@ function En() {
 
       <Blok baslik="In short">
         JILTED has <b>no accounts</b>. We do not ask for an email address, a password or a phone
-        number. <b>No ads, no analytics, no trackers.</b> Your game data stays on your own device.
-        Only while you play multiplayer is live game information sent to the players in your room.
+        number. Your game data stays on your own device. The game shows <b>Google ads</b> (buying
+        Premium removes the ads between chapters) and offers optional <b>purchases through Google
+        Play</b>. No analytics. While you play multiplayer, live game information is sent to the
+        players in your room.
       </Blok>
 
       <Blok baslik="Stored on your device">
@@ -137,8 +172,32 @@ function En() {
           <li>A <b>friend code</b> generated for your device — random letters, not linked to your identity</li>
           <li>The codes and names of friends you add</li>
           <li>Your progress: chapter, gold, inventory, achievements, best scores, journal pages</li>
-          <li>Your settings: language, volume, sound on/off</li>
+          <li>Your settings: language, volume, sound on/off, vibration</li>
+          <li>Your purchases: whether you own Premium, and processed purchase tokens (so the same purchase is never applied twice)</li>
         </ul>
+      </Blok>
+
+      <Blok baslik="Ads">
+        Ads between chapters and on the optional &quot;watch an ad, earn gold&quot; button are served
+        by <b>Google (AdSense / H5 Games Ads)</b>. Google may use cookies and device/browser
+        information (such as your IP address and advertising ID) to serve ads, cap their frequency
+        and prevent fraud, and may <b>ask for your consent</b> where your region requires it. This
+        data goes directly to Google; we neither see nor store it. Details:{" "}
+        <a href="https://policies.google.com/technologies/ads" style={{ color: "var(--gold-warm)" }}>
+          Google&apos;s advertising policy
+        </a>
+        . You can turn off personalised ads in{" "}
+        <a href="https://adssettings.google.com" style={{ color: "var(--gold-warm)" }}>
+          Google Ad Settings
+        </a>
+        . If you buy <b>Premium</b>, no ads are shown between chapters.
+      </Blok>
+
+      <Blok baslik="Purchases">
+        Gold packs and Premium are sold through <b>Google Play Billing</b>. Google Play handles the
+        payment entirely: <b>we never see</b> your card or payment details. We only receive which
+        product was bought and a purchase token, which is stored only on your device. Refunds follow
+        Google Play&apos;s refund policy.
       </Blok>
 
       <Blok baslik="Sent while playing multiplayer">
@@ -168,13 +227,20 @@ function En() {
             <b>Google Fonts</b>: the game&apos;s typefaces are loaded from Google&apos;s servers, and
             your IP address reaches Google in the process.
           </li>
+          <li>
+            <b>Google AdSense</b> (ads): see &quot;Ads&quot; above.
+          </li>
+          <li>
+            <b>Google Play</b> (purchases): see &quot;Purchases&quot; above.
+          </li>
         </ul>
         No data is sent to any service other than these.
       </Blok>
 
       <Blok baslik="Deleting your data">
-        From inside the game: <b>Settings → Reset All Progress</b>. This erases your gold,
-        inventory, achievements, best scores and the chapter you reached.
+        From inside the game: <b>Settings → Reset All Progress</b>. This erases your gold
+        (including purchased gold), inventory, achievements, best scores and the chapter you
+        reached. Premium is kept.
         <p style={{ marginTop: 10 }}>
           To erase <b>everything</b>, including your name, friend code and friends list, clear the
           site data in your browser or uninstall the app. We cannot recover data deleted from your
@@ -184,8 +250,8 @@ function En() {
 
       <Blok baslik="Children">
         JILTED is a <b>horror game</b> (it contains darkness, tension and blood) and is not directed
-        at children. We do not knowingly collect data from children — we do not collect personal
-        data from anyone at all.
+        at children. We do not knowingly collect data from children; we do not collect personal data
+        from anyone (ad data is processed by Google, see &quot;Ads&quot;).
       </Blok>
 
       <Blok baslik="Changes and contact">

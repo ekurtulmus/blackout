@@ -23,6 +23,11 @@ export const PROGRESS_KEEP_KEYS: readonly string[] = [
   "blackout_vol",
   "blackout_music",
   "blackout_muted",
+  "blackout_haptics", // titreşim tercihi (ayar, ilerleme değil)
+  // SATIN ALIMLAR ilerleme değildir: parayla alınan premium sıfırlamada SİLİNMEMELİ.
+  // İşlenmiş jeton listesi de korunur (yoksa yarım kalan paket iki kez altın verebilirdi).
+  "blackout_premium",
+  "blackout_iap_granted",
   "blackout_reset_v",
   // Puan isteği ÖMÜR BOYU bir kez sorulur: sıfırlamada silinse ikinci kez sorulurdu
   // (bkz. lib/review.ts). Bu bir ilerleme değeri değil, "bu kişiye zaten sorduk" notu.

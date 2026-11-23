@@ -876,6 +876,16 @@ class SoundEngine {
         this.noise(t + 0.02, 0.08, 0.16, 1800, "bandpass", 0.4, 0, 3);
         break;
       }
+      case "spotted": {
+        // FARK EDİLDİN: kısa, uyumsuz yaylı "bıçak" (küçük ikili, aşağı kayan) +
+        // tısıltı nefes + tek ağır kalp atışı. Kısık tutuldu: korkutmalı, tırmalamamalı.
+        this.tone(t, 740, 610, 0.32, 0.11, "sawtooth", 0.55);
+        this.tone(t, 784, 640, 0.32, 0.09, "sawtooth", 0.55);
+        this.tone(t, 185, 150, 0.45, 0.12, "triangle", 0.4);
+        this.noise(t, 0.22, 0.1, 3800, "bandpass", 0.5, 0, 2.5);
+        this.thump(t + 0.06, 0.32);
+        break;
+      }
       case "heartbeat": {
         // Madde 10: kısa kalp atışı yükselişi — iki güçlü thump
         this.thump(t, 0.4);

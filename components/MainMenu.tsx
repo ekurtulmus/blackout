@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useT } from "@/lib/i18n";
 import { useIsTouch } from "@/lib/useIsTouch";
+import { getUnlocked } from "@/lib/achievements";
 
 // Giriş animasyonu YALNIZ ilk açılışta oynasın; menüye her dönüşte tekrar etmesin.
 let introShown = false;
@@ -43,6 +44,21 @@ export default function MainMenu({
   const [topic, setTopic] = useState<string | null>(null); // Nasıl Oynanır: açık konu
   const isTouch = useIsTouch(); // klavye metinlerini telefonda gösterme (lib/useIsTouch.ts)
   const anim = !introShown;
+  // YENİ OYUNCU: hiç oynamamış biri 8 seçenekle karşılaşıyordu. Kilit YOK (ilke: vurgu, kilit
+  // değil) — yalnız "Tek Kişilik" parlar + "Buradan başla" der, diğer kutular geri çekilir.
+  // Eski oyuncular (başarımı/kaydı olan) bunu görmez. Mount'ta okunur (SSR uyuşmazlığı olmasın).
+  const [fresh, setFresh] = useState(false);
+  useEffect(() => {
+    try {
+      setFresh(
+        !localStorage.getItem("blackout_tut_done") &&
+          !localStorage.getItem("blackout_sp_progress") &&
+          getUnlocked().length === 0
+      );
+    } catch {
+      /* geç */
+    }
+  }, []);
   useEffect(() => {
     introShown = true;
   }, []);
@@ -200,8 +216,9 @@ export default function MainMenu({
       )}
 
       {/* İki eşit birincil kart */}
-      <div className="mm-primaries" style={fx("1.3s")}>
-        <button className="mm-card" onClick={onSolo}>
+      <div className={"mm-primaries" + (fresh ? " is-fresh" : "")} style={fx("1.3s")}>
+        <button className={"mm-card" + (fresh ? " mm-card-start" : "")} onClick={onSolo}>
+          {fresh && <span className="mm-start-badge">{t("menu.start.here")}</span>}
           <span className="mm-card-ico">
             <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               <circle cx="12" cy="7.5" r="3.6" /><path d="M5 20a7 7 0 0 1 14 0" />
@@ -227,7 +244,7 @@ export default function MainMenu({
       </div>
 
       {/* Tek tip 6 kutu */}
-      <div className="mm-boxes" style={fx("1.5s")}>
+      <div className={"mm-boxes" + (fresh ? " is-fresh" : "")} style={fx("1.5s")}>
         {boxes.map((b) => (
           <button key={b.label} className="mm-box" onClick={b.onClick}>
             <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">

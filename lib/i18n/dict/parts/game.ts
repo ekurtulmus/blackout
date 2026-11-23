@@ -147,6 +147,14 @@ export const game = definePart({
     "game.tut.brideveil": "Görünmezken gelin seni fark etmez… ama duvak bitince saldırır!",
     "game.tut.shop": "Gelini indirince ALTIN kazandın! Bölüm sonunda dükkâna uğrayabilirsin.",
     "game.tut.openexit": "Bundan sonrası gerçek LABİRENT. Çıkışa ulaş ve maceraya başla!",
+    "game.tut.ctrl.move.k": "W A S D ya da ok tuşları ile yürü",
+    "game.tut.ctrl.move.t": "Sol alttaki çubukla yürü",
+    "game.tut.ctrl.attack.k": "Saldır: Boşluk ya da sol tık",
+    "game.tut.ctrl.attack.t": "Saldır: sağ alttaki büyük düğme",
+    "game.tut.ctrl.swap.k": "Silah değiştir: F ya da sağ tık",
+    "game.tut.ctrl.swap.t": "Silah değiştir: saldırı düğmesinin üstündeki düğme",
+    "game.tut.ctrl.run.k": "Koş: Shift'i basılı tut",
+    "game.tut.ctrl.run.t": "Koş: KOŞ düğmesini basılı tut",
   },
   en: {
     // --- HUD chips ---
@@ -288,5 +296,13 @@ export const game = definePart({
     "game.tut.brideveil": "Invisible, the Bride can't see you… but she attacks the moment the Veil fades!",
     "game.tut.shop": "Downing a Bride earned you GOLD! You can visit the Shop after the Chapter.",
     "game.tut.openexit": "From here on it's a real MAZE. Reach the Exit and the hunt begins!",
+    "game.tut.ctrl.move.k": "Walk with W A S D or the arrow keys",
+    "game.tut.ctrl.move.t": "Walk with the stick at the bottom left",
+    "game.tut.ctrl.attack.k": "Attack: Space or left click",
+    "game.tut.ctrl.attack.t": "Attack: the big button at the bottom right",
+    "game.tut.ctrl.swap.k": "Switch weapon: F or right click",
+    "game.tut.ctrl.swap.t": "Switch weapon: the button above the attack button",
+    "game.tut.ctrl.run.k": "Run: hold Shift",
+    "game.tut.ctrl.run.t": "Run: hold the RUN button",
   },
 });

@@ -8,6 +8,7 @@ export const core = definePart({
 
     "menu.single": "TEK KİŞİLİK",
     "menu.single.sub": "Yalnız kaçış · 10 bölüm",
+    "menu.start.here": "Buradan başla",
     "menu.multi": "ÇOK OYUNCULU",
     "menu.multi.sub": "Ölüm koşusu · 2–6 kişi",
 
@@ -27,13 +28,14 @@ export const core = definePart({
     "settings.name.desc": "Boş bırakırsan arkadaş kodun ({code}) görünür. Çok oyunculuda ve arkadaş listende bu isim görünür.",
     "settings.volume": "Ses Seviyesi",
     "settings.sound": "Ses",
+    "settings.haptics": "Titreşim",
     "settings.on": "Açık",
     "settings.off": "Kapalı",
     "settings.hint": "Oyun içinde Esc / P ile duraklat. Ayarların bu cihazda saklanır.",
     // Dokunmatik karşılığı: telefonda klavye tuşu yazmak anlamsız (bkz. lib/useIsTouch.ts).
     "settings.hint.touch": "Oyun içinde sağ üstteki menüden duraklatabilirsin. Ayarların bu cihazda saklanır.",
     "settings.reset.title": "Tüm İlerlemeyi Sıfırla",
-    "settings.reset.desc": "Tüm ilerlemen silinir: altın, envanter ve satın almalar, tamamlanan görevler, açılan sırlar, günlük sayfaları, başarımlar, en iyi skorlar ve kaldığın bölüm. Geri alınamaz. Adın, arkadaşların ve ses tercihlerin korunur.",
+    "settings.reset.desc": "Tüm ilerlemen silinir: altın, envanter ve satın almalar, tamamlanan görevler, açılan sırlar, günlük sayfaları, başarımlar, en iyi skorlar ve kaldığın bölüm. Geri alınamaz. Adın, arkadaşların, ses tercihlerin ve Premium korunur.",
     "settings.reset.btn": "Sıfırla",
     "settings.reset.confirm": "Emin misin? Tüm ilerlemen ve satın almaların kalıcı olarak silinecek.",
     "settings.reset.yes": "Evet, hepsini sil",
@@ -47,6 +49,7 @@ export const core = definePart({
 
     "menu.single": "SINGLE PLAYER",
     "menu.single.sub": "Solo escape · 10 chapters",
+    "menu.start.here": "Start here",
     "menu.multi": "MULTIPLAYER",
     "menu.multi.sub": "Death run · 2–6 players",
 
@@ -66,12 +69,13 @@ export const core = definePart({
     "settings.name.desc": "Leave it empty and your friend code ({code}) will show instead. This name appears in multiplayer and in your friends list.",
     "settings.volume": "Volume",
     "settings.sound": "Sound",
+    "settings.haptics": "Vibration",
     "settings.on": "On",
     "settings.off": "Off",
     "settings.hint": "Press Esc / P during the game to pause. Your settings are saved on this device.",
     "settings.hint.touch": "Pause from the top-right menu during the game. Your settings are saved on this device.",
     "settings.reset.title": "Reset All Progress",
-    "settings.reset.desc": "Everything will be erased: gold, inventory and purchases, completed missions, unlocked secrets, journal pages, achievements, best scores and the chapter you reached. This cannot be undone. Your name, friends and sound preferences are kept.",
+    "settings.reset.desc": "Everything will be erased: gold, inventory and purchases, completed missions, unlocked secrets, journal pages, achievements, best scores and the chapter you reached. This cannot be undone. Your name, friends, sound preferences and Premium are kept.",
     "settings.reset.btn": "Reset",
     "settings.reset.confirm": "Are you sure? All your progress and purchases will be permanently deleted.",
     "settings.reset.yes": "Yes, delete everything",

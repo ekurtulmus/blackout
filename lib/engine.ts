@@ -35,6 +35,8 @@ import { ScareDirector, type ScareKind } from "./scares";
 import { JOURNAL, getCollected } from "./journal";
 import { buildTutorialCorridor, tutorialBeatIndices, TUTORIAL_BEATS, type TutItemKind } from "./tutorial";
 import type { DictKey } from "./i18n/dict";
+import { applyNight, nightMods } from "./night";
+import type { Fx } from "./juice";
 
 // EKRANA BASILAN METİN. Motor React değil → çeviremez; bu yüzden metin yerine
 // ANAHTAR (+ varsa değişkenler) döndürür. Game.tsx bunu `t(k, v)` ile çevirir.
@@ -91,6 +93,7 @@ export type SoundEvent =
   | "whisper" // Madde 10: rastgele korku — ani fısıltı
   | "doorslam" // Madde 10: uzak kapı çarpması
   | "heartbeat" // Madde 10: kısa kalp atışı yükselişi
+  | "spotted" // bir gelin seni FARK ETTİ (gerilim vurgusu)
   | "warn"
   | "levelclear"
   | "gameover"
@@ -179,6 +182,8 @@ export class GameEngine {
   coinsEarned = 0; // bu bölümde kazanılan para (Game kalıcı cüzdana işler)
   levelClearBonus = 0; // bölüm bitince verilen para bonusu (ekranda göster)
   private riskMul = 1; // Madde 18: zorluğa göre para/puan çarpanı
+  night = 1; // İkinci Gece (New Game+) sayacı — 1 = normal kampanya
+  private queenEvery: number = TUNING.queenEveryLevels; // gece 2+ → daha sık kraliçe
   score: number;
   lives: number;
   level: number;
@@ -196,6 +201,9 @@ export class GameEngine {
   swordSwing = 0; // >0 → savurma animasyonu sürüyor (çizim okur)
   playerMoving = false; // yürüme animasyonu için
   events: SoundEvent[] = []; // bu kare oluşan ses olayları
+  private awareIds = new Set<number>(); // şu an seni takip eden gelinler (fark etme anını yakalamak için)
+  private spotCd = 0; // fark etme vurgusu arası bekleme (sürü aynı anda görünce ses yığılmasın)
+  fx: Fx[] = []; // bu kare oluşan GÖRSEL his olayları (konumlu) — Game.tsx juice katmanı tüketir
   tension = 0; // 0..1 en yakın farkında zombiye göre gerilim (kalp atışı/ambiyans)
   bloodStains: { x: number; y: number; r: number; seed: number }[] = []; // kalıcı kan izleri
 
@@ -211,6 +219,12 @@ export class GameEngine {
   private tutBeatIdx: number[] = [];
   private tutNextBeat = 0;
   private tutMaxProgress = -1;
+  // DERS KAPISI: gelin dersi (bride/brideVeil) o gelin İNMEDEN bitmez. Yoksa oyuncu
+  // yanından sıyrılınca sıradaki ipucu öncekini eziyor, "gelini indirince altın kazandın"
+  // ipucu öldürmeden çıkabiliyordu. Kapı açıkken (gelin yaşıyor) sonraki beat'ler bekler.
+  private tutGate: number | null = null;
+  private tutHintUntil = 0; // her ders ipucu en az bu ana dek ekranda kalır (okunmadan ezilmesin)
+  private tutGateUntil = 0; // emniyet: gelin bir yere takılırsa rehber sonsuza dek kilitlenmesin
 
   private fireCd = 0;
   private nextId = 1;
@@ -222,7 +236,8 @@ export class GameEngine {
     mission: Mission | null = null,
     withPhoto = false,
     diff: Diff = "orta",
-    hiredSoldier = false // dükkandan asker kiralandıysa yanında escort olarak başla
+    hiredSoldier = false, // dükkandan asker kiralandıysa yanında escort olarak başla
+    night = 1 // İkinci Gece (New Game+): 1 = normal kampanya (bkz. lib/night.ts)
   ) {
     this.level = level;
     this.score = score;
@@ -272,13 +287,22 @@ export class GameEngine {
         cfg.intelligence = Math.max(0, Math.min(1, cfg.intelligence + dm.intel));
       }
     }
+    // İKİNCİ GECE: yalnız kampanyada (görev/arena/endless etkilenmez) — zorluğun ÜSTÜNE biner.
+    if (!mission && night > 1) {
+      const nm = nightMods(night);
+      cfg = applyNight(cfg, night);
+      this.diffDmgMul *= nm.dmg;
+      this.riskMul *= nm.reward;
+      this.queenEvery = nm.queenEvery;
+    }
+    this.night = night;
     this.config = cfg;
     // Dinamik fener/görüş (Madde 4,5) — dip anında ses ipucu
     this.flashlight = new Flashlight(this.config.visionRadius);
     this.flashlight.onDip = () => this.events.push("flicker");
     // REHBERLİ 1. BÖLÜM: kampanya level 1 (görev değil) → labirent yerine düz koridor +
     // senaryo. Normal harita/çıkış/gelin/eşya üretimi ATLANIR (setupTutorial her şeyi kurar).
-    if (level === 1 && !mission) {
+    if (level === 1 && !mission && night <= 1) {
       this.setupTutorial();
       return;
     }
@@ -580,7 +604,7 @@ export class GameEngine {
       if (cl) cl.kind = "climber";
     }
     // Kraliçe (mini-boss): her queenEveryLevels bölümde bir EKSTRA
-    if (L % TUNING.queenEveryLevels === 0) this.spawnQueen();
+    if (L % this.queenEvery === 0) this.spawnQueen();
   }
 
   private spawnQueen() {
@@ -787,11 +811,13 @@ export class GameEngine {
       this.swordSwing = TUNING.swordSwingSec;
       if (this.veilUntil > this.time) this.veilUntil = 0; // saldırı = duvak bozulur
       this.events.push("sword");
+      this.fx.push({ k: "swing", x: this.player.pos.x, y: this.player.pos.y });
       const hits = this.swordTargets();
       for (const z of hits) {
         // Kraliçe çok canlı: kılıç ona swordQueenDmg kadar hasar verir, diğerleri tek darbe.
         z.hp -= z.kind === "queen" ? TUNING.swordQueenDmg : 1;
         if (z.hp <= 0) this.killZombie(z);
+        else this.fx.push({ k: "hit", x: z.pos.x, y: z.pos.y, dx: this.player.dir.x, dy: this.player.dir.y });
       }
     }
 
@@ -800,6 +826,7 @@ export class GameEngine {
       this.fireCd = FIRE_COOLDOWN;
       if (this.veilUntil > this.time) this.veilUntil = 0; // Madde 8: ateş = duvak bozulur
       this.events.push("shot");
+      this.fx.push({ k: "shot", x: this.player.pos.x, y: this.player.pos.y, dx: this.player.dir.x, dy: this.player.dir.y });
       this.bullets.push({
         id: this.nextId++,
         pos: { x: this.player.pos.x, y: this.player.pos.y },
@@ -809,6 +836,28 @@ export class GameEngine {
         },
         life: BULLET_LIFE,
       });
+    }
+  }
+
+  // FARK ETME ANI: bir gelin seni takip etmeye BAŞLADIĞI kare. Korkunun en güçlü anı —
+  // "beni gördü". Yalnız yakındaysa (fenerinin ucu kadar) ve son vurgudan 3.5 sn geçtiyse
+  // vurgulanır; yoksa kalabalık bölümde sürekli çalar ve anlamını yitirir. Oyun mantığına
+  // dokunmaz (aware'i AI zaten belirliyor), yalnız ses + görsel tetikler.
+  private detectSpotted(dt: number) {
+    if (this.spotCd > 0) this.spotCd -= dt;
+    for (const z of this.zombies) {
+      if (!z.aware) {
+        this.awareIds.delete(z.id);
+        continue;
+      }
+      if (this.awareIds.has(z.id)) continue;
+      this.awareIds.add(z.id);
+      if (this.spotCd > 0) continue;
+      if (dist(z.pos, this.player.pos) > this.config.visionRadius + 1.5) continue;
+      z.spotT = this.time;
+      this.spotCd = 3.5;
+      this.events.push("spotted");
+      this.fx.push({ k: "spot", x: z.pos.x, y: z.pos.y, big: z.kind === "queen" });
     }
   }
 
@@ -830,6 +879,7 @@ export class GameEngine {
         b.pos.y += sy;
         if (isWall(this.maze, Math.floor(b.pos.x), Math.floor(b.pos.y))) {
           b.life = 0;
+          this.fx.push({ k: "spark", x: b.pos.x - sx, y: b.pos.y - sy, dx: b.vel.x, dy: b.vel.y });
           break;
         }
         let hit = false;
@@ -839,6 +889,7 @@ export class GameEngine {
             b.life = 0;
             hit = true;
             if (z.hp <= 0) this.killZombie(z);
+            else this.fx.push({ k: "hit", x: z.pos.x, y: z.pos.y, dx: b.vel.x, dy: b.vel.y });
             break;
           }
         }
@@ -877,6 +928,14 @@ export class GameEngine {
     this.score += Math.round(100 * this.riskMul); // Madde 18: puan çarpanı
     this.coinsEarned += Math.max(1, Math.round(COIN_PER_KILL * this.riskMul)); // gelin başına para
     this.events.push("kill");
+    this.fx.push({
+      k: "kill",
+      x: z.pos.x,
+      y: z.pos.y,
+      dx: z.pos.x - this.player.pos.x,
+      dy: z.pos.y - this.player.pos.y,
+      big: z.kind === "queen",
+    });
     // Mini-görev "çember" (markedkill): AKTİFKEN çıkış SADECE çemberde infazla açılır.
     const mq = this.miniQuest;
     const mkGate = mq?.kind === "markedkill" && !!mq.zone && !this.mqDone;
@@ -993,11 +1052,15 @@ export class GameEngine {
     // Gelin hareketi — ortak AI (en yakın oyuncuyu hedefler; tek kişilikte tek oyuncu)
     // Madde 8: duvak açıkken oyuncu AI'ya görünmez · Faz C: tuzak hücrelerinde yavaşlar
     moveBrides(this.zombies, this.maze, this.config, [this.player.pos], dt, Infinity, [this.veiled], slowCells);
+    this.detectSpotted(dt);
 
     // Oyuncuya temas: hasar + geri itme (duvak/kalkan açıkken temas hasarı yok)
     for (const z of this.zombies) {
       if (!this.veiled && !this.invuln && dist(z.pos, this.player.pos) < PLAYER_RADIUS + ZOMBIE_RADIUS) {
-        if (this.hurtFlash <= 0) this.events.push("hurt");
+        if (this.hurtFlash <= 0) {
+          this.events.push("hurt");
+          this.fx.push({ k: "hurt", x: this.player.pos.x, y: this.player.pos.y });
+        }
         // kraliçe 1.5x, yavru 0.6x · diffDmgMul = zorluk (Kolay 0.7 / Zor 1.4)
         this.player.hp -= CONTACT_DPS * (z.dmgMul ?? 1) * this.diffDmgMul * dt;
         this.hurtFlash = 0.25;
@@ -1152,7 +1215,14 @@ export class GameEngine {
       }
     }
     if (nearest > this.tutMaxProgress) this.tutMaxProgress = nearest;
+    if (
+      this.tutGate !== null &&
+      (this.time > this.tutGateUntil || !this.zombies.some((z) => z.id === this.tutGate))
+    )
+      this.tutGate = null;
     while (
+      this.tutGate === null &&
+      this.time >= this.tutHintUntil &&
       this.tutNextBeat < this.tutBeatIdx.length &&
       this.tutMaxProgress >= this.tutBeatIdx[this.tutNextBeat]
     ) {
@@ -1164,11 +1234,15 @@ export class GameEngine {
   private fireTutBeat(i: number) {
     const beat = TUTORIAL_BEATS[i];
     this.tutHint = beat.hint;
+    this.tutHintUntil = this.time + 2;
     const spawnAhead = (offset: number) => {
       const idx = Math.min(this.tutPath.length - 1, this.tutBeatIdx[i] + offset);
       const c = this.tutPath[idx];
+      const id = this.nextId++;
+      this.tutGate = id; // bu gelin inene dek ders sürer
+      this.tutGateUntil = this.time + 30;
       this.zombies.push({
-        id: this.nextId++,
+        id,
         pos: { x: c.x + 0.5, y: c.y + 0.5 },
         hp: 1,
         aware: true,

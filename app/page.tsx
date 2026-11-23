@@ -17,7 +17,7 @@ import Friends from "@/components/Friends";
 import Online from "@/components/Online";
 import { FriendPresence, getFriends, addIncomingRequest, removeIncomingRequest } from "@/lib/friends";
 import { getInventory } from "@/lib/inventory";
-import { getCoins, initStarterCoins } from "@/lib/coins";
+import { addCoins, getCoins, initStarterCoins } from "@/lib/coins";
 import { ACHIEVEMENTS, getUnlocked, unlock, achievementById, claimReward, getClaimed, bumpStat, setStatMax, evaluateAll, type AchCtx } from "@/lib/achievements";
 import { JOURNAL, getCollected, collectNote, journalById } from "@/lib/journal";
 import { TOTAL_LEVELS } from "@/lib/levels";
@@ -37,6 +37,9 @@ import type { NetRoom } from "@/lib/net";
 import type { StartInfo } from "@/lib/online";
 import Icon, { type IconName } from "@/components/Icon";
 import MenuShell from "@/components/MenuShell";
+import { getNightUnlocked, unlockNextNight, nightLabel, nightMods, NIGHT_CAP } from "@/lib/night";
+import { billingAvailable, isPremium, onPremiumChange, restorePurchases } from "@/lib/billing";
+import { adsEnabled, initAds, requestReward, showInterstitial } from "@/lib/ads";
 
 // OYUN ekranları: kabuk kullanmaz VE geri yığınına hedef olarak girmez
 // (sonuç ekranından "geri" oyunu yeniden başlatmasın → döngü olmasın).
@@ -46,22 +49,24 @@ function isPlayScreen(s: string): boolean {
 
 // Tek kişilik (Yalnız Kaçış) ilerleme kaydı — çıkıp tekrar girince kaldığı bölümden devam.
 const SP_PROGRESS_KEY = "blackout_sp_progress";
-function loadSpProgress(): { level: number; score: number; lives: number } | null {
+function loadSpProgress(): { level: number; score: number; lives: number; night: number } | null {
   try {
     const s = localStorage.getItem(SP_PROGRESS_KEY);
     if (!s) return null;
     const o = JSON.parse(s);
-    if (o && typeof o.level === "number" && o.level > 1) {
-      return { level: o.level, score: o.score ?? 0, lives: o.lives ?? 1 };
+    const night = typeof o?.night === "number" && o.night > 1 ? o.night : 1;
+    // Gece 2+'da 1. bölüm de "devam edilecek" bir koşudur (rehberli bölüm yok).
+    if (o && typeof o.level === "number" && (o.level > 1 || night > 1)) {
+      return { level: o.level, score: o.score ?? 0, lives: o.lives ?? 1, night };
     }
   } catch {
     /* geç */
   }
   return null;
 }
-function saveSpProgress(level: number, score: number, lives: number) {
+function saveSpProgress(level: number, score: number, lives: number, night: number) {
   try {
-    localStorage.setItem(SP_PROGRESS_KEY, JSON.stringify({ level, score, lives }));
+    localStorage.setItem(SP_PROGRESS_KEY, JSON.stringify({ level, score, lives, night }));
   } catch {
     /* geç */
   }
@@ -148,9 +153,20 @@ export default function Page() {
   const [level, setLevel] = useState(1);
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
+  // İKİNCİ GECE (New Game+): oynanan gece + açılmış en yüksek gece (bkz. lib/night.ts)
+  const [night, setNight] = useState(1);
+  const [nightUnlocked, setNightUnlocked] = useState(1);
+  const [nightPick, setNightPick] = useState(1); // brifingde seçilen gece (yeni oyun)
   // Ekonomi (Faz A): bölüm sonu para bilgisi
   const [coinInfo, setCoinInfo] = useState({ gained: 0, bonus: 0, total: 0 });
   const [shopReturn, setShopReturn] = useState<Screen>("menu"); // dükkândan çıkınca dönülecek ekran
+  const [shopTab, setShopTab] = useState<"feat" | "cos" | "gold">("feat"); // dükkân hangi sekmeyle açılsın
+  // GELİR: premium (reklamsız) + Play Billing var mı + bölüm sonu reklam durumu (lib/billing, lib/ads)
+  const [premium, setPremium] = useState(false);
+  const [canBuy, setCanBuy] = useState(false);
+  const [adBusy, setAdBusy] = useState(false); // bölüm arası reklam oynuyor/bekleniyor
+  const [rewardShow, setRewardShow] = useState<(() => void) | null>(null); // ödüllü reklam hazırsa oynatıcı
+  const [rewardGot, setRewardGot] = useState(0); // bu bölüm sonunda ödüllü reklamla kazanılan altın
   const [newAch, setNewAch] = useState<string[]>([]); // sonuç ekranında gösterilecek yeni başarımlar
   const [deadCrushed, setDeadCrushed] = useState(false); // ölüm sebebi: çıkış çöktü (mesaj ayrımı)
   const [settingsReturn, setSettingsReturn] = useState<Screen>("menu"); // ayarlardan çıkınca dönülecek ekran
@@ -269,6 +285,9 @@ export default function Page() {
       if (sec) setUnlockedSecrets(JSON.parse(sec));
       const sd = localStorage.getItem("blackout_sp_diff");
       if (sd === "kolay" || sd === "orta" || sd === "zor") setSpDiff(sd);
+      const nu = getNightUnlocked();
+      setNightUnlocked(nu);
+      setNightPick(nu); // varsayılan: en derin açılmış gece
       setAchList(getUnlocked()); // Faz F
       setAchClaimed(getClaimed());
       setJournalGot(getCollected());
@@ -277,6 +296,50 @@ export default function Page() {
       /* geç */
     }
   }, []);
+
+  // GELİR kurulumu: reklam betiği (önden yükle) + Play satın alımlarını geri yükle
+  // (premium + ödeme anında kapanıp yarım kalmış altın paketleri).
+  useEffect(() => {
+    initAds();
+    setPremium(isPremium());
+    billingAvailable().then(setCanBuy);
+    restorePurchases().then(() => {
+      setPremium(isPremium());
+      setMenuCoins(getCoins());
+    });
+    return onPremiumChange(setPremium);
+  }, []);
+
+  // ÖDÜLLÜ REKLAM (bölüm sonu): Google'da hazır reklam varsa "altını 2 katla" düğmesi çıkar.
+  // Hazır değilse düğme HİÇ görünmez (boş vaat yok). Bölüm başına bir kez.
+  useEffect(() => {
+    setRewardShow(null);
+    setRewardGot(0);
+    if (screen !== "levelclear" || coinInfo.gained <= 0 || !adsEnabled()) return;
+    const g = coinInfo.gained;
+    return requestReward("double-gold", {
+      onReady: (show) => setRewardShow(() => show),
+      onReward: () => {
+        const total = addCoins(g);
+        setRewardGot(g);
+        setCoinInfo((c) => ({ ...c, total }));
+        setMenuCoins(total);
+      },
+      onDone: () => setRewardShow(null),
+    });
+  }, [screen, coinInfo.gained]);
+
+  // Bölüm arası reklam → sonraki bölüm. Rehberli 1. bölümden (ilk gece) sonra reklam YOK:
+  // oyuncu oyunu sevmeden reklamla karşılaşmasın. Premium'da showInterstitial hemen döner.
+  async function nextLevel() {
+    if (adBusy) return;
+    if (!(level === 1 && night <= 1)) {
+      setAdBusy(true);
+      await showInterstitial("chapter-" + level);
+      setAdBusy(false);
+    }
+    play(level + 1, score, lives);
+  }
 
   // --- GERİ (kabuk butonu + telefon geri tuşu): bir önceki ekrana dön ---
   const backStack = useRef<Screen[]>([]);
@@ -469,9 +532,10 @@ export default function Page() {
     }
   }, [screen]);
 
-  function play(lv: number, sc: number, lv3: number) {
+  function play(lv: number, sc: number, lv3: number, nt: number = night) {
     const capped = Math.min(4, lv3); // can hakkı EN FAZLA 4 (3 baz + 1 kalıcı); eski kayıtlar da kısılır
-    saveSpProgress(lv, sc, capped); // kaldığı bölümden devam edebilsin
+    saveSpProgress(lv, sc, capped, nt); // kaldığı bölümden (ve geceden) devam edebilsin
+    setNight(nt);
     setLevel(lv);
     setScore(sc);
     setLives(capped);
@@ -511,6 +575,15 @@ export default function Page() {
     const wonHard = r.status === "win" && spDiff === "zor";
     const newly = refreshAch({ wonHard, coins: r.coins ?? getCoins() });
     setNewAch(newly);
+    if (r.status === "win") {
+      const nu = unlockNextNight(night); // bu geceyi bitirdin → bir sonraki açılır
+      setNightUnlocked(nu);
+      setNightPick(Math.min(nu, night + 1));
+    }
+    // Rehberli 1. bölüm bitti → artık "yeni oyuncu" değil (menüdeki "Buradan başla" vurgusu söner)
+    if (r.level === 1 && (r.status === "levelclear" || r.status === "win")) {
+      try { localStorage.setItem("blackout_tut_done", "1"); } catch { /* geç */ }
+    }
     if (r.status === "win") setFinaleSeen(false); // kapanış sahnesi her bitirişte yeniden oynasın
     // Puan isteği: yalnız 3. bölüm bitişinde ve ömür boyu bir kez (bkz. lib/review.ts).
     setRateAsk(r.status === "levelclear" && shouldAskReview(r.level));
@@ -768,6 +841,7 @@ export default function Page() {
         lives={lives}
         themeSeed={themeSeed}
         diff={spDiff}
+        night={night}
         onEnd={handleEnd}
         onQuit={() => setScreen("menu")}
         onNote={handleNote}
@@ -811,7 +885,8 @@ export default function Page() {
     return chrome(
       <Shop
         title={shopReturn === "levelclear" ? t("scr.shop.between") : t("scr.shop.title")}
-        onBack={() => setScreen(shopReturn)}
+        initialTab={shopTab}
+        onBack={() => { setShopTab("feat"); setMenuCoins(getCoins()); setScreen(shopReturn); }}
       />
     );
   }
@@ -1248,8 +1323,12 @@ export default function Page() {
         onAchievements={() => setScreen("achievements")}
         onJournal={() => setScreen("journal")}
         onSecrets={() => setScreen("secrets")}
-        continueLabel={rp ? t("scr.chapter", { n: rp.level }) : null}
-        onContinue={() => rp && play(rp.level, rp.score, rp.lives)}
+        continueLabel={
+          rp
+            ? (rp.night > 1 ? nightLabel(t, rp.night) + " · " : "") + t("scr.chapter", { n: rp.level })
+            : null
+        }
+        onContinue={() => rp && play(rp.level, rp.score, rp.lives, rp.night)}
         help={helpOpen}
         onHelpClose={() => setHelpOpen(false)}
       />
@@ -1345,19 +1424,46 @@ export default function Page() {
             ))}
           </div>
 
+          {/* Gece seçici — yalnız kampanya bir kez bitirildiyse (gece 2 açıldıysa) görünür */}
+          {nightUnlocked > 1 && (
+            <>
+              <div className="seg-label">{t("night.pick")}</div>
+              <div className={"seg " + (Math.min(nightUnlocked, NIGHT_CAP) >= 3 ? "seg-3" : "seg-2")}>
+                {Array.from({ length: Math.min(nightUnlocked, NIGHT_CAP) }, (_, i) => i + 1)
+                  // 3'ten fazla gece açıldıysa: 1. gece + en derin iki gece (taşmasın)
+                  .filter((n, _i, all) => all.length <= 3 || n === 1 || n >= all.length - 1)
+                  .map((n) => {
+                    const m = nightMods(n);
+                    return (
+                      <button
+                        key={n}
+                        className={"seg-item" + (nightPick === n ? " is-on" : "")}
+                        onClick={() => setNightPick(n)}
+                      >
+                        <span className="seg-item-t">{nightLabel(t, n)}</span>
+                        <span className="seg-item-d">
+                          {n === 1 ? t("night.desc.base") : t("night.desc", { c: m.count.toFixed(1), r: m.reward.toFixed(1) })}
+                        </span>
+                      </button>
+                    );
+                  })}
+              </div>
+            </>
+          )}
+
           <div className="cta-row">
             {rp ? (
               <>
-                <button className="btn-primary-x" onClick={() => play(rp.level, rp.score, rp.lives)}>
+                <button className="btn-primary-x" onClick={() => play(rp.level, rp.score, rp.lives, rp.night)}>
                   <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
                   {t("scr.intro.continue", { n: rp.level })}
                 </button>
-                <button className="mm-ghost" onClick={() => { clearSpProgress(); play(1, 0, 4); }}>
+                <button className="mm-ghost" onClick={() => { clearSpProgress(); play(1, 0, 4, nightPick); }}>
                   {t("scr.restart")}
                 </button>
               </>
             ) : (
-              <button className="btn-primary-x" onClick={() => { clearSpProgress(); play(1, 0, 4); }}>
+              <button className="btn-primary-x" onClick={() => { clearSpProgress(); play(1, 0, 4, nightPick); }}>
                 {t("scr.intro.start")}
               </button>
             )}
@@ -1408,8 +1514,8 @@ export default function Page() {
             </div>
           )}
           <div className="clear-actions">
-            <button className="btn btn-primary" onClick={() => play(level + 1, score, lives)}>
-              {t("scr.clear.next")}
+            <button className="btn btn-primary" onClick={nextLevel} disabled={adBusy}>
+              {adBusy ? "…" : t("scr.clear.next")}
             </button>
             <button
               className={"btn" + (level === 1 ? " pulse-gold" : "")}
@@ -1439,6 +1545,16 @@ export default function Page() {
               </div>
             </div>
           )}
+          {/* Ödüllü reklam — isteğe bağlı, yalnız Google'da hazır reklam varsa */}
+          {rewardShow && !rewardGot && (
+            <button
+              className="btn clear-reward"
+              onClick={() => rewardShow()}
+              style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+            >
+              <Icon name="play" size={15} /> {t("ads.reward.btn", { n: coinInfo.gained })}
+            </button>
+          )}
           <div className="clear-table">
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="coin" size={15} /> {t("scr.clear.earned")}</span>
@@ -1450,11 +1566,26 @@ export default function Page() {
                 <span className="clear-row-v">+{coinInfo.bonus}</span>
               </div>
             )}
+            {rewardGot > 0 && (
+              <div className="clear-row">
+                <span className="clear-row-l"><Icon name="play" size={15} /> {t("ads.reward.row")}</span>
+                <span className="clear-row-v">+{rewardGot}</span>
+              </div>
+            )}
             <div className="clear-row">
               <span className="clear-row-l"><Icon name="wallet" size={15} /> {t("scr.wallet")}</span>
               <span className="clear-row-v">{coinInfo.total}</span>
             </div>
           </div>
+          {/* Reklamları kaldır — yalnız Play'de, premium değilse, reklamın gerçekten olduğu yerde */}
+          {canBuy && !premium && adsEnabled() && !(level === 1 && night <= 1) && (
+            <button
+              className="clear-noads"
+              onClick={() => { setShopTab("gold"); setShopReturn("levelclear"); setScreen("shop"); }}
+            >
+              {t("ads.remove")}
+            </button>
+          )}
         </div>
       )}
 
@@ -1484,14 +1615,27 @@ export default function Page() {
               tekrar etmez, bölüm-sonu ekranıyla aynı dilde HESAP ekranıdır. */}
           <div className="clear-title">{t("scr.win.title")}</div>
           <div className="clear-progress">{TOTAL_LEVELS}<span className="clear-total"> / {TOTAL_LEVELS}</span></div>
-          <div className="clear-note">{t("scr.win.note")}</div>
+          <div className="clear-note">
+            {night + 1 <= nightUnlocked
+              ? t("night.win.note", { name: nightLabel(t, night + 1) })
+              : t("scr.win.note")}
+          </div>
           {newAch.length > 0 && (
             <div className="clear-ach">
               <Icon name="trophy" size={16} /> {t("scr.clear.newach")} {newAch.map((id) => { const a = achievementById(id); return a ? t(a.title) : null; }).filter(Boolean).join(", ")}
             </div>
           )}
           <div className="clear-actions">
-            <button className="btn btn-primary" onClick={startNewGame}>
+            {night + 1 <= nightUnlocked && (
+              <button
+                className="btn btn-primary"
+                onClick={() => { clearSpProgress(); setThemeSeed(randomThemeSeed()); play(1, 0, 4, night + 1); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 7 }}
+              >
+                <Icon name="moon" size={16} /> {t("night.enter", { name: nightLabel(t, night + 1) })}
+              </button>
+            )}
+            <button className="btn" onClick={startNewGame}>
               {t("scr.win.replay")}
             </button>
             <button className="btn" onClick={() => setScreen("menu")}>

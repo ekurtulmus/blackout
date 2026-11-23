@@ -27,6 +27,18 @@ import { TUNING } from "@/lib/config";
 import type { Mission } from "@/lib/missions";
 import type { GameStatus, Vec } from "@/lib/types";
 import Icon, { type IconName } from "@/components/Icon";
+import { nightLabel } from "@/lib/night";
+import { Juice, QualityGuard, disableShadowBlur } from "@/lib/juice";
+
+// Rehber dersi → o dersin kontrolü [klavye/fare, dokunmatik]. Metin "ilerle / saldır"
+// diyordu ama NASIL olduğunu söylemiyordu (ilk 5 dakikanın en büyük sürtünmesi).
+const TUT_CTRL: Partial<Record<DictKey, [DictKey, DictKey]>> = {
+  "game.tut.start": ["game.tut.ctrl.move.k", "game.tut.ctrl.move.t"],
+  "game.tut.sword": ["game.tut.ctrl.attack.k", "game.tut.ctrl.attack.t"],
+  "game.tut.bride1": ["game.tut.ctrl.attack.k", "game.tut.ctrl.attack.t"],
+  "game.tut.gun": ["game.tut.ctrl.swap.k", "game.tut.ctrl.swap.t"],
+  "game.tut.sprint": ["game.tut.ctrl.run.k", "game.tut.ctrl.run.t"],
+};
 
 export type EndResult = {
   status: GameStatus; // "dead" | "levelclear" | "gameover" | "win"
@@ -72,6 +84,7 @@ export default function Game({
   mission = null,
   withPhoto = false,
   diff = "orta",
+  night = 1,
   onEnd,
   onQuit,
   onFragment,
@@ -84,6 +97,7 @@ export default function Game({
   mission?: Mission | null;
   withPhoto?: boolean;
   diff?: Diff;
+  night?: number; // İkinci Gece (New Game+) — 1 = normal kampanya (bkz. lib/night.ts)
   onEnd: (r: EndResult) => void;
   onQuit?: () => void;
   onFragment?: () => void;
@@ -107,7 +121,7 @@ export default function Game({
   // Diğer tüm bölümlerde KILIÇLA başlanır: kılıç TEMEL silah (mermi tüketmez, hep
   // çalışır). Tabancayla başlanınca bölüme çoğu zaman 0 mermiyle giriliyor ve ateş
   // düğmesi boşa basılıyordu.
-  const isTutorial = level === 1 && !mission; // engine.ts constructor ile AYNI koşul
+  const isTutorial = level === 1 && !mission && night <= 1; // engine.ts constructor ile AYNI koşul
   const [weapon, setWeapon] = useState<"gun" | "sword" | "none">(isTutorial ? "none" : "sword");
   const weaponRef = useRef<"gun" | "sword" | "none">(isTutorial ? "none" : "sword");
   const toggleWeapon = () => {
@@ -207,7 +221,7 @@ export default function Game({
     // Dükkan askeri: sahipsen (ölene dek) her bölümde yanında bir müttefik doğar.
     // Eskiden `!mission` idi → arena/bitmeyen gecede asker HİÇ çıkmıyordu.
     const hiredSoldier = !storyMission && getInventory().hiredSoldier;
-    const engine = new GameEngine(level, score, lives, mission, withPhoto, diff, hiredSoldier);
+    const engine = new GameEngine(level, score, lives, mission, withPhoto, diff, hiredSoldier, mission ? 1 : night);
     engineRef.current = engine;
     // Kiralık asker çizimi için: senin görünüm halka rengin + ismin (çerçeve + üstünde yazı)
     const mySoldierRing = SKIN_RINGS[getInventory().skin] ?? "#7dffb0";
@@ -265,6 +279,16 @@ export default function Game({
     let cssH = 0;
     let TS = 36; // hücre boyutu (CSS px)
 
+    // GAME FEEL: sarsıntı + hitstop + parçacık + titreşim (lib/juice.ts)
+    const juice = new Juice();
+    // Uyarlanabilir kalite: cihaz zorlanıyorsa gölge bulanıklığını kapat + çözünürlüğü kıs
+    let lowQ = false;
+    const quality = new QualityGuard(() => {
+      lowQ = true;
+      disableShadowBlur(ctx);
+      resize();
+    });
+
     // Film grain deseni (bir kez üretilir)
     const noiseTile = document.createElement("canvas");
     noiseTile.width = 64;
@@ -287,7 +311,7 @@ export default function Game({
       const rect = canvas!.getBoundingClientRect();
       cssW = rect.width;
       cssH = rect.height;
-      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      dpr = Math.min(window.devicePixelRatio || 1, lowQ ? 1.25 : 2);
       canvas!.width = Math.floor(cssW * dpr);
       canvas!.height = Math.floor(cssH * dpr);
       const minDim = Math.min(cssW, cssH);
@@ -409,6 +433,14 @@ export default function Game({
       ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx!.fillStyle = "#000";
       ctx!.fillRect(0, 0, cssW, cssH);
+      // Ekran sarsıntısı: DÜNYA + oyuncu sarsılır; vinyet/grain/HUD katmanları sabit kalır
+      // (aşağıda transform sıfırlanır) → kenarda boşluk açılmaz, okunurluk bozulmaz.
+      const sh = juice.shake(Math.max(6, TS * 0.3));
+      if (sh.x || sh.y || sh.rot) {
+        ctx!.translate(cssW / 2 + sh.x, cssH / 2 + sh.y);
+        ctx!.rotate(sh.rot);
+        ctx!.translate(-cssW / 2, -cssH / 2);
+      }
 
       // görünür hücreler için hızlı arama tablosu
       const cols = engine.maze.cols;
@@ -891,7 +923,9 @@ export default function Game({
         const scale = z.scale ?? 1; // kraliçe büyük, bölünen yavru küçük
         ctx!.save();
         if (!visible) ctx!.globalAlpha = 0.5; // karanlıktaki tırmanan/kraliçe soluk
-        drawBride(ctx!, TS * scale, s.sx, s.sy, engine.time, z.id, z.aware, lean);
+        // fark etme anından sonraki 0.7 sn: göz parlaması + irkilme (1 → 0)
+        const flare = z.spotT !== undefined ? Math.max(0, 1 - (engine.time - z.spotT) / 0.7) : 0;
+        drawBride(ctx!, TS * scale, s.sx, s.sy, engine.time, z.id, z.aware, lean, flare);
         ctx!.restore();
 
         // Kraliçe: uzaktan fark edilen kızıl aura + taç + can pip'leri
@@ -1055,6 +1089,11 @@ export default function Game({
         ctx!.stroke();
         ctx!.restore();
       }
+
+      // Parçacıklar + halkalar (kan, kıvılcım, ruh, toplama) — dünya katmanında
+      juice.draw(ctx!, TS, camX, camY);
+      // Sarsıntıyı bitir: ekran-uzayı katmanları (vinyet, grain, flaşlar) sabit çizilir
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       // --- Vinyet (ağır, boğucu kenar kararması) — dinamik görüşe göre ---
       const grad = ctx!.createRadialGradient(
@@ -1255,6 +1294,29 @@ export default function Game({
       }
       const dt = (now - last) / 1000;
       last = now;
+      quality.frame(dt);
+      juice.update(Math.min(dt, 0.05));
+
+      // BİTİŞ ANI: ölüm / bölüm sonu ekranına SERT kesme yok. Dünya donar, kısa bir
+      // "an" oynar (ölümde kan + kızıl kararma, çıkışta ışığın yutulması), sonra sonuç.
+      if (endAnim) {
+        endAnim.t += Math.min(dt, 0.05);
+        render();
+        drawEndAnim(endAnim);
+        if (endAnim.t >= endAnim.dur) {
+          finish();
+          return;
+        }
+        raf = requestAnimationFrame(loop);
+        return;
+      }
+
+      // HITSTOP: güçlü vuruşta dünya bir an donar → darbenin "ağırlığı" hissedilir.
+      if (juice.hitstop > 0) {
+        render();
+        raf = requestAnimationFrame(loop);
+        return;
+      }
       // SİLAH SEÇİMİ: tek bir saldırı girdisi (Boşluk / ATEŞ butonu) var; kuşanılan
       // silaha göre ya mermi ya kılıç tetiklenir. Kılıç mermi harcamaz.
       // "none" (rehberde silah bulunmadan önce): ne ateş ne kılıç tetiklenir.
@@ -1268,41 +1330,86 @@ export default function Game({
       sound.setTension(engine.tension);
       // bu karede oluşan ses olaylarını çal ve boşalt
       if (engine.events.length) {
-        for (const ev of engine.events) sound.play(ev);
+        for (const ev of engine.events) {
+          sound.play(ev);
+          if (ev === "pickup") juice.add({ k: "pickup", x: engine.player.pos.x, y: engine.player.pos.y });
+          else if (ev === "dooropen") juice.add({ k: "door", x: engine.exit.x + 0.5, y: engine.exit.y + 0.5 });
+        }
         engine.events.length = 0;
+      }
+      if (engine.fx.length) {
+        for (const f of engine.fx) juice.add(f);
+        engine.fx.length = 0;
       }
       render();
 
       if (!ended && engine.status !== "playing") {
         ended = true;
-        // Öldüysen (bir can gitti / oyun bitti) → kiralık askeri kaybet (yeniden alınabilir)
-        if (engine.status === "dead" || engine.status === "gameover") {
-          const inv = getInventory();
-          if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
-        }
-        // Son para senkronu (bölüm bonusu / son öldürmeler kalıcı cüzdana geçsin)
-        const finalGain = engine.coinsEarned - coinSyncRef.current;
-        const total = finalGain > 0 ? addCoins(finalGain) : getCoins();
-        coinSyncRef.current = engine.coinsEarned;
-        onEnd({
-          status: engine.status,
-          level: engine.level,
-          score: engine.score,
-          lives: engine.lives,
-          time: engine.time,
-          coins: total,
-          coinsGained: engine.coinsEarned,
-          levelClearBonus: engine.levelClearBonus,
-          kills: engine.zombiesKilled,
-          flawless: engine.player.hp >= PLAYER_MAX_HP,
-          killedQueen: engine.killedQueen,
-          hostageRescued: engine.soldierRescued,
-          wasEscape: engine.escape || engine.escapeTime > 0,
-          crushed: engine.crushed,
-        });
-        return; // döngüyü durdur
+        const died = engine.status === "dead" || engine.status === "gameover";
+        juice.add({ k: died ? "death" : "clear", x: engine.player.pos.x, y: engine.player.pos.y });
+        endAnim = { t: 0, dur: died ? 1.15 : 0.7, died };
+        raf = requestAnimationFrame(loop);
+        return;
       }
       raf = requestAnimationFrame(loop);
+    }
+
+    // Bitiş anı katmanı (ekran uzayı). Ölüm: kızıl nabız → siyaha. Çıkış: soğuk ışık → siyaha.
+    let endAnim: { t: number; dur: number; died: boolean } | null = null;
+    function drawEndAnim(a: { t: number; dur: number; died: boolean }) {
+      const k = Math.min(1, a.t / a.dur);
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0);
+      if (a.died) {
+        const red = Math.sin(Math.min(1, k * 2.2) * Math.PI) * 0.45;
+        ctx!.fillStyle = `rgba(120,0,0,${red.toFixed(3)})`;
+        ctx!.fillRect(0, 0, cssW, cssH);
+        // fener sönüyor: merkezden kenara daralan karanlık
+        const r = Math.max(1, Math.min(cssW, cssH) * 0.9 * (1 - k));
+        const g = ctx!.createRadialGradient(cssW / 2, cssH / 2, r * 0.35, cssW / 2, cssH / 2, r + 1);
+        g.addColorStop(0, "rgba(0,0,0,0)");
+        g.addColorStop(1, "rgba(0,0,0,1)");
+        ctx!.fillStyle = g;
+        ctx!.fillRect(0, 0, cssW, cssH);
+        if (k > 0.75) {
+          ctx!.fillStyle = `rgba(0,0,0,${((k - 0.75) / 0.25).toFixed(3)})`;
+          ctx!.fillRect(0, 0, cssW, cssH);
+        }
+      } else {
+        const glow = Math.sin(Math.min(1, k * 1.6) * Math.PI) * 0.35;
+        ctx!.fillStyle = `rgba(205,222,255,${glow.toFixed(3)})`;
+        ctx!.fillRect(0, 0, cssW, cssH);
+        ctx!.fillStyle = `rgba(0,0,0,${Math.max(0, (k - 0.35) / 0.65).toFixed(3)})`;
+        ctx!.fillRect(0, 0, cssW, cssH);
+      }
+    }
+
+    // Sonuç ekranına geçiş (bitiş anı oynadıktan sonra)
+    function finish() {
+      // Öldüysen (bir can gitti / oyun bitti) → kiralık askeri kaybet (yeniden alınabilir)
+      if (engine.status === "dead" || engine.status === "gameover") {
+        const inv = getInventory();
+        if (inv.hiredSoldier) { inv.hiredSoldier = false; saveInventory(inv); }
+      }
+      // Son para senkronu (bölüm bonusu / son öldürmeler kalıcı cüzdana geçsin)
+      const finalGain = engine.coinsEarned - coinSyncRef.current;
+      const total = finalGain > 0 ? addCoins(finalGain) : getCoins();
+      coinSyncRef.current = engine.coinsEarned;
+      onEnd({
+        status: engine.status,
+        level: engine.level,
+        score: engine.score,
+        lives: engine.lives,
+        time: engine.time,
+        coins: total,
+        coinsGained: engine.coinsEarned,
+        levelClearBonus: engine.levelClearBonus,
+        kills: engine.zombiesKilled,
+        flawless: engine.player.hp >= PLAYER_MAX_HP,
+        killedQueen: engine.killedQueen,
+        hostageRescued: engine.soldierRescued,
+        wasEscape: engine.escape || engine.escapeTime > 0,
+        crushed: engine.crushed,
+      });
     }
     raf = requestAnimationFrame(loop);
 
@@ -1498,6 +1605,12 @@ export default function Game({
               <span className="val">{hud.level}</span>
             </div>
           )}
+          {!mission && night > 1 && (
+            <div className="chip" title={nightLabel(t, night)}>
+              <span className="lbl"><Icon name="moon" size={14} /></span>
+              <span className="val">{night}</span>
+            </div>
+          )}
           {!mission?.noFire && (
             <div className="chip">
               <span className="lbl"><Icon name="ammo" size={14} /></span>
@@ -1654,8 +1767,15 @@ export default function Game({
       )}
 
       {/* Rehberli 1. bölüm: alt-ortada büyük ipucu bandı (adım adım öğretir) */}
+      {/* key = ipucu → her yeni ders bandı yeniden "girer" (aynı kutuda metin sessizce
+          değişince oyuncu fark etmiyordu). Altında: o dersin KONTROLÜ, platforma göre. */}
       {tut.on && tut.hint && (
-        <div className="tut-hint">{t(tut.hint)}</div>
+        <div className="tut-hint" key={tut.hint}>
+          {t(tut.hint)}
+          {TUT_CTRL[tut.hint] && (
+            <div className="tut-ctrl">{t(TUT_CTRL[tut.hint]![isTouch ? 1 : 0])}</div>
+          )}
+        </div>
       )}
 
       {(hud.warn || exitMsg) && (
@@ -1681,7 +1801,7 @@ export default function Game({
 
       {helpOpen && (
         <div className="screen" style={{ background: "rgba(0,0,0,0.9)" }}>
-          <div className="scr-eyebrow">{t("game.prep.eyebrow")}</div>
+          <div className="scr-eyebrow">{!mission && night > 1 ? nightLabel(t, night) : t("game.prep.eyebrow")}</div>
           <h2 className="scr-title" style={{ fontSize: "clamp(28px,6vw,44px)" }}>{t("game.prep.chapter", { n: hud.level })}</h2>
           <div className={"panel" + (levelNotice ? " panel-gold" : "")} style={{ maxWidth: 520, width: "100%", textAlign: "left" }}>
             <p className="panel-p" style={{ fontStyle: "normal", color: levelNotice ? "#ffe9a8" : undefined }}>
