@@ -10,7 +10,7 @@ import type { SoundEvent } from "./engine";
 // TELİF: oyundaki TÜM müzik bu proje için KODLA SENTEZLENEN özgün parçalardır (telif yok;
 // kayıt: public/audio/README.md). Hepsi kesintisiz döngü olarak üretildi (loop = true).
 // Dışarıdan müzik eklenirse kaynağını ve lisansını README'ye yaz.
-export const MENU_TRACK = "/audio/muzik-kutusu.mp3";
+export const MENU_TRACK = "/audio/menu-ninni.mp3"; // yumuşak, karanlık ninni (eski müzik kutusu tizdi)
 export const GAME_TRACK = "/audio/oyun-ici.mp3";
 export const SCREEN_TRACKS = {
   secrets: "/audio/gunluk.mp3", // Sırlar + Günlük aynı parçayı paylaşır (page.tsx)

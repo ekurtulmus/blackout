@@ -6,7 +6,7 @@ Kaynağı belirsiz müzik Play'de telif şikâyetine, uygulamanın kaldırılmas
 
 | Dosya | Nerede | Kaynak | Lisans |
 |---|---|---|---|
-| `muzik-kutusu.mp3` | Ana menü + müziği olmayan alt ekranlar | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
+| `menu-ninni.mp3` | Ana menü + müziği olmayan alt ekranlar | Özgün — kodla sentezlendi (2026-11-23, yumuşatılmış v2) | Projenin kendi eseri |
 | `oyun-ici.mp3` | Oyun içi (+ Ölüm Koşusu) | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
 | `gorevler.mp3` | Görevler | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
 | `gunluk.mp3` | Günlük + Sırlar | Özgün — kodla sentezlendi (2026-11-23) | Projenin kendi eseri |
