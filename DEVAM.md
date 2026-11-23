@@ -58,9 +58,9 @@
 > - **MÜZİK / TELİF (2026-11-23):** kaynağı belirsiz 8 parça + eski menü müziği (Fesliyan "Darkest Hour") KALDIRILDI
 >   (yedek: `Desktop/JILTED-muzik-yedek/`). Yerlerine bu proje için KODLA SENTEZLENEN özgün döngüler: menü = bozuk müzik
 >   kutusu valsi (`muzik-kutusu.mp3`), görevler = gerilim, günlük+sırlar = boş salonda piyano, dükkân = eski gramofon.
->   Oyun içi ıslık artık kodda üretiliyor. Kalan tek dış müzik `game.mp3` (Fesliyan "It Is Coming") →
->   🔴 **Play'de satmadan önce Fesliyan lisansı (bağış) alınmalı** — ya da onu da özgün parçayla değiştir.
->   Her müziğin kaynağı: `public/audio/README.md`.
+>   Oyun içi ıslık artık kodda üretiliyor. Oyun içi müzik de özgün döngü (`oyun-ici.mp3`; Fesliyan game.mp3 kaldırıldı)
+>   → ✅ **oyunda telifli müzik YOK**. Döngüler eşit güçlü çapraz geçişle bağlı (ilk sürümde başta tık + 5. sn'de
+>   kesinti vardı, düzeltildi). Her müziğin kaynağı: `public/audio/README.md`.
 
 > **Bu ne?** Projenin canlı el kitabı. Yeni bir sohbette "DEVAM.md'yi oku, buradan devam
 > edelim" dersen kaldığımız yerden sürdürebiliriz. **Her ilerlemede güncellenir.**

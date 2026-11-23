@@ -7,11 +7,11 @@ import type { SoundEvent } from "./engine";
 // Ekran müzikleri — her menü ekranının kendi parçası. Yeni ekran müziği eklemek =
 // buraya bir satır + page.tsx'teki SCREEN_MUSIC eşlemesine bir satır.
 // NOT: dosya adları ASCII; Vercel (Linux) büyük/küçük harfe ve Türkçe karaktere duyarlı.
-// TELİF: oyunda YALNIZ kaynağı ve lisansı belli müzik kalır (kayıt: public/audio/README.md).
-// muzik-kutusu / gorevler / gunluk / dukkan.mp3 = bu proje için KODLA SENTEZLENEN özgün
-// parçalar (telif yok). game.mp3 = Fesliyan Studios "It Is Coming" → ticari kullanım için
-// Fesliyan lisansı (bağış) ŞART. Hepsi kesintisiz döngü olarak üretildi (loop = true).
+// TELİF: oyundaki TÜM müzik bu proje için KODLA SENTEZLENEN özgün parçalardır (telif yok;
+// kayıt: public/audio/README.md). Hepsi kesintisiz döngü olarak üretildi (loop = true).
+// Dışarıdan müzik eklenirse kaynağını ve lisansını README'ye yaz.
 export const MENU_TRACK = "/audio/muzik-kutusu.mp3";
+export const GAME_TRACK = "/audio/oyun-ici.mp3";
 export const SCREEN_TRACKS = {
   secrets: "/audio/gunluk.mp3", // Sırlar + Günlük aynı parçayı paylaşır (page.tsx)
   shop: "/audio/dukkan.mp3",
@@ -20,7 +20,7 @@ export const SCREEN_TRACKS = {
   modes: MENU_TRACK, // (kullanılmıyor — menü müziği sürer)
   journal: "/audio/gunluk.mp3",
   // Ölüm Koşusu (online): oyun müziği
-  race: "/audio/game.mp3",
+  race: GAME_TRACK,
 } as const;
 export type ScreenTrack = keyof typeof SCREEN_TRACKS;
 
@@ -366,7 +366,7 @@ class SoundEngine {
     }
   }
 
-  // --- Müzik dosyaları (public/audio: MENU_TRACK, game.mp3 — kaynaklar README.md) ---
+  // --- Müzik dosyaları (public/audio: MENU_TRACK, GAME_TRACK — kaynaklar README.md) ---
   private ensureEl(kind: "menu" | "game"): HTMLAudioElement {
     this.setupVisibility();
     if (kind === "menu") {
@@ -382,14 +382,14 @@ class SoundEngine {
       return this.menuAudio;
     }
     if (!this.gameAudio) {
-      const a = new Audio("/audio/game.mp3");
+      const a = new Audio(GAME_TRACK);
       a.loop = true;
       a.preload = "auto";
       a.volume = 0.45; // oyun içi arka plan — çok yüksek değil
       a.muted = this.muted;
       this.gameAudio = a;
     }
-    this.rearm(this.gameAudio, "/audio/game.mp3");
+    this.rearm(this.gameAudio, GAME_TRACK);
     return this.gameAudio;
   }
 

@@ -560,7 +560,7 @@ export default function Page() {
       screen === "arenaplay";
     if (inGame) {
       // Oyun (tek kişilik / görev / bitmeyen gece): menü + ekran müziklerini durdur,
-      // oyun kendi müziğini (game.mp3) çalar; oyun-içi ıslığı başlat.
+      // oyun kendi müziğini (oyun-ici.mp3) çalar; oyun-içi ıslığı başlat.
       sound.stopMenuMusic();
       sound.stopScreenMusic();
       sound.startWhistles();
@@ -574,7 +574,7 @@ export default function Page() {
       return;
     }
     sound.stopWhistles();
-    sound.stopGameMusic(); // oyun-dışı ekranlarda oyun müziği (game.mp3) SÜRMESİN (menüde çalmaya devam ediyordu)
+    sound.stopGameMusic(); // oyun-dışı ekranlarda oyun müziği SÜRMESİN (menüde çalmaya devam ediyordu)
     // Kendi müziği olan ekranlar (SCREEN_MUSIC): menü müziği kısılır, ekranın parçası açılır.
     const track = SCREEN_MUSIC[screen];
     if (track) {
