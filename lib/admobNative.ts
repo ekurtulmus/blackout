@@ -4,20 +4,22 @@
 // lib/ads.ts kendi web akışını (AdSense / test kartı) kullanır. Eklenti DİNAMİK yüklenir ki web
 // paketine gereksiz kod girmesin ve sunucu tarafında hiç çalışmasın.
 //
-// KİMLİKLER: ortam değişkenleri verilmezse Google'ın resmî TEST birimleri kullanılır (gerçek
-// reklam/gelir YOK, hesap riski YOK). Gerçekleri Vercel ortam değişkenlerine yazılır:
-//   NEXT_PUBLIC_ADMOB_INTERSTITIAL = ca-app-pub-XXXX/YYYY  (geçiş reklamı birimi)
-//   NEXT_PUBLIC_ADMOB_REWARDED     = ca-app-pub-XXXX/ZZZZ  (ödüllü reklam birimi)
-// (Uygulama kimliği ise Android paketinde: android/app/build.gradle admobAppId.)
+// KİMLİKLER aşağıda (gizli değildir, uygulamada zaten görünür). HANGİSİ KULLANILIR:
+//   NEXT_PUBLIC_ADMOB_LIVE=1  → gerçek birimler (gelir). Vercel ortam değişkeni + yeniden deploy.
+//   tanımsız / başka değer    → Google TEST birimleri (hesap riski yok). VARSAYILAN BUDUR.
+// Geliştirirken/denerken gerçek reklama tıklamak AdMob hesabını kapattırabilir → yayına kadar kapalı tut.
+// (Uygulama kimliği Android paketinde: android/app/build.gradle admobAppId.)
 //
 // KURAL: oyuncu ASLA reklam yüzünden takılı kalmaz — her bekleme zaman aşımıyla biter.
 import { Capacitor } from "@capacitor/core";
 
+const LIVE = process.env.NEXT_PUBLIC_ADMOB_LIVE === "1";
+const REAL_INTERSTITIAL = "ca-app-pub-1034346502909902/1296758344"; // jilted_bolum_arasi_gecis
+const REAL_REWARDED = "ca-app-pub-1034346502909902/9869509244"; // jilted_bolum_sonu_2x_altin
 const TEST_INTERSTITIAL = "ca-app-pub-3940256099942544/1033173712";
 const TEST_REWARDED = "ca-app-pub-3940256099942544/5224354917";
-const INTERSTITIAL_ID = process.env.NEXT_PUBLIC_ADMOB_INTERSTITIAL || TEST_INTERSTITIAL;
-const REWARDED_ID = process.env.NEXT_PUBLIC_ADMOB_REWARDED || TEST_REWARDED;
-const TESTING = INTERSTITIAL_ID === TEST_INTERSTITIAL;
+const INTERSTITIAL_ID = LIVE ? REAL_INTERSTITIAL : TEST_INTERSTITIAL;
+const REWARDED_ID = LIVE ? REAL_REWARDED : TEST_REWARDED;
 
 export function isNativeApp(): boolean {
   try {
@@ -66,7 +68,7 @@ export async function nativeInterstitial(onStart: () => void, onEnd: () => void)
   if (!(await initNativeAds())) return;
   const { AdMob, InterstitialAdPluginEvents } = await mod();
   try {
-    await Promise.race([AdMob.prepareInterstitial({ adId: INTERSTITIAL_ID, isTesting: TESTING }), wait(6000).then(() => { throw new Error("timeout"); })]);
+    await Promise.race([AdMob.prepareInterstitial({ adId: INTERSTITIAL_ID, isTesting: !LIVE }), wait(6000).then(() => { throw new Error("timeout"); })]);
   } catch {
     return; // reklam yok / ağ yok → oyuna devam
   }
@@ -100,7 +102,7 @@ export async function nativePrepareReward(cb: {
   if (!(await initNativeAds())) return null;
   const { AdMob, RewardAdPluginEvents } = await mod();
   try {
-    await Promise.race([AdMob.prepareRewardVideoAd({ adId: REWARDED_ID, isTesting: TESTING }), wait(8000).then(() => { throw new Error("timeout"); })]);
+    await Promise.race([AdMob.prepareRewardVideoAd({ adId: REWARDED_ID, isTesting: !LIVE }), wait(8000).then(() => { throw new Error("timeout"); })]);
   } catch {
     return null;
   }
