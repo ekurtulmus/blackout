@@ -32,3 +32,9 @@ next-env.d.ts
 
 .vercel
 .env*
+
+# Android imza anahtarları — ASLA depoya girmez (CI gizlilerden üretir)
+*.p12
+*.jks
+*.keystore
+upload-key*

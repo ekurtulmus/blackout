@@ -1,4 +1,7 @@
-// REKLAM — Google H5 Games Ads (AdSense "Ad Placement API": adBreak / adConfig).
+// REKLAM — iki yol:
+//  1) ANDROID UYGULAMASI (Play, Capacitor): AdMob → lib/admobNative.ts (asıl gelir yolu).
+//  2) TARAYICI: Google H5 Games Ads (AdSense "Ad Placement API": adBreak / adConfig) — aşağıda.
+// Dış arayüz (showInterstitial / requestReward / adsEnabled) ikisinde de AYNI → oyun kodu değişmez.
 //
 // Neden bu: oyun bir WEB oyunu (Play'de TWA = Chrome sekmesi). AdMob yerel SDK ister,
 // TWA'da çalışmaz. H5 Games Ads Google'ın web oyunları için yaptığı API'dir: bölüm arası
@@ -16,6 +19,7 @@
 
 import { sound } from "./audio";
 import { isPremium } from "./billing";
+import { initNativeAds, isNativeApp, nativeInterstitial, nativePrepareReward } from "./admobNative";
 
 const CLIENT = process.env.NEXT_PUBLIC_ADSENSE_CLIENT ?? "";
 
@@ -29,11 +33,16 @@ type AdWindow = Window & {
 let inited = false;
 let scriptOk = false; // betik gerçekten yüklendi mi (engelleyici yoksa)
 
+// Uygulamada AdMob HER ZAMAN açık (kimlik yoksa Google test reklamları); tarayıcıda AdSense kimliği varsa.
 export function adsEnabled(): boolean {
-  return CLIENT.startsWith("ca-pub-");
+  return isNativeApp() || CLIENT.startsWith("ca-pub-");
 }
 
 export function initAds() {
+  if (isNativeApp()) {
+    initNativeAds(); // SDK + AB izin penceresi (gerekiyorsa)
+    return;
+  }
   if (inited || !adsEnabled() || typeof window === "undefined") return;
   inited = true;
   const w = window as AdWindow;
@@ -63,6 +72,7 @@ const afterAd = () => sound.setPaused(false);
 // Söz (promise) reklam bitince ya da gösterilmeyeceği anlaşılınca çözülür.
 export function showInterstitial(name: string): Promise<void> {
   if (!adsEnabled() || isPremium() || typeof window === "undefined") return Promise.resolve();
+  if (isNativeApp()) return nativeInterstitial(beforeAd, afterAd);
   initAds();
   const w = window as AdWindow;
   return new Promise((resolve) => {
@@ -102,6 +112,15 @@ export function requestReward(
   cb: { onReady: (show: () => void) => void; onReward: () => void; onDone?: () => void }
 ): () => void {
   if (!adsEnabled() || typeof window === "undefined") return () => {};
+  if (isNativeApp()) {
+    let cancelled = false;
+    nativePrepareReward({ onStart: beforeAd, onEnd: () => { afterAd(); cb.onDone?.(); }, onReward: cb.onReward }).then((show) => {
+      if (show && !cancelled) cb.onReady(show);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }
   initAds();
   const w = window as AdWindow;
   let cancelled = false;

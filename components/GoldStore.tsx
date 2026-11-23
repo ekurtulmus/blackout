@@ -10,6 +10,7 @@ import { PRODUCTS, bonusPercents, buy, isPremium, loadPrices, onPremiumChange, r
 import { getCoins } from "@/lib/coins";
 import Icon from "@/components/Icon";
 import { sound } from "@/lib/audio";
+import { isNativeApp } from "@/lib/admobNative";
 
 export default function GoldStore({ onCoins }: { onCoins: (n: number) => void }) {
   const t = useT();
@@ -39,7 +40,8 @@ export default function GoldStore({ onCoins }: { onCoins: (n: number) => void })
     if (r.ok) {
       sound.purchase(true);
       flash(true, p.kind === "premium" ? t("iap.premium.thanks") : t("iap.gold.added", { n: p.gold }));
-    } else if (r.reason === "unavailable") flash(false, t("iap.webOnly"));
+    // Android uygulamasında Play Billing eklentisi henüz bağlanmadı → "yakında" de (web mesajı yanlış olurdu)
+    } else if (r.reason === "unavailable") flash(false, t(isNativeApp() ? "iap.nativeSoon" : "iap.webOnly"));
     else if (r.reason !== "cancelled") flash(false, t("iap.error"));
   }
 

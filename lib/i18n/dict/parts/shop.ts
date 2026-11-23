@@ -94,6 +94,7 @@ export const shop = definePart({
     "ads.test.reward": "Ödüllü reklam (test)",
     "ads.test.desc": "Reklam ağı bağlanınca bu alanda gerçek reklam oynar.",
     "iap.webOnly": "Satın alma, oyunun Google Play uygulamasında yapılır.",
+    "iap.nativeSoon": "Satın alma çok yakında açılıyor.",
 
     "shop.inventory": "Envanterin",
     "shop.strip.veil": "Duvak",
@@ -200,6 +201,7 @@ export const shop = definePart({
     "ads.test.reward": "Rewarded ad (test)",
     "ads.test.desc": "Real ads will play here once the ad network is connected.",
     "iap.webOnly": "Purchases are made in the game's Google Play app.",
+    "iap.nativeSoon": "Purchases are opening very soon.",
 
     "shop.inventory": "Your Inventory",
     "shop.strip.veil": "Veil",
